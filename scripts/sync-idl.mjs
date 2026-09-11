@@ -19,4 +19,4 @@ for (const [from, to] of copies) {
   console.log(`${from} -> ${to}`);
 }
 
-await import("./gen-relayer-constants.mjs");
+await import("../app/scripts/gen-relayer-constants.mjs");

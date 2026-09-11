@@ -186,25 +186,34 @@ validator, and both are fixed:
 
 ```bash
 git clone <this repo> && cd cookiejar
-
-# relayer (pays gas for users, needs a funded keypair)
-npm --prefix relayer install
-RELAYER_KEYPAIR=~/.config/solana/cookiejar-relayer.json npm --prefix relayer start
-
-# web app
 npm --prefix app install
+
+# relayer, the same code that runs as a Vercel function in production
+RELAYER_SECRET_KEY="$(cat ~/.config/solana/cookiejar-relayer.json)" \
+  node relayer/dev-server.js
+
+# web app, in another shell. Vite proxies /api to the relayer above.
 npm --prefix app run dev      # http://localhost:5174
 ```
+
+Deployment is `app/` as the Vercel root directory. `app/api/*.js` become the
+serverless relayer, `app/dist` is the site, and `RELAYER_SECRET_KEY` is the only
+secret. Frontend and relayer share an origin, so there is no CORS to configure
+and nothing is blocked as mixed content.
 
 Rebuilding the program needs Anchor 1.2 and the Solana CLI. Cookie Chain runs an
 older core than the current CLI, so it must be built for SBPF v0:
 
 ```bash
 anchor build                                                    # regenerates the IDL
+node scripts/sync-idl.mjs                                       # IDL and types into app/
 cargo-build-sbf --arch v0 --manifest-path programs/cookie_jar/Cargo.toml
 solana program deploy target/deploy/cookie_jar.so \
   --program-id target/deploy/cookie_jar-keypair.json --max-len 1000000
 ```
+
+Skipping `sync-idl` leaves the app talking to the previous version of the
+program, which fails in confusing ways rather than loudly.
 
 `--max-len` matters. Cookie Chain's loader does not support `ExtendProgram`, so
 a program account cannot be grown later and closing one burns its address.

@@ -8,7 +8,7 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "prebuild": "node ../scripts/gen-relayer-constants.mjs"
+    "prebuild": "node scripts/gen-relayer-constants.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

@@ -25,12 +25,20 @@ const DISCRIMINATORS = Object.fromEntries(
 );
 
 /**
- * Instructions a user may have sponsored. Anything that moves money out of a
- * vault on the caller's say-so is deliberately absent.
+ * Instructions a user may have sponsored.
+ *
+ * The draw cranks are here because they are permissionless by design: a closed
+ * jar should not need somebody holding COOK to wander past before its prize can
+ * be paid out.
+ *
+ * deposit_gas and withdraw_gas are deliberately absent. Anyone touching a gas
+ * vault demonstrably already has COOK, so sponsoring them buys nothing and only
+ * widens what a stolen relayer key could be pointed at.
  */
 const SPONSORABLE = new Set([
   "crack", "crack_into_jar", "deposit", "withdraw", "harvest",
-  "claim_prize", "request_draw", "finalize_draw",
+  "claim_prize", "request_draw", "finalize_draw", "redraw",
+  "fund_jar", "sweep_envelope",
 ]);
 
 let cached = null;

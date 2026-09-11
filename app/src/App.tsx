@@ -5,11 +5,12 @@ import { useCookieJar } from "./hooks/useCookieJar";
 import { Jars } from "./components/Jars";
 import { Cookies } from "./components/Cookies";
 import { Claim } from "./components/Claim";
+import { Sponsor } from "./components/Sponsor";
 import { TxToast } from "./components/TxToast";
 import { connection, findSponsorVault, formatCook, formatCount } from "./lib/cookiejar";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "jars" | "cookies";
+type Tab = "jars" | "cookies" | "gas";
 
 export default function App() {
   const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
@@ -70,22 +71,34 @@ export default function App() {
         <>
           <nav className="tabs">
             <button className={`tab ${tab === "jars" ? "on" : ""}`} onClick={() => setTab("jars")}>
-              🫙 Jars
+              🍪 Jars
             </button>
             <button className={`tab ${tab === "cookies" ? "on" : ""}`} onClick={() => setTab("cookies")}>
               🥠 Fortune cookies
             </button>
+            <button className={`tab ${tab === "gas" ? "on" : ""}`} onClick={() => setTab("gas")}>
+              ⚡ Gas
+            </button>
           </nav>
 
-          {tab === "jars" ? (
+          {tab === "jars" && (
             <Jars
               program={program}
               owner={owner}
               submit={submit}
               onChanged={() => setNudge((n) => n + 1)}
             />
-          ) : (
+          )}
+          {tab === "cookies" && (
             <Cookies program={program} owner={owner} submit={submit} />
+          )}
+          {tab === "gas" && (
+            <Sponsor
+              program={program}
+              owner={owner}
+              submit={submit}
+              onChanged={() => setNudge((n) => n + 1)}
+            />
           )}
         </>
       )}

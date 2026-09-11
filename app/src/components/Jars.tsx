@@ -4,7 +4,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   bn, connection, countdown, findConfig, findJar, findJarVault, findPosition,
   findRewardVault, formatCook, getBalances, readableError, toLamports,
-  type CookieJarProgram,
+  SLOT_HASHES, type CookieJarProgram,
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
@@ -22,6 +22,10 @@ export interface JarView {
   depositors: number;
   entries: number;
   prizeClaimed: boolean;
+  drawState: "notStarted" | "requested" | "finalized";
+  drawTargetSlot: number;
+  winnerIndex: number;
+  winner: PublicKey | null;
 }
 
 export async function loadJars(program: CookieJarProgram): Promise<JarView[]> {
@@ -42,6 +46,14 @@ export async function loadJars(program: CookieJarProgram): Promise<JarView[]> {
       depositors: j.account.depositorCount.toNumber(),
       entries: j.account.entryCount.toNumber(),
       prizeClaimed: j.account.prizeClaimed,
+      drawState: ("finalized" in j.account.drawState
+        ? "finalized"
+        : "requested" in j.account.drawState
+          ? "requested"
+          : "notStarted") as JarView["drawState"],
+      drawTargetSlot: j.account.drawTargetSlot.toNumber(),
+      winnerIndex: j.account.winnerIndex.toNumber(),
+      winner: j.account.winner ?? null,
     }))
     .sort((a, b) => b.endTs - a.endTs);
 }
@@ -57,7 +69,9 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
   const [jars, setJars] = useState<JarView[] | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [amounts, setAmounts] = useState<Record<string, string>>({});
-  const [positions, setPositions] = useState<Record<string, number>>({});
+  const [positions, setPositions] = useState<
+    Record<string, { amount: number; entryIndex: number; hasEntry: boolean }>
+  >({});
   const [localError, setLocalError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
@@ -72,7 +86,11 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
           list.map((j) => findPosition(j.address, owner)),
         );
         setPositions(Object.fromEntries(
-          list.map((j, i) => [j.address.toBase58(), mine[i]?.amount.toNumber() ?? 0]),
+          list.map((j, i) => [j.address.toBase58(), {
+            amount: mine[i]?.amount.toNumber() ?? 0,
+            entryIndex: mine[i]?.entryIndex.toNumber() ?? -1,
+            hasEntry: mine[i]?.hasEntry ?? false,
+          }]),
         ));
       }
     } catch (e) {
@@ -147,6 +165,90 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
     } catch { /* surfaced by toast */ } finally { setBusy(null); }
   };
 
+  // The draw is a permissionless crank in two phases, so a jar can never be
+  // held hostage by an absent creator. Anyone looking at the page can run it.
+  const runDraw = async (jar: JarView) => {
+    setBusy(jar.address.toBase58() + "draw");
+    setLocalError(null);
+    try {
+      if (jar.drawState === "notStarted") {
+        await submit(async () => [
+          await program.methods.requestDraw()
+            .accountsPartial({ jar: jar.address }).instruction(),
+        ]);
+        setLocalError("Draw requested. Give it a few seconds, then finish it.");
+      } else {
+        await submit(async () => [
+          await program.methods.finalizeDraw()
+            .accountsPartial({ jar: jar.address, slotHashes: SLOT_HASHES })
+            .instruction(),
+        ]);
+      }
+      await refresh();
+      onChanged();
+    } catch (e) {
+      setLocalError(readableError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  // If the drawn entry never shows up, the prize is not stranded. After the
+  // claim window anyone can reset the draw and a new winner gets picked.
+  const redraw = async (jar: JarView) => {
+    setBusy(jar.address.toBase58() + "redraw");
+    setLocalError(null);
+    try {
+      await submit(async () => [
+        await program.methods.redraw()
+          .accountsPartial({ jar: jar.address }).instruction(),
+      ]);
+      await refresh();
+    } catch (e) {
+      setLocalError(readableError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const collectPrize = async (jar: JarView) => {
+    if (!owner) return;
+    setBusy(jar.address.toBase58() + "prize");
+    try {
+      await submit(async () => [
+        await program.methods.claimPrize().accountsPartial({
+          owner, jar: jar.address, rewardVault: findRewardVault(jar.address),
+          position: findPosition(jar.address, owner),
+          systemProgram: SystemProgram.programId,
+        }).instruction(),
+      ]);
+      await refresh();
+      onChanged();
+    } catch { /* surfaced by toast */ } finally { setBusy(null); }
+  };
+
+  const addPrize = async (jar: JarView) => {
+    if (!owner) return;
+    const value = Number(amounts[jar.address.toBase58()] ?? "");
+    if (!Number.isFinite(value) || value <= 0) {
+      setLocalError("Enter an amount first.");
+      return;
+    }
+    setBusy(jar.address.toBase58() + "fund");
+    try {
+      await submit(async () => [
+        await program.methods.fundJar(bn(toLamports(value))).accountsPartial({
+          funder: owner, jar: jar.address,
+          rewardVault: findRewardVault(jar.address),
+          systemProgram: SystemProgram.programId,
+        }).instruction(),
+      ]);
+      setAmounts((a) => ({ ...a, [jar.address.toBase58()]: "" }));
+      await refresh();
+      onChanged();
+    } catch { /* surfaced by toast */ } finally { setBusy(null); }
+  };
+
   if (!jars) return <div className="empty"><span className="jar">🍪</span>Reading the shelf...</div>;
 
   return (
@@ -170,12 +272,12 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       )}
 
       {jars.length === 0 ? (
-        <div className="empty"><span className="jar">🫙</span>No jars yet. Open the first one.</div>
+        <div className="empty"><span className="jar">🍪</span>No jars yet. Open the first one.</div>
       ) : (
         <div className="grid">
           {jars.map((jar) => {
             const key = jar.address.toBase58();
-            const mine = positions[key] ?? 0;
+            const mine = positions[key] ?? { amount: 0, entryIndex: -1, hasEntry: false };
             const open = jar.endTs > Date.now() / 1000;
             return (
               <div className="card" key={key}>
@@ -197,11 +299,21 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
                   {jar.lucky && ` · min ${formatCook(jar.minDeposit)} COOK for one entry`}
                 </div>
 
-                {mine > 0 && (
+                {mine.amount > 0 && (
                   <div className="banner info" style={{ marginBottom: 10 }}>
-                    You have {formatCook(mine)} COOK in here.
+                    You have {formatCook(mine.amount)} COOK in here.
+                    {jar.lucky && mine.hasEntry && ` Your entry is #${mine.entryIndex}.`}
                   </div>
                 )}
+
+                {jar.lucky && !open && <DrawPanel
+                  jar={jar}
+                  mine={mine}
+                  busy={busy}
+                  onDraw={() => runDraw(jar)}
+                  onCollect={() => collectPrize(jar)}
+                  onRedraw={() => redraw(jar)}
+                />}
 
                 {owner && (
                   <>
@@ -222,13 +334,27 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
                       </button>
                       <button
                         className="ghost"
-                        disabled={mine === 0 || busy !== null}
+                        disabled={mine.amount === 0 || busy !== null}
                         onClick={() => act(jar, "withdraw")}
                       >
                         Take out
                       </button>
                     </div>
-                    {!jar.lucky && mine > 0 && (
+
+                    {open && (
+                      // Anyone can top up someone else's prize pool. This is how
+                      // another project sponsors a giveaway for its own users.
+                      <button
+                        className="ghost"
+                        style={{ marginTop: 8 }}
+                        disabled={busy !== null}
+                        onClick={() => addPrize(jar)}
+                      >
+                        {busy === key + "fund" ? "..." : "Sponsor this prize pool"}
+                      </button>
+                    )}
+
+                    {!jar.lucky && mine.amount > 0 && (
                       <button
                         className="ghost"
                         style={{ marginTop: 8 }}
@@ -332,6 +458,81 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
 
       <button className="primary" style={{ marginTop: 14 }} disabled={busy || !owner} onClick={create}>
         {busy ? "Opening..." : "Open jar"}
+      </button>
+    </div>
+  );
+}
+
+interface DrawPanelProps {
+  jar: JarView;
+  mine: { amount: number; entryIndex: number; hasEntry: boolean };
+  busy: string | null;
+  onDraw: () => void;
+  onCollect: () => void;
+  onRedraw: () => void;
+}
+
+/** Matches PRIZE_CLAIM_WINDOW in the program. */
+const PRIZE_CLAIM_WINDOW = 60 * 60 * 24;
+
+/**
+ * The Lucky endgame. Running the draw is permissionless on purpose, so a closed
+ * jar never sits on a prize waiting for its creator to show up.
+ */
+function DrawPanel({ jar, mine, busy, onDraw, onCollect, onRedraw }: DrawPanelProps) {
+  const key = jar.address.toBase58();
+
+  if (jar.entries === 0) {
+    return <div className="banner warn">Closed with nobody in it. Nothing to draw.</div>;
+  }
+
+  if (jar.prizeClaimed) {
+    return (
+      <div className="banner info">
+        Entry #{jar.winnerIndex} won and collected the pool.
+      </div>
+    );
+  }
+
+  if (jar.drawState === "finalized") {
+    const iWon = mine.hasEntry && mine.entryIndex === jar.winnerIndex;
+    if (iWon) {
+      return (
+        <div className="banner info">
+          <div style={{ marginBottom: 8 }}>Your entry won.</div>
+          <button className="primary" disabled={busy !== null} onClick={onCollect}>
+            {busy === key + "prize" ? "..." : `Collect ${formatCook(jar.rewardPool)} COOK`}
+          </button>
+        </div>
+      );
+    }
+
+    const abandoned = Date.now() / 1000 > jar.endTs + PRIZE_CLAIM_WINDOW;
+    return (
+      <div className="banner info">
+        <div style={{ marginBottom: abandoned ? 8 : 0 }}>
+          Entry #{jar.winnerIndex} won
+          {abandoned ? " but never collected." : ". Waiting for them to collect."}
+        </div>
+        {abandoned && (
+          <button className="primary" disabled={busy !== null} onClick={onRedraw}>
+            {busy === key + "redraw" ? "..." : "Draw again"}
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const requested = jar.drawState === "requested";
+  return (
+    <div className="banner warn">
+      <div style={{ marginBottom: 8 }}>
+        {requested
+          ? "Draw requested against a future block. Finish it once that block exists."
+          : "This jar has closed. Anyone can run the draw."}
+      </div>
+      <button className="primary" disabled={busy !== null} onClick={onDraw}>
+        {busy === key + "draw" ? "..." : requested ? "Finish the draw" : "Run the draw"}
       </button>
     </div>
   );

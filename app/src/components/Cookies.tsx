@@ -50,6 +50,8 @@ interface Props {
 export function Cookies({ program, owner, submit }: Props) {
   const [cookies, setCookies] = useState<CookieView[] | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -61,6 +63,29 @@ export function Cookies({ program, owner, submit }: Props) {
 
   useEffect(() => { void refresh(); }, [refresh]);
 
+  // Anything left in an expired cookie belongs to whoever filled it. Without
+  // this the leftovers would sit in the escrow forever.
+  const sweep = async (c: CookieView) => {
+    if (!owner) return;
+    setBusy(c.address.toBase58());
+    setErr(null);
+    try {
+      await submit(async () => [
+        await program.methods.sweepEnvelope().accountsPartial({
+          creator: owner,
+          envelope: c.address,
+          envelopeVault: findEnvelopeVault(c.address),
+          systemProgram: SystemProgram.programId,
+        }).instruction(),
+      ]);
+      await refresh();
+    } catch (e) {
+      setErr(readableError(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const share = (address: PublicKey) => {
     const link = `${window.location.origin}${window.location.pathname}?cookie=${address.toBase58()}`;
     void navigator.clipboard.writeText(link);
@@ -71,6 +96,8 @@ export function Cookies({ program, owner, submit }: Props) {
   return (
     <>
       <BakeCookie program={program} owner={owner} submit={submit} onDone={refresh} />
+
+      {err && <div className="banner warn">{err}</div>}
 
       {!cookies ? (
         <div className="empty"><span className="jar">🥠</span>Checking the oven...</div>
@@ -105,6 +132,15 @@ export function Cookies({ program, owner, submit }: Props) {
                   </button>
                   <a className="ghost" style={{ textDecoration: "none" }}
                      href={`?cookie=${key}`}>Open it</a>
+                  {owner && owner.equals(c.creator) && !live && c.remaining > 0 && (
+                    <button
+                      className="primary"
+                      disabled={busy !== null}
+                      onClick={() => sweep(c)}
+                    >
+                      {busy === key ? "..." : `Take back ${formatCook(c.remaining)}`}
+                    </button>
+                  )}
                 </div>
               </div>
             );

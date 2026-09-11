@@ -85,10 +85,13 @@ export function useCookieJar() {
    * ends up being used, so callers never have to guess.
    */
   const submit = useCallback(
-    async (build: InstructionBuilder, rentKind: RentKind = "none") => {
+    async (build: InstructionBuilder, rentKind: RentKind = "none", trySponsor = true) => {
       setError(null);
       try {
-        const reimbursement = await buildReimbursement(rentKind);
+        // Gas vault actions skip the sponsored path on purpose. The relayer
+        // refuses them, so attempting it would only produce a confusing
+        // fallback message on the way to the same result.
+        const reimbursement = trySponsor ? await buildReimbursement(rentKind) : undefined;
         const result = await send(wallet as never, {
           build,
           reimbursement,

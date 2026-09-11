@@ -92,9 +92,14 @@ matches the methodology already used for CookieSwap on this chain.
 per user, ever. Here the same user creates, cracks, deposits, harvests,
 withdraws, funds, and cranks draws.
 
-**The gas vault is the part that scales.** One transaction costs 10,000 lamports,
-about $0.0000000009. A 50 COOK deposit covers roughly 5 million sponsored
-transactions. Onboarding cost is not the constraint. Attention is.
+**What sponsoring actually costs.** The transaction fee is 10,000 lamports. The
+real cost of a first-time user is the rent for the two accounts their claim
+opens, 3,424,320 lamports, so onboarding somebody brand new costs 0.003434 COOK
+and everything they do afterwards costs 0.00001 COOK.
+
+At today's price the 50 COOK sitting in the public gas vault covers about
+**14,500 first-time users** or **5 million repeat actions**, for roughly half a
+cent. Onboarding cost is not the constraint here. Attention is.
 
 ## Architecture
 
@@ -133,8 +138,8 @@ while paused, so pausing can never trap anyone's money.
 
 **A stolen relayer key cannot drain a vault.** The relayer is a fee payer and
 nothing else. It has no authority anywhere in the program, and the most it can
-reclaim per transaction is capped on-chain at 0.005 COOK. Emptying a 2,000 COOK
-gas vault would take 400,000 separate transactions.
+reclaim per transaction is capped on-chain at 0.005 COOK. Emptying the 50 COOK
+public vault would take 10,000 separate transactions to net about half a cent.
 
 **Double claiming is impossible rather than merely checked.** A claim creates a
 PDA keyed to the envelope and the claimer. Creating it twice fails at the

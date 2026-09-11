@@ -223,6 +223,16 @@ program, which fails in confusing ways rather than loudly.
 `--max-len` matters. Cookie Chain's loader does not support `ExtendProgram`, so
 a program account cannot be grown later and closing one burns its address.
 
+Deploying to a fresh chain also needs these once, in order:
+
+```bash
+node scripts/fund-deployer.mjs 2000   # move COOK to the deploy wallet
+node scripts/initialize.mjs           # create the Config PDA, register the relayer
+```
+
+`scripts/lib.mjs` holds the shared client setup and PDA derivation that the
+scripts above import.
+
 ## Addresses
 
 | | |

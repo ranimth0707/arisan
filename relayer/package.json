@@ -1,0 +1,10 @@
+{
+  "name": "cookie-jar-relayer-dev",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local stand-in for the Vercel relayer functions",
+  "scripts": {
+    "start": "node dev-server.js"
+  }
+}

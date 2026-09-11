@@ -1,0 +1,15 @@
+{
+  "name": "cookie-jar",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Gasless giveaway protocol on Cookie Chain",
+  "scripts": {
+    "fund": "node scripts/fund-deployer.mjs"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@solana/web3.js": "^1.98.0",
+    "bs58": "^6.0.0"
+  }
+}

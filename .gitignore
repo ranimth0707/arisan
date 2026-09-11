@@ -1,0 +1,20 @@
+# rust / anchor build output, including the program keypair
+target
+.anchor
+**/*.rs.bk
+
+# js
+node_modules
+dist
+.vercel
+
+# never commit keys or env files
+*.env
+.env*
+*keypair*.json
+*.pem
+
+.DS_Store
+test-ledger
+.yarn
+.surfpool

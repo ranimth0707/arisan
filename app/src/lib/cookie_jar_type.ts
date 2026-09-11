@@ -1,0 +1,2590 @@
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/cookie_jar.json`.
+ */
+export type CookieJar = {
+  "address": "Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg",
+  "metadata": {
+    "name": "cookieJar",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Created with Anchor"
+  },
+  "instructions": [
+    {
+      "name": "claimPrize",
+      "discriminator": [
+        157,
+        233,
+        139,
+        121,
+        246,
+        62,
+        234,
+        235
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewardVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "crack",
+      "discriminator": [
+        196,
+        252,
+        76,
+        139,
+        68,
+        46,
+        178,
+        32
+      ],
+      "accounts": [
+        {
+          "name": "claimer",
+          "docs": [
+            "Authorises the claim. Never charged for anything, so this may be a",
+            "wallet holding exactly zero COOK."
+          ],
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for the claim record. Usually the relayer, which reclaims",
+            "it from the sponsor vault in the same transaction."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "envelope",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope.creator",
+                "account": "envelope"
+              },
+              {
+                "kind": "account",
+                "path": "envelope.envelopeId",
+                "account": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelopeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "docs": [
+            "Creating this account is what makes a second claim impossible."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              },
+              {
+                "kind": "account",
+                "path": "claimer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slotHashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "crackIntoJar",
+      "discriminator": [
+        246,
+        13,
+        176,
+        113,
+        41,
+        242,
+        193,
+        103
+      ],
+      "accounts": [
+        {
+          "name": "claimer",
+          "docs": [
+            "Authorises the claim and ends up owning the position. Charged nothing,",
+            "so a wallet with zero COOK can do this."
+          ],
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for the claim record and the position."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelope",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope.creator",
+                "account": "envelope"
+              },
+              {
+                "kind": "account",
+                "path": "envelope.envelopeId",
+                "account": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelopeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "claim",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  108,
+                  97,
+                  105,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              },
+              {
+                "kind": "account",
+                "path": "claimer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jarVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "claimer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slotHashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "createEnvelope",
+      "discriminator": [
+        2,
+        25,
+        194,
+        180,
+        238,
+        31,
+        234,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelope",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "envelopeId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelopeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "envelopeId",
+          "type": "u64"
+        },
+        {
+          "name": "message",
+          "type": "string"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "claimsTotal",
+          "type": "u16"
+        },
+        {
+          "name": "split",
+          "type": {
+            "defined": {
+              "name": "splitMode"
+            }
+          }
+        },
+        {
+          "name": "expiryTs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "createJar",
+      "discriminator": [
+        79,
+        12,
+        25,
+        249,
+        245,
+        177,
+        203,
+        232
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "jarId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jarVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewardVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "jarId",
+          "type": "u64"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "mode",
+          "type": {
+            "defined": {
+              "name": "jarMode"
+            }
+          }
+        },
+        {
+          "name": "startTs",
+          "type": "i64"
+        },
+        {
+          "name": "endTs",
+          "type": "i64"
+        },
+        {
+          "name": "minDeposit",
+          "type": "u64"
+        },
+        {
+          "name": "initialReward",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "deposit",
+      "discriminator": [
+        242,
+        35,
+        198,
+        137,
+        82,
+        225,
+        242,
+        182
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "docs": [
+            "Owns the position and supplies the deposit itself."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for a first-time position. May be the relayer, so a user",
+            "bridging in for the first time is not blocked by rent."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jarVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "depositGas",
+      "discriminator": [
+        164,
+        223,
+        20,
+        23,
+        50,
+        107,
+        168,
+        108
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "sponsorVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "finalizeDraw",
+      "discriminator": [
+        112,
+        9,
+        234,
+        94,
+        99,
+        176,
+        12,
+        181
+      ],
+      "accounts": [
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slotHashes",
+          "docs": [
+            "the full sysvar is too large to deserialize on-chain."
+          ],
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "fundJar",
+      "discriminator": [
+        7,
+        109,
+        53,
+        116,
+        129,
+        46,
+        10,
+        55
+      ],
+      "accounts": [
+        {
+          "name": "funder",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewardVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "harvest",
+      "discriminator": [
+        228,
+        241,
+        31,
+        182,
+        53,
+        169,
+        59,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "rewardVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  119,
+                  97,
+                  114,
+                  100,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initialize",
+      "discriminator": [
+        175,
+        175,
+        109,
+        31,
+        13,
+        152,
+        155,
+        237
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "relayer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "redraw",
+      "discriminator": [
+        86,
+        111,
+        66,
+        164,
+        105,
+        158,
+        114,
+        164
+      ],
+      "accounts": [
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "reimburseRelayer",
+      "discriminator": [
+        64,
+        245,
+        110,
+        83,
+        237,
+        199,
+        182,
+        206
+      ],
+      "accounts": [
+        {
+          "name": "relayer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sponsor.authority",
+                "account": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "sponsorVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sponsor.authority",
+                "account": "sponsor"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "requestDraw",
+      "discriminator": [
+        22,
+        180,
+        8,
+        81,
+        47,
+        21,
+        86,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "setPaused",
+      "discriminator": [
+        91,
+        60,
+        125,
+        192,
+        176,
+        225,
+        166,
+        218
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "paused",
+          "type": "bool"
+        }
+      ]
+    },
+    {
+      "name": "setRelayer",
+      "discriminator": [
+        23,
+        243,
+        33,
+        88,
+        110,
+        84,
+        196,
+        37
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "relayer",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "sweepEnvelope",
+      "discriminator": [
+        44,
+        157,
+        60,
+        235,
+        95,
+        141,
+        15,
+        71
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "envelope",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope.creator",
+                "account": "envelope"
+              },
+              {
+                "kind": "account",
+                "path": "envelope.envelopeId",
+                "account": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "envelopeVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  110,
+                  118,
+                  101,
+                  108,
+                  111,
+                  112,
+                  101,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "envelope"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "withdraw",
+      "discriminator": [
+        183,
+        18,
+        70,
+        156,
+        148,
+        109,
+        161,
+        34
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jarVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawGas",
+      "discriminator": [
+        35,
+        60,
+        150,
+        196,
+        226,
+        110,
+        54,
+        45
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sponsor",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "sponsorVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  112,
+                  111,
+                  110,
+                  115,
+                  111,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "envelope",
+      "discriminator": [
+        194,
+        36,
+        90,
+        151,
+        207,
+        22,
+        150,
+        241
+      ]
+    },
+    {
+      "name": "envelopeClaim",
+      "discriminator": [
+        0,
+        153,
+        25,
+        64,
+        224,
+        202,
+        147,
+        212
+      ]
+    },
+    {
+      "name": "jar",
+      "discriminator": [
+        197,
+        50,
+        234,
+        142,
+        247,
+        216,
+        114,
+        137
+      ]
+    },
+    {
+      "name": "position",
+      "discriminator": [
+        170,
+        188,
+        143,
+        228,
+        122,
+        64,
+        247,
+        208
+      ]
+    },
+    {
+      "name": "sponsor",
+      "discriminator": [
+        19,
+        128,
+        115,
+        109,
+        118,
+        109,
+        66,
+        213
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "paused",
+      "msg": "Protocol is paused"
+    },
+    {
+      "code": 6001,
+      "name": "notAuthority",
+      "msg": "Only the config authority may do this"
+    },
+    {
+      "code": 6002,
+      "name": "notRelayer",
+      "msg": "Only the registered relayer may do this"
+    },
+    {
+      "code": 6003,
+      "name": "mathOverflow",
+      "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6004,
+      "name": "zeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6005,
+      "name": "reimbursementTooLarge",
+      "msg": "Reimbursement exceeds the per-transaction cap"
+    },
+    {
+      "code": 6006,
+      "name": "sponsorBalanceTooLow",
+      "msg": "Sponsor vault does not hold enough COOK"
+    },
+    {
+      "code": 6007,
+      "name": "badJarDuration",
+      "msg": "Jar duration is outside the allowed range"
+    },
+    {
+      "code": 6008,
+      "name": "startInPast",
+      "msg": "Jar start time is in the past"
+    },
+    {
+      "code": 6009,
+      "name": "nameTooLong",
+      "msg": "Jar name is too long"
+    },
+    {
+      "code": 6010,
+      "name": "jarEnded",
+      "msg": "Jar reward window has already ended"
+    },
+    {
+      "code": 6011,
+      "name": "jarNotEnded",
+      "msg": "Jar reward window has not ended yet"
+    },
+    {
+      "code": 6012,
+      "name": "belowMinDeposit",
+      "msg": "Deposit is below the jar minimum"
+    },
+    {
+      "code": 6013,
+      "name": "insufficientPosition",
+      "msg": "Position does not hold that much"
+    },
+    {
+      "code": 6014,
+      "name": "rewardVaultTooLow",
+      "msg": "Reward vault does not hold enough COOK"
+    },
+    {
+      "code": 6015,
+      "name": "nothingToHarvest",
+      "msg": "Nothing to harvest"
+    },
+    {
+      "code": 6016,
+      "name": "notProportionalJar",
+      "msg": "This instruction is for Proportional jars only"
+    },
+    {
+      "code": 6017,
+      "name": "notLuckyJar",
+      "msg": "This instruction is for Lucky jars only"
+    },
+    {
+      "code": 6018,
+      "name": "noEntries",
+      "msg": "Jar has no eligible entries to draw from"
+    },
+    {
+      "code": 6019,
+      "name": "drawInProgress",
+      "msg": "A draw is already in progress"
+    },
+    {
+      "code": 6020,
+      "name": "drawNotRequested",
+      "msg": "No draw has been requested"
+    },
+    {
+      "code": 6021,
+      "name": "drawTooEarly",
+      "msg": "Target slot has not been reached yet"
+    },
+    {
+      "code": 6022,
+      "name": "drawExpired",
+      "msg": "Target slot has aged out of SlotHashes, request the draw again"
+    },
+    {
+      "code": 6023,
+      "name": "drawNotFinalized",
+      "msg": "Draw has not been finalized"
+    },
+    {
+      "code": 6024,
+      "name": "notWinner",
+      "msg": "This position did not win"
+    },
+    {
+      "code": 6025,
+      "name": "prizeAlreadyClaimed",
+      "msg": "Prize has already been claimed"
+    },
+    {
+      "code": 6026,
+      "name": "claimWindowOpen",
+      "msg": "The claim window has not closed yet"
+    },
+    {
+      "code": 6027,
+      "name": "winnerIneligible",
+      "msg": "Winner no longer meets the jar minimum"
+    },
+    {
+      "code": 6028,
+      "name": "messageTooLong",
+      "msg": "Envelope message is too long"
+    },
+    {
+      "code": 6029,
+      "name": "badClaimCount",
+      "msg": "Envelope claim count is outside the allowed range"
+    },
+    {
+      "code": 6030,
+      "name": "envelopeTooSmall",
+      "msg": "Envelope amount is too small for that many claims"
+    },
+    {
+      "code": 6031,
+      "name": "envelopeEmpty",
+      "msg": "Envelope has no claims left"
+    },
+    {
+      "code": 6032,
+      "name": "envelopeExpired",
+      "msg": "Envelope has expired"
+    },
+    {
+      "code": 6033,
+      "name": "envelopeNotExpired",
+      "msg": "Envelope has not expired yet"
+    },
+    {
+      "code": 6034,
+      "name": "badExpiry",
+      "msg": "Expiry must be in the future"
+    },
+    {
+      "code": 6035,
+      "name": "jarMismatch",
+      "msg": "Envelope and jar do not use the same vault owner"
+    }
+  ],
+  "types": [
+    {
+      "name": "config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "relayer",
+            "docs": [
+              "Hot wallet that pays transaction fees. Fee payer only. It is never an",
+              "authority over any vault in this program."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "paused",
+            "docs": [
+              "Blocks new deposits. Withdrawals and harvests stay open."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "jarCount",
+            "type": "u64"
+          },
+          {
+            "name": "envelopeCount",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "drawState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "notStarted"
+          },
+          {
+            "name": "requested"
+          },
+          {
+            "name": "finalized"
+          }
+        ]
+      }
+    },
+    {
+      "name": "envelope",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "envelopeId",
+            "type": "u64"
+          },
+          {
+            "name": "message",
+            "type": "string"
+          },
+          {
+            "name": "totalAmount",
+            "type": "u64"
+          },
+          {
+            "name": "remaining",
+            "type": "u64"
+          },
+          {
+            "name": "claimsTotal",
+            "type": "u16"
+          },
+          {
+            "name": "claimsDone",
+            "type": "u16"
+          },
+          {
+            "name": "split",
+            "type": {
+              "defined": {
+                "name": "splitMode"
+              }
+            }
+          },
+          {
+            "name": "expiryTs",
+            "type": "i64"
+          },
+          {
+            "name": "swept",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "envelopeClaim",
+      "docs": [
+        "Existence of this account is the proof that a wallet already claimed.",
+        "Creating it twice fails at the runtime level, so double claims are",
+        "impossible rather than merely checked."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "envelope",
+            "type": "pubkey"
+          },
+          {
+            "name": "claimer",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "claimedAt",
+            "type": "i64"
+          },
+          {
+            "name": "intoJar",
+            "docs": [
+              "True when the claim went straight into a jar instead of a wallet."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "jar",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "jarId",
+            "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "mode",
+            "type": {
+              "defined": {
+                "name": "jarMode"
+              }
+            }
+          },
+          {
+            "name": "startTs",
+            "type": "i64"
+          },
+          {
+            "name": "endTs",
+            "type": "i64"
+          },
+          {
+            "name": "rewardTotal",
+            "docs": [
+              "Total rewards ever funded into this jar."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rewardDistributed",
+            "docs": [
+              "Rewards accounted as streamed so far (Proportional only)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rewardClaimed",
+            "docs": [
+              "Rewards actually paid out."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rewardRate",
+            "docs": [
+              "Lamports per second (Proportional only)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "totalDeposited",
+            "docs": [
+              "Principal currently held in the jar vault. This is the TVL figure."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "depositorCount",
+            "type": "u64"
+          },
+          {
+            "name": "accRewardPerShare",
+            "docs": [
+              "Reward-per-share accumulator, scaled by ACC_PRECISION."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "lastUpdateTs",
+            "type": "i64"
+          },
+          {
+            "name": "entryCount",
+            "docs": [
+              "Entries handed out so far (Lucky only)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "minDeposit",
+            "type": "u64"
+          },
+          {
+            "name": "drawState",
+            "type": {
+              "defined": {
+                "name": "drawState"
+              }
+            }
+          },
+          {
+            "name": "drawTargetSlot",
+            "type": "u64"
+          },
+          {
+            "name": "winnerIndex",
+            "type": "u64"
+          },
+          {
+            "name": "winner",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "prizeClaimed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "type": "u8"
+          },
+          {
+            "name": "rewardVaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "jarMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "proportional"
+          },
+          {
+            "name": "lucky"
+          }
+        ]
+      }
+    },
+    {
+      "name": "position",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "jar",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "rewardDebt",
+            "docs": [
+              "Accumulator checkpoint, scaled by ACC_PRECISION."
+            ],
+            "type": "u128"
+          },
+          {
+            "name": "pending",
+            "docs": [
+              "Settled but not yet transferred."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "rewardsClaimed",
+            "type": "u64"
+          },
+          {
+            "name": "entryIndex",
+            "docs": [
+              "Entry number for Lucky jars. Meaningless unless `has_entry`."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "hasEntry",
+            "type": "bool"
+          },
+          {
+            "name": "firstDepositTs",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "splitMode",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "equal"
+          },
+          {
+            "name": "surprise"
+          }
+        ]
+      }
+    },
+    {
+      "name": "sponsor",
+      "docs": [
+        "One per sponsor. Sponsors fund their own users' gas rather than drawing from",
+        "a shared pool, so nobody can spend someone else's balance."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "totalDeposited",
+            "type": "u64"
+          },
+          {
+            "name": "totalSpent",
+            "type": "u64"
+          },
+          {
+            "name": "txSponsored",
+            "type": "u64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ],
+  "constants": [
+    {
+      "name": "claimSeed",
+      "type": "bytes",
+      "value": "[99, 108, 97, 105, 109]"
+    },
+    {
+      "name": "configSeed",
+      "type": "bytes",
+      "value": "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "envelopeSeed",
+      "type": "bytes",
+      "value": "[101, 110, 118, 101, 108, 111, 112, 101]"
+    },
+    {
+      "name": "envelopeVaultSeed",
+      "type": "bytes",
+      "value": "[101, 110, 118, 101, 108, 111, 112, 101, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "jarSeed",
+      "type": "bytes",
+      "value": "[106, 97, 114]"
+    },
+    {
+      "name": "jarVaultSeed",
+      "type": "bytes",
+      "value": "[106, 97, 114, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "maxFeeReimbursement",
+      "docs": [
+        "Hard cap on what the relayer may reclaim per sponsored transaction.",
+        "",
+        "It covers two things the relayer fronts on a user's behalf: the transaction",
+        "fee (10,000 lamports observed on Cookie Chain) and the rent for any account",
+        "the instruction opens, which is about 3.3M lamports for a position plus a",
+        "claim record. The cap is what bounds the damage if the relayer key leaks:",
+        "draining a 2,000 COOK vault would take 400,000 separate transactions."
+      ],
+      "type": "u64",
+      "value": "5000000"
+    },
+    {
+      "name": "positionSeed",
+      "type": "bytes",
+      "value": "[112, 111, 115, 105, 116, 105, 111, 110]"
+    },
+    {
+      "name": "rewardVaultSeed",
+      "type": "bytes",
+      "value": "[114, 101, 119, 97, 114, 100, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "sponsorSeed",
+      "type": "bytes",
+      "value": "[115, 112, 111, 110, 115, 111, 114]"
+    },
+    {
+      "name": "sponsorVaultSeed",
+      "type": "bytes",
+      "value": "[115, 112, 111, 110, 115, 111, 114, 95, 118, 97, 117, 108, 116]"
+    }
+  ]
+};

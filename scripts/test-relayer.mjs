@@ -175,8 +175,8 @@ await program.methods
 const newcomer = Keypair.generate();
 const before = await conn.getBalance(newcomer.publicKey);
 
-const rentClaim = await conn.getMinimumBalanceForRentExemption(8 + 90);
-const rentPosition = await conn.getMinimumBalanceForRentExemption(8 + 130);
+const rentClaim = await conn.getMinimumBalanceForRentExemption(90);
+const rentPosition = await conn.getMinimumBalanceForRentExemption(130);
 
 const crack = await program.methods
   .crackIntoJar()
@@ -196,7 +196,7 @@ const crack = await program.methods
   .instruction();
 
 const good = await build(
-  [await reimburse(rentClaim + rentPosition + 20_000), crack],
+  [await reimburse(rentClaim + rentPosition + 10_000), crack],
   relayer,
   [newcomer],
 );

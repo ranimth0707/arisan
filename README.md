@@ -63,15 +63,25 @@ Every line below is a real transaction on Cookie Chain mainnet. Click them.
 
 | What it proves | Transaction |
 |---|---|
+| **A real Nightly wallet holding zero COOK** claimed 44.15 COOK through the live site and paid nothing | [`63nPzm62…`](https://cookiescan.io/tx/63nPzm62sSE6bvYeTitre8vDLgWRHb8GB1kMMuZqABdFoH3bkPux6pnTdAe2LWg93NnMP3WK9k9YsULAf2Fb2eGY) |
 | A wallet with **zero COOK** signed and landed a transaction while someone else paid the fee | [`dFWFof5b…`](https://cookiescan.io/tx/dFWFof5bH4PKDhmawnNhytvztrhBHSA8C5jEfcfMCf1S2Yw2fazQA7K4uBht6kovdghnv1EaQddfMfzLZk7PUgq) |
 | A brand new empty wallet cracked a cookie and **TVL went up**, not down | [`3akeiqse…`](https://cookiescan.io/tx/3akeiqse2qdQY1admXxemjziLHn6W6NFpmRcTJci6XjyQRK6RXgEz3ymYyEaxLPgXYsvHZGzDW2zxZHgMXemVzdY) |
 | The same claim through the live relayer, end to end | [`64jpVMTy…`](https://cookiescan.io/tx/64jpVMTyK7oBY5ZcFxkVzUGb2xkezsYki96yENkBwamgPnafmCjTMhpLrqS8iASdGNJMGYsuVyK9sisZRzHw7NLt) |
 | A Lucky draw settled against a future slot hash | [`RSjz1pvv…`](https://cookiescan.io/tx/RSjz1pvvjEnarqG1x2nHhwBZqWKNm9PYSS2qeXofGxy49T2c25emH5FjB9giv8bqHpW4tCPWiEFhDd9M9WekG8q) |
 | The winner collected 25 COOK | [`5Sd8oYZ8…`](https://cookiescan.io/tx/5Sd8oYZ8GwVzq77K3G6DA3PJDDaV9uShY9hcKP4XSR4Lyqkvz2Jvyw3njnRrm2YC4j8i4GihxGS2MtgsJj6zDW2h) |
 
-In the second one, read the balances directly: the envelope vault fell by
-55.52 COOK, the jar vault rose by exactly 55.52 COOK, and the claimer's balance
-went from 0 lamports to 0 lamports.
+The first one is the whole thesis in a single transaction, and not a scripted
+keypair: a person opened the live site with Nightly, clicked once, and the
+wallet at `HWG1j6Jz…po9M4FR` went from 0 lamports to 0 lamports while 44.15 COOK
+moved out of the envelope vault and into their jar position.
+
+**One thing to know if you try it.** Point your wallet at Cookie Chain first.
+Wallet-adapter's `signTransaction` does not forward a chain identifier, so a
+wallet left on another network simulates against that one, reports
+`AccountNotFound`, and warns you the transaction will fail. This app now names
+the chain explicitly through the Wallet Standard, and tells you when your wallet
+does not recognise it. Approving past the warning works either way: a signature
+covers the transaction bytes and says nothing about which chain it is for.
 
 ## How this produces Volume and TVL
 
@@ -92,14 +102,14 @@ matches the methodology already used for CookieSwap on this chain.
 per user, ever. Here the same user creates, cracks, deposits, harvests,
 withdraws, funds, and cranks draws.
 
-**What sponsoring actually costs.** The transaction fee is 10,000 lamports. The
-real cost of a first-time user is the rent for the two accounts their claim
-opens, 3,424,320 lamports, so onboarding somebody brand new costs 0.003434 COOK
-and everything they do afterwards costs 0.00001 COOK.
+**What sponsoring actually costs.** The transaction fee is 10,000 lamports, two
+signatures at 5,000 each. The real cost of a first-time user is the rent for the
+two accounts their claim opens, 3,312,960 lamports, so onboarding somebody brand
+new costs 0.003323 COOK and everything they do afterwards costs 0.00001 COOK.
 
-At today's price the 50 COOK sitting in the public gas vault covers about
-**14,500 first-time users** or **5 million repeat actions**, for roughly half a
-cent. Onboarding cost is not the constraint here. Attention is.
+At today's price the 100 COOK in the public gas vault covers about **30,000
+first-time users** or **10 million repeat actions**, for under a cent.
+Onboarding cost is not the constraint here. Attention is.
 
 ## Architecture
 

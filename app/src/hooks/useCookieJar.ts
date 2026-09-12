@@ -16,9 +16,20 @@ export const SPONSOR_AUTHORITY = new PublicKey(
   import.meta.env.VITE_SPONSOR ?? "7zSgKrxUG28Bm3V7zMAPRHfUGiBvV3gFg4iqKqR93qeh",
 );
 
-/** Account sizes the program allocates, used to size a reimbursement exactly. */
-const SIZES = { claim: 8 + 90, position: 8 + 130 };
-const FEE_HEADROOM = 20_000;
+/**
+ * Exactly what the program allocates: `8 + INIT_SPACE`, which Anchor already
+ * resolves to these totals. Adding 8 again here double-counted the discriminator
+ * and had the sponsor vault over-paying the relayer by 121,360 lamports on every
+ * claim. Verified against the real accounts on chain.
+ */
+const SIZES = { claim: 90, position: 130 };
+
+/**
+ * A sponsored transaction carries exactly two signatures, the relayer and the
+ * user, at 5,000 lamports each. Reimbursing rent plus this leaves the relayer
+ * exactly whole rather than quietly accumulating from the sponsor.
+ */
+const FEE_HEADROOM = 10_000;
 
 let rentCache: Promise<{ claim: number; position: number }> | null = null;
 function rents() {

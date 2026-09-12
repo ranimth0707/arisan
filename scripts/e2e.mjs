@@ -142,9 +142,9 @@ line(`newcomer balance: ${newcomerBefore} lamports`);
 if (newcomerBefore !== 0) throw new Error("newcomer should be empty");
 
 // What the relayer fronts: rent for the two accounts this opens, plus the fee.
-const rentClaim = await conn.getMinimumBalanceForRentExemption(8 + 90);
-const rentPosition = await conn.getMinimumBalanceForRentExemption(8 + 130);
-const reimbursement = rentClaim + rentPosition + 20_000;
+const rentClaim = await conn.getMinimumBalanceForRentExemption(90);
+const rentPosition = await conn.getMinimumBalanceForRentExemption(130);
+const reimbursement = rentClaim + rentPosition + 10_000;
 line(`relayer fronts  : ${cook(reimbursement)} COOK (rent + fee), cap is 0.005`);
 
 const position = findPosition(jar, newcomer.publicKey);

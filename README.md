@@ -8,7 +8,7 @@ draining it.
 
 | | |
 |---|---|
-| Live app | *(filled in below once deployed)* |
+| Live app | **https://cookiejar-cook.vercel.app** |
 | Program | [`Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`](https://cookiescan.io/account/Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg) |
 | Network | Cookie Chain mainnet |
 | Wallet | Nightly |
@@ -205,6 +205,13 @@ Deployment is `app/` as the Vercel root directory. `app/api/*.js` become the
 serverless relayer, `app/dist` is the site, and `RELAYER_SECRET_KEY` is the only
 secret. Frontend and relayer share an origin, so there is no CORS to configure
 and nothing is blocked as mixed content.
+
+Two things that will bite on a fresh Vercel project. `@solana/web3.js` pulls in
+`rpc-websockets`, which `require()`s a version of `uuid` that is ESM only, and
+the function dies at cold start with `ERR_REQUIRE_ESM`; the `overrides` block in
+`app/package.json` pins it back. And a newly aliased `*.vercel.app` subdomain
+sits behind Vercel's deployment protection until it is added as a project domain
+rather than a bare alias, which makes it 302 to an SSO page for everyone else.
 
 Rebuilding the program needs Anchor 1.2 and the Solana CLI. Cookie Chain runs an
 older core than the current CLI, so it must be built for SBPF v0:

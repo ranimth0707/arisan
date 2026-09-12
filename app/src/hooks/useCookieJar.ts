@@ -92,12 +92,19 @@ export function useCookieJar() {
         // refuses them, so attempting it would only produce a confusing
         // fallback message on the way to the same result.
         const reimbursement = trySponsor ? await buildReimbursement(rentKind) : undefined;
-        const result = await send(wallet as never, {
-          build,
-          reimbursement,
-          relayerPubkey: relayer ?? undefined,
-          onProgress: setProgress,
-        });
+        const result = await send(
+          {
+            publicKey: wallet.publicKey,
+            signTransaction: wallet.signTransaction,
+            wallet: wallet.wallet,
+          } as never,
+          {
+            build,
+            reimbursement,
+            relayerPubkey: relayer ?? undefined,
+            onProgress: setProgress,
+          },
+        );
         setTimeout(() => setProgress(null), 6000);
         return result;
       } catch (e) {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import { useCookieJar } from "./hooks/useCookieJar";
@@ -8,6 +8,7 @@ import { Claim } from "./components/Claim";
 import { Sponsor } from "./components/Sponsor";
 import { TxToast } from "./components/TxToast";
 import { connection, findSponsorVault, formatCook, formatCount } from "./lib/cookiejar";
+import { inspectWallet } from "./lib/chain";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
 type Tab = "jars" | "cookies" | "gas";
@@ -31,6 +32,15 @@ export default function App() {
   useEffect(() => { void refreshGas(); }, [refreshGas, nudge]);
 
   const owner = wallet.publicKey ?? null;
+
+  // A wallet pointed at another network simulates this transaction against the
+  // wrong chain and warns the user it will fail, on a transaction that is fine.
+  // Saying so up front beats letting them stare at a red popup.
+  const walletChains = useMemo(
+    () => inspectWallet(wallet.wallet, owner),
+    [wallet.wallet, owner],
+  );
+  const wrongNetwork = Boolean(owner && !walletChains.knowsCookieChain);
 
   return (
     <div className="shell">
@@ -56,6 +66,21 @@ export default function App() {
           Gas is covered for everyone. {formatCook(gasLeft)} COOK left in the
           sponsor tank, good for at least {formatCount(Math.floor(gasLeft / 5_000_000))}{" "}
           more free claims.
+        </div>
+      )}
+
+      {wrongNetwork && (
+        <div className="banner warn">
+          <strong>{walletChains.walletName ?? "Your wallet"} is not set to Cookie Chain.</strong>{" "}
+          It will preview this against the wrong network and warn that the
+          transaction fails. Switch its network to Cookie Chain. Approving anyway
+          still works, because a signature covers the transaction itself and says
+          nothing about which chain it is for.
+          {walletChains.chains.length > 0 && (
+            <div className="mono" style={{ marginTop: 6, opacity: 0.8 }}>
+              wallet reports: {walletChains.chains.join(", ")}
+            </div>
+          )}
         </div>
       )}
 

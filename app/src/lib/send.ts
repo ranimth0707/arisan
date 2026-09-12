@@ -13,6 +13,7 @@ import {
   type Connection, type TransactionInstruction,
 } from "@solana/web3.js";
 import { RELAYER_API, connection, readableError } from "./cookiejar";
+import { signForCookieChain } from "./chain";
 
 export type SendStage =
   | "building"
@@ -33,6 +34,32 @@ export interface SendProgress {
 export interface WalletLike {
   publicKey: PublicKey | null;
   signTransaction?: (tx: VersionedTransaction) => Promise<VersionedTransaction>;
+  /** The adapter wrapper, so we can reach the Wallet Standard object under it. */
+  wallet?: unknown;
+}
+
+/**
+ * Signs, naming Cookie Chain when the wallet understands it.
+ *
+ * Without the chain the wallet simulates against whatever network it is
+ * currently pointed at and warns that a perfectly good transaction will fail.
+ * The fallback still yields a valid signature, because a signature covers the
+ * transaction bytes and nothing about the chain.
+ */
+async function signIt(
+  wallet: WalletLike,
+  tx: VersionedTransaction,
+): Promise<VersionedTransaction> {
+  if (wallet.publicKey) {
+    const signed = await signForCookieChain(
+      wallet.wallet,
+      wallet.publicKey,
+      tx,
+      (bytes) => VersionedTransaction.deserialize(bytes),
+    );
+    if (signed) return signed;
+  }
+  return wallet.signTransaction!(tx);
 }
 
 /**
@@ -120,7 +147,7 @@ async function sendSponsored(
   const tx = new VersionedTransaction(message);
 
   report({ stage: "awaiting-signature", sponsored: true });
-  const signed = await wallet.signTransaction!(tx);
+  const signed = await signIt(wallet, tx);
 
   report({ stage: "sponsoring", sponsored: true });
   const res = await fetch(`${RELAYER_API}/sponsor`, {
@@ -164,7 +191,7 @@ async function sendSelfPaid(
   const tx = new VersionedTransaction(message);
 
   report({ stage: "awaiting-signature", sponsored: false });
-  const signed = await wallet.signTransaction!(tx);
+  const signed = await signIt(wallet, tx);
 
   report({ stage: "broadcasting", sponsored: false });
   const signature = await conn.sendRawTransaction(signed.serialize(), {

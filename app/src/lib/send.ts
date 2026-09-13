@@ -163,10 +163,12 @@ async function sendSponsored(
   if (!res.ok) throw new Error(body.error ?? "The relayer refused this transaction.");
 
   report({ stage: "confirming", signature: body.signature, sponsored: true });
-  await conn.confirmTransaction(
+  const confirmation = await conn.confirmTransaction(
     { signature: body.signature, blockhash, lastValidBlockHeight },
     "confirmed",
   );
+
+  if (confirmation.value.err) throw new Error("Transaksi gagal di blockchain: " + JSON.stringify(confirmation.value.err));
 
   report({ stage: "confirmed", signature: body.signature, sponsored: true });
   return { signature: body.signature as string, sponsored: true };
@@ -200,18 +202,19 @@ async function sendSelfPaid(
   });
 
   report({ stage: "confirming", signature, sponsored: false });
-  await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  const confirmation = await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+  if (confirmation.value.err) throw new Error("Transaksi gagal di blockchain: " + JSON.stringify(confirmation.value.err));
 
   report({ stage: "confirmed", signature, sponsored: false });
   return { signature, sponsored: false };
 }
 
 export const stageLabel: Record<SendStage, string> = {
-  building: "Preparing",
-  "awaiting-signature": "Waiting for your wallet",
-  sponsoring: "Relayer is covering the fee",
-  broadcasting: "Sending to Cookie Chain",
-  confirming: "Waiting for confirmation",
-  confirmed: "Done",
-  failed: "Failed",
+  building: "Menyiapkan transaksi",
+  "awaiting-signature": "Periksa dan setujui di wallet",
+  sponsoring: "Sponsor memproses biaya",
+  broadcasting: "Mengirim ke Cookie Chain",
+  confirming: "Menunggu konfirmasi",
+  confirmed: "Transaksi berhasil",
+  failed: "Transaksi belum berhasil",
 };

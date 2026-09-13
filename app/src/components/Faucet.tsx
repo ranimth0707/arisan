@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Icon, type Navigate } from "./UI";
 
 import { connection, formatCook, readableError, txUrl } from "../lib/cookiejar";
 
 interface Props {
   owner: PublicKey | null;
   onChanged: () => void;
+  navigate: Navigate;
 }
 
 interface FaucetStatus {
@@ -14,7 +17,7 @@ interface FaucetStatus {
 }
 
 /** A small, rate-limited COOK tap for trying the live app with a new wallet. */
-export function Faucet({ owner, onChanged }: Props) {
+export function Faucet({ owner, onChanged, navigate }: Props) {
   const [status, setStatus] = useState<FaucetStatus | null>(null);
   const [balance, setBalance] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -22,9 +25,10 @@ export function Faucet({ owner, onChanged }: Props) {
   const [lastTx, setLastTx] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
+    setErr(null);
     try {
       const res = await fetch("/api/faucet", { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error("The faucet is offline right now.");
+      if (!res.ok) throw new Error("Faucet sedang tidak tersedia. Coba lagi sebentar.");
       setStatus(await res.json() as FaucetStatus);
     } catch (e) {
       setStatus(null);
@@ -64,48 +68,20 @@ export function Faucet({ owner, onChanged }: Props) {
     }
   };
 
-  return (
-    <div className="card faucet-card">
-      <div className="spread">
-        <div>
-          <p className="intro-kicker">Public demo faucet</p>
-          <h2>Get demo COOK</h2>
-          <p className="muted faucet-copy">
-            New wallet? Claim a small amount to join the demo circle and try a
-            real round on Cookie Chain. Transaction fees are sponsored separately.
-          </p>
-        </div>
-        <span className="pill prop">live faucet</span>
+  return <div className="faucet-layout">
+    <section className="faucet-card">
+      <span className="action-icon"><Icon name="wallet" /></span>
+      <h2>Siapkan saldo untuk mencoba.</h2>
+      <p className="faucet-copy">COOK dari faucet bisa dipakai untuk jaminan saat join dan iuran setiap putaran. Ini transaksi nyata di Cookie Chain mainnet.</p>
+      <div className="faucet-stats">
+        <div className="stat">COOK per klaim<b>{status ? status.amountCook : "—"} COOK</b></div>
+        <div className="stat">Saldo wallet kamu<b>{balance === null ? "—" : formatCook(balance)} COOK</b></div>
       </div>
-
-      {status && (
-        <div className="faucet-stats">
-          <div className="stat">per claim<b>{status.amountCook} COOK</b></div>
-          <div className="stat">your balance<b>{balance === null ? "—" : formatCook(balance) + " COOK"}</b></div>
-          <div className="stat">faucet tank<b>{formatCook(status.balanceLamports)} COOK</b></div>
-        </div>
-      )}
-
-      {err && <div className="banner warn" role="alert">{err}</div>}
-      {lastTx && (
-        <div className="banner info" role="status">
-          COOK sent.{" "}
-          <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">View transaction</a>
-        </div>
-      )}
-
-      <button
-        className="primary"
-        disabled={!owner || busy || status === null}
-        aria-busy={busy}
-        onClick={claim}
-      >
-        {busy ? "Sending COOK..." : owner ? "Claim demo COOK" : "Connect wallet to claim"}
-      </button>
-      <p className="muted faucet-footnote">
-        One claim per wallet/IP per minute. The faucet never signs a circle action
-        for you; your contribution and collateral remain yours to approve.
-      </p>
-    </div>
-  );
+      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Coba lagi</button></div>}
+      {lastTx && <div className="banner info" role="status">COOK sudah dikirim. <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Lihat transaksi ↗</a></div>}
+      {!owner ? <WalletMultiButton>Hubungkan wallet untuk klaim</WalletMultiButton> : <button className="primary" disabled={busy || status === null} aria-busy={busy} onClick={() => void claim()}>{busy ? "Mengirim COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
+      <p className="faucet-footnote">Satu klaim per wallet/IP per menit. {status ? "Sisa faucet: " + formatCook(status.balanceLamports) + " COOK. " : ""}Setiap tindakan di campaign tetap memerlukan persetujuanmu. Biaya membuat room memakai saldo wallet; tindakan lain mencoba sponsor jika tersedia.</p>
+    </section>
+    <aside className="faucet-next"><h3>Setelah dapat COOK?</h3><ol><li>Buka Join with code.</li><li>Gunakan kode dari creator, atau kode demo yang tersedia.</li><li>Baca detail room, lalu Join dan setor jaminan.</li><li>Tunggu creator memulai, lalu bayar iuran.</li></ol><button className="primary" onClick={() => navigate("join")}>Masuk room<Icon name="arrow" /></button><p className="faucet-footnote">Hanya ingin belajar tanpa transaksi? <a href="#guide">Coba simulasi dulu.</a></p></aside>
+  </div>;
 }

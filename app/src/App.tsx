@@ -1,166 +1,86 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-
 import { useCookieJar } from "./hooks/useCookieJar";
 import { Circles } from "./components/Circles";
+import { CreateCampaign } from "./components/CreateCampaign";
+import { Guide } from "./components/Guide";
 import { Faucet } from "./components/Faucet";
+import { Icon, type View } from "./components/UI";
 import { TxToast } from "./components/TxToast";
-import { connection, findSponsorVault, formatCook } from "./lib/cookiejar";
 import { inspectWallet } from "./lib/chain";
-import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "circles" | "faucet";
-
+const pages: Record<View, { title: string; description: string }> = {
+  home: { title: "Arisan dimulai dari grupmu.", description: "Buat campaign untuk orang-orang yang kamu kenal, atau masuk lewat kode dari creator." },
+  campaigns: { title: "Campaign saya", description: "Room yang kamu buat atau ikuti. Iuran, anggota, dan giliran ada di sini." },
+  create: { title: "Create campaign", description: "Siapkan detail, tentukan aturan, lalu bagikan undangan ke grupmu." },
+  join: { title: "Join with code", description: "Masukkan kode dari creator, baca aturan campaign, lalu pilih untuk bergabung." },
+  guide: { title: "Kenalan dulu dengan arisan.", description: "Coba satu putaran di bawah. Tidak perlu wallet atau COOK." },
+  faucet: { title: "Get demo COOK", description: "Isi wallet untuk mencoba campaign di Cookie Chain." },
+};
+function currentView(): View {
+  const key = location.hash.slice(1);
+  return Object.hasOwn(pages, key) ? key as View : "home";
+}
 export default function App() {
-  const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
-  const [tab, setTab] = useState<Tab>("circles");
-  const [gasLeft, setGasLeft] = useState<number | null>(null);
-  const [nudge, setNudge] = useState(0);
-
-
-  const refreshGas = useCallback(async () => {
-    try {
-      setGasLeft(await connection.getBalance(findSponsorVault(SPONSOR_AUTHORITY)));
-    } catch {
-      setGasLeft(null);
-    }
-  }, []);
-
-  useEffect(() => { void refreshGas(); }, [refreshGas, nudge]);
-
+  const { wallet, program, relayerChecked, sponsored, progress, submit } = useCookieJar();
+  const [view, setView] = useState<View>(currentView);
+  const heading = useRef<HTMLHeadingElement>(null);
   const owner = wallet.publicKey ?? null;
-
-  // The Solana Wallet Standard has no equivalent of EVM's switch-chain request,
-  // so an app cannot ask a wallet to move networks. It can only name the chain
-  // when asking for a signature, and only if the wallet publishes that chain.
-  // Nightly currently publishes solana:devnet, testnet and mainnet and nothing
-  // else, even while pointed at Cookie Chain, so this warns rather than accuses.
-  const walletChains = useMemo(
-    () => inspectWallet(wallet.wallet, owner),
-    [wallet.wallet, owner],
-  );
-  const cannotNameChain = Boolean(owner && !walletChains.knowsCookieChain);
-
+  const walletChains = useMemo(() => inspectWallet(wallet.wallet, owner), [wallet.wallet, owner]);
+  useEffect(() => {
+    const update = () => { setView(currentView()); window.scrollTo(0, 0); heading.current?.focus(); };
+    window.addEventListener("hashchange", update);
+    return () => window.removeEventListener("hashchange", update);
+  }, []);
+  const navigate = (next: View) => { location.hash = next; };
   return (
     <div className="app-frame">
+      <a className="skip-link" href="#main-content" onClick={e => { e.preventDefault(); document.getElementById("main-content")?.focus(); }}>Lewati navigasi</a>
       <aside className="sidebar">
-        <div className="side-brand">
-          <span className="brand-mark" aria-hidden="true">🍪</span>
-          <div>
-            <strong>Arisan</strong>
-            <span>shared savings</span>
-          </div>
-        </div>
-
-        <div className="side-kicker">Workspace</div>
-        <nav className="side-nav" aria-label="Primary navigation">
-          <button className={`nav-item ${tab === "circles" ? "active" : ""}`} onClick={() => setTab("circles")}>
-            <span className="nav-glyph" aria-hidden="true">◉</span>
-            <span>Circles</span>
-          </button>
-          <button className={`nav-item ${tab === "faucet" ? "active" : ""}`} onClick={() => setTab("faucet")}>
-            <span className="nav-glyph" aria-hidden="true">✦</span>
-            <span>Get demo COOK</span>
-          </button>
+        <a className="brand" href="#home" aria-label="Arisan beranda">
+          <span className="brand-symbol" aria-hidden="true"><Icon name="circles" /></span>
+          arisan<span className="brand-period">.</span>
+        </a>
+        <nav className="side-nav" aria-label="Navigasi utama">
+          {([
+            ["home", "home", "Beranda"], ["campaigns", "circles", "Campaign saya"],
+            ["create", "plus", "Create campaign"], ["join", "enter", "Join with code"],
+          ] as const).map(([key, icon, label]) => (
+            <a key={key} href={"#" + key} className={view === key ? "nav-item active" : "nav-item"} aria-current={view === key ? "page" : undefined}>
+              <Icon name={icon} />{label}
+            </a>
+          ))}
+          <span className="nav-section">BANTUAN & DEMO</span>
+          <a href="#guide" className={view === "guide" ? "nav-item active" : "nav-item"} aria-current={view === "guide" ? "page" : undefined}><Icon name="book" />Panduan arisan</a>
+          <a href="#faucet" className={view === "faucet" ? "nav-item active" : "nav-item"} aria-current={view === "faucet" ? "page" : undefined}><Icon name="wallet" />Get demo COOK</a>
         </nav>
-
-        <div className="sidebar-bottom">
-          <div className="chain-card">
-            <span className="status-dot" aria-hidden="true" />
-            <div>
-              <strong>Cookie Chain</strong>
-              <span>mainnet · live</span>
-            </div>
-          </div>
-          <p>Transparent by default. Every contribution and turn stays visible to the group.</p>
-        </div>
+        <div className="sidebar-bottom"><span className="network"><i />Cookie Chain</span><span>Kas grup, giliran bersama.</span></div>
       </aside>
-
-      <main className="main-content">
+      <main className="main-content" id="main-content" tabIndex={-1}>
         <header className="topbar">
-          <div className="mobile-brand">
-            <span className="brand-mark" aria-hidden="true">🍪</span>
-            <strong>Arisan</strong>
-          </div>
-          <div className="topbar-actions">
-            <span className="network-label"><span className="status-dot" aria-hidden="true" /> Cookie Chain</span>
-            <WalletMultiButton />
-          </div>
+          <span className="breadcrumb">Arisan <span>/</span> {view === "home" ? "Beranda" : pages[view].title}</span>
+          <WalletMultiButton />
         </header>
-
-      {relayerChecked && !sponsored && (
-        <div className="banner warn global-banner">
-          The gas sponsor is offline right now, so transactions will use your own
-          COOK. Everything else works the same.
-        </div>
-      )}
-      {sponsored && gasLeft !== null && (
-        <div className="banner info global-banner">
-          Nobody pays gas here. Joining, paying a round and taking your turn are
-          all covered, with {formatCook(gasLeft)} COOK left in the sponsor tank.
-          Your contribution and collateral always come from your own wallet.
-        </div>
-      )}
-
-      {cannotNameChain && (
-        <div className="banner warn global-banner">
-          <strong>Your wallet may warn that a transaction will fail. It will not.</strong>{" "}
-          {walletChains.walletName ?? "This wallet"} does not publish Cookie Chain
-          through the Wallet Standard, so we cannot tell it which chain to preview
-          against and it falls back to whichever Solana network it knows. Approving
-          is safe: a signature covers the transaction itself and says nothing about
-          the chain it runs on.
-          {walletChains.chains.length > 0 && (
-            <div className="mono" style={{ marginTop: 6, opacity: 0.75 }}>
-              wallet publishes: {walletChains.chains.join(", ")}
+        <div className="page-content">
+          <div className="page-heading"><h1 ref={heading} tabIndex={-1}>{pages[view].title}</h1><p>{pages[view].description}</p></div>
+          {view === "home" && <>
+            <div className="start-actions">
+              <a className="start-card" href="#create"><span className="action-icon"><Icon name="plus" /></span><h2>Create campaign</h2><p>Atur arisanmu sendiri.<br />Undang anggota lewat kode room.</p><span className="text-action">Buat campaign <Icon name="arrow" /></span></a>
+              <a className="start-card join-card" href="#join"><span className="action-icon"><Icon name="enter" /></span><h2>Join with code</h2><p>Sudah diajak ikut arisan?<br />Masukkan kode dari creator.</p><span className="text-action">Masuk room <Icon name="arrow" /></span></a>
             </div>
-          )}
+            <a className="learn-banner" href="#guide"><span className="learn-icon"><Icon name="book" /></span><span><strong>Baru pertama kali? Mulai dari sini.</strong><small>Simulasi 3 anggota · 1 putaran · tanpa wallet</small></span><Icon name="arrow" /></a>
+          </>}
+          {(["home", "campaigns", "join"] as View[]).includes(view) &&
+            <Circles program={program} owner={owner} submit={submit} onChanged={() => {}} mode={view as "home" | "campaigns" | "join"} navigate={navigate} />}
+          {view === "create" && <CreateCampaign program={program} owner={owner} submit={submit} navigate={navigate} />}
+          {view === "guide" && <Guide navigate={navigate} />}
+          {view === "faucet" && <Faucet owner={owner} onChanged={() => {}} navigate={navigate} />}
+          {owner && !walletChains.knowsCookieChain && <details className="connection-note"><summary>Wallet menampilkan peringatan jaringan?</summary><p>Pastikan wallet memakai Cookie Chain. Beberapa wallet melakukan pratinjau di jaringan Solana lain. Periksa nominal dan tujuan sebelum menyetujui transaksi.</p></details>}
+          {relayerChecked && !sponsored && <p className="connection-note">Sponsor sedang tidak tersedia. Biaya transaksi akan memakai saldo COOK wallet kamu.</p>}
+          <footer className="app-footer"><span className="network"><i />Cookie Chain mainnet</span><a href="#guide">Butuh bantuan?</a><span className="release-note">Campaign rooms · v2</span></footer>
         </div>
-      )}
-
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">{tab === "circles" ? "Home" : "Get started"}</p>
-          <h1>{tab === "circles" ? "Your circles" : "Get demo COOK"}</h1>
-          <p className="page-subtitle">
-            {tab === "circles"
-              ? "See what is moving, what is owed, and who is next."
-              : "A small, real balance to help you join the live demo circle on Cookie Chain."}
-          </p>
-        </div>
-        <div className="page-meta">
-          <span className="meta-label">Network</span>
-          <span className="meta-value">Cookie Chain mainnet</span>
-        </div>
-      </div>
-
-      <section className="view-wrap">
-        {tab === "circles" && (
-          <Circles
-            program={program}
-            owner={owner}
-            submit={submit}
-            onChanged={() => setNudge((n) => n + 1)}
-          />
-        )}
-        {tab === "faucet" && (
-          <Faucet owner={owner} onChanged={() => setNudge((n) => n + 1)} />
-        )}
-      </section>
-
-      <footer className="app-footer">
-        Running on Cookie Chain.{" "}
-        <span className="mono">{program.programId.toBase58()}</span>
-        {relayer && (
-          <>
-            {" · relayer "}
-            <span className="mono">{relayer.toBase58().slice(0, 8)}…</span>
-          </>
-        )}
-      </footer>
-
-      <TxToast progress={progress} />
       </main>
+      <TxToast progress={progress} />
     </div>
   );
 }

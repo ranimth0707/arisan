@@ -70,7 +70,9 @@ const SPONSORABLE = new Set([
   "fundJar", "sweepEnvelope",
   "createCampaign", "donate", "withdrawToJar", "withdrawRaised",
   "closeCampaign",
-  "createCircle", "configureCircleRoom", "joinCircle", "leaveCircle", "startCircle", "contribute",
+  // Room creation rent exceeds the sponsor cap; quote and pay it from the
+  // creator's wallet instead of prompting for a guaranteed-to-fail signature.
+  "joinCircle", "leaveCircle", "startCircle", "contribute",
   "slashAbsent", "topUpBond", "requestTurn", "finalizeTurn", "claimTurn",
   "redrawTurn", "withdrawBond",
 ]);

@@ -10,18 +10,17 @@ export function TxToast({ progress }: { progress: SendProgress | null }) {
   const tone = failed ? "bad" : done ? "good" : "";
 
   return (
-    <div className={`toast ${tone}`}>
+    <div className={`toast ${tone}`} role="status" aria-live="polite">
       <div className="row" style={{ justifyContent: "space-between" }}>
         <span>
-          {!failed && !done && <span className="jar">🍪 </span>}
           <b>{stageLabel[progress.stage]}</b>
           {progress.sponsored && progress.stage !== "failed" && (
-            <span style={{ opacity: 0.75 }}> · gas on us</span>
+            <span style={{ opacity: 0.75 }}> · biaya disponsori</span>
           )}
         </span>
         {progress.signature && (
           <a href={txUrl(progress.signature)} target="_blank" rel="noreferrer">
-            view
+            Lihat transaksi
           </a>
         )}
       </div>

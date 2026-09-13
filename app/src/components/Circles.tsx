@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
+import { Icon, type Navigate } from "./UI";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 import {
-  assertCanAfford, bn, countdown, findBond, findCircle, findConfig, findRoom,
-  findMember, findPot, formatCook, generateInviteCode, hashInviteCode,
-  readableError, toLamports, SLOT_HASHES,
+  assertCanAfford, bn, countdown, findBond, findRoom,
+  findMember, findPot, formatCook, hashInviteCode,
+  readableError, SLOT_HASHES,
   type CookieJarProgram,
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
@@ -88,13 +90,12 @@ export async function loadCircles(program: CookieJarProgram): Promise<CircleView
 
 async function loadMembers(
   program: CookieJarProgram,
-  circle: PublicKey,
-): Promise<MemberView[]> {
-  const raw = await program.account.member.all([
-    { memcmp: { offset: 8, bytes: circle.toBase58() } },
-  ]);
-  return raw
-    .map((m) => ({
+): Promise<Record<string, MemberView[]>> {
+  const raw = await program.account.member.all();
+  const boards: Record<string, MemberView[]> = {};
+  for (const m of raw) {
+    const key = m.account.circle.toBase58();
+    (boards[key] ??= []).push({
       wallet: m.account.wallet,
       seat: m.account.seat,
       collateral: m.account.collateral.toNumber(),
@@ -103,8 +104,10 @@ async function loadMembers(
       roundsMissed: m.account.roundsMissed,
       hasWon: m.account.hasWon,
       active: m.account.active,
-    }))
-    .sort((a, b) => a.seat - b.seat);
+    });
+  }
+  for (const board of Object.values(boards)) board.sort((a, b) => a.seat - b.seat);
+  return boards;
 }
 
 async function loadRooms(program: CookieJarProgram): Promise<CircleRoomView[]> {
@@ -127,9 +130,11 @@ interface Props {
     instruction?: string,
   ) => Promise<{ signature: string; sponsored: boolean }>;
   onChanged: () => void;
+  mode: "home" | "campaigns" | "join";
+  navigate: Navigate;
 }
 
-export function Circles({ program, owner, submit, onChanged }: Props) {
+export function Circles({ program, owner, submit, onChanged, mode, navigate }: Props) {
   const [circles, setCircles] = useState<CircleView[] | null>(null);
   const [rooms, setRooms] = useState<Record<string, CircleRoomView>>({});
   const [members, setMembers] = useState<Record<string, MemberView[]>>({});
@@ -137,49 +142,63 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [showNew, setShowNew] = useState(false);
   const [roomCode, setRoomCode] = useState("");
-  const [createdInvite, setCreatedInvite] = useState<string | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [opening, setOpening] = useState(false);
+  const [filter, setFilter] = useState<"mine" | "opened">("mine");
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
   const [accessCodes, setAccessCodes] = useState<Record<string, string>>(() => {
-    try { return JSON.parse(localStorage.getItem("arisan-room-codes") ?? "{}"); }
+    try {
+      const saved = JSON.parse(localStorage.getItem("arisan-room-codes") ?? "{}");
+      return Object.fromEntries(Object.entries(saved ?? {}).filter((entry): entry is [string, string] => typeof entry[1] === "string"));
+    }
     catch { return {}; }
   });
 
-  const refresh = useCallback(async () => {
+  const [syncError, setSyncError] = useState(false);
+  const refresh = useCallback(async (silent = false) => {
+    let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const list = await loadCircles(program);
-      setCircles(list);
-      const roomList = await loadRooms(program);
+      const [list, roomList, boards] = await Promise.race([
+        Promise.all([loadCircles(program), loadRooms(program), loadMembers(program)]),
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Jaringan sedang lambat. Coba muat ulang campaign.")), 12000); }),
+      ]);
       setRooms(Object.fromEntries(roomList.map((room) => [room.circle.toBase58(), room])));
-      const boards = await Promise.all(list.map((c) => loadMembers(program, c.address)));
-      setMembers(Object.fromEntries(list.map((c, i) => [c.address.toBase58(), boards[i]])));
+      setMembers(boards);
+      setCircles(list);
+      setSyncError(false);
+      if (!silent) setErr(null);
     } catch (e) {
-      setCircles([]);
-      setErr(readableError(e));
-    }
+      setSyncError(true);
+      if (!silent) { setCircles(current => current ?? []); setErr(readableError(e)); }
+    } finally { clearTimeout(timeout); }
   }, [program]);
 
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => {
+    void refresh();
+    const timer = setInterval(() => { if (!document.hidden) void refresh(true); }, 15000);
+    return () => clearInterval(timer);
+  }, [refresh]);
 
   const rememberAccess = (circle: PublicKey, code: string) => {
     const next = { ...accessCodes, [circle.toBase58()]: code };
     setAccessCodes(next);
-    localStorage.setItem("arisan-room-codes", JSON.stringify(next));
+    try { localStorage.setItem("arisan-room-codes", JSON.stringify(next)); } catch { /* In-memory access is sufficient for this session. */ }
   };
 
   const openRoom = async () => {
-    const normalized = roomCode.trim();
-    if (!normalized) { setErr("Paste the invite code from the campaign post."); return; }
-    const hash = await hashInviteCode(normalized);
-    const room = Object.values(rooms).find((candidate) =>
-      candidate.inviteCodeHash.length === hash.length && candidate.inviteCodeHash.every((value, i) => value === hash[i]),
-    );
-    if (!room) { setErr("That invite code does not open a room on Cookie Chain."); return; }
-    rememberAccess(room.circle, normalized);
-    setRoomCode("");
-    setErr(null);
-    setNote("Room unlocked. You can now review the campaign and join if there is a seat.");
-    setOpen(room.circle.toBase58());
+    setOpening(true); setErr(null);
+    try {
+      if (!roomCode.trim()) throw new Error("Masukkan kode dari creator terlebih dahulu.");
+      const hash = await hashInviteCode(roomCode);
+      const room = Object.values(rooms).find(candidate => candidate.inviteCodeHash.every((v, i) => v === hash[i]));
+      if (!room) throw new Error("Kode belum ditemukan. Periksa kembali atau minta kode yang benar ke creator.");
+      rememberAccess(room.circle, roomCode.trim());
+      setSelected(room.circle.toBase58());
+      setOpen(null);
+      setNote("Campaign ditemukan. Baca aturan di bawah sebelum bergabung.");
+    } catch (e) { setErr(readableError(e)); } finally { setOpening(false); }
   };
 
   const run = async (
@@ -195,8 +214,10 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
       await submit(build, rent, ix);
       await refresh();
       onChanged();
+      return true;
     } catch (e) {
       setErr(readableError(e));
+      return false;
     } finally {
       setBusy(null);
     }
@@ -261,9 +282,9 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
       ],
       "none",
       c.drawTargetSlot === 0 ? "requestTurn" : "finalizeTurn",
-    ).then(() => {
-      if (c.drawTargetSlot === 0) {
-        setNote("Draw locked to an upcoming block. Give it a few seconds, then finish it.");
+    ).then(success => {
+      if (success && c.drawTargetSlot === 0) {
+        setNote("Undian sedang disiapkan. Tunggu beberapa detik, lalu pilih Selesaikan undian.");
       }
     });
 
@@ -318,113 +339,36 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
       "withdrawBond",
     );
 
-  if (!circles) {
-    return <div className="empty"><span className="jar">🍪</span>Looking for circles...</div>;
-  }
-
+  const mine = (circles ?? []).filter(c => owner && (c.creator.equals(owner) || members[c.address.toBase58()]?.some(m => m.wallet.equals(owner))));
+  const opened = (circles ?? []).filter(c => Boolean(accessCodes[c.address.toBase58()]));
+  const visible = mode === "join" ? (circles ?? []).filter(c => c.address.toBase58() === selected) : filter === "opened" ? opened : mine;
   return (
     <>
-      <div className="card circle-intro">
-        <div>
-          <p className="intro-kicker">Built for trust</p>
-          <h2>An arisan nobody can run off with.</h2>
-          <p>
-            Each round, everyone pays in and one member takes the full pot. The
-            program holds the money, the ledger stays public, and missed payments
-            come from the member's own collateral.
-          </p>
-        </div>
-        <div className="proof-grid">
-          <div className="proof-item">
-            <div className="proof-icon" aria-hidden="true">◎</div>
-            <strong>Program-held pot</strong>
-            <span>No organiser can walk away with the cash.</span>
-          </div>
-          <div className="proof-item">
-            <div className="proof-icon" aria-hidden="true">↘</div>
-            <strong>Collateral-backed</strong>
-            <span>A skipped round is covered by the member who skipped.</span>
-          </div>
-          <div className="proof-item">
-            <div className="proof-icon" aria-hidden="true">✦</div>
-            <strong>Fair draw</strong>
-            <span>The winner is locked to a future block.</span>
-          </div>
-        </div>
-      </div>
-
-      {err && <div className="banner warn">{err}</div>}
-      {note && <div className="banner info">{note}</div>}
-      {createdInvite && (
-        <div className="banner info invite-result" role="status">
-          <div>
-            <strong>Your room code</strong>
-            <span className="invite-code">{createdInvite}</span>
-          </div>
-          <button className="ghost" onClick={() => void navigator.clipboard?.writeText(createdInvite)}>
-            Copy code
-          </button>
-        </div>
-      )}
-
-      <div className="card room-gate">
-        <div>
-          <p className="intro-kicker">Private by invite</p>
-          <h3>Have a campaign code?</h3>
-          <p className="muted">Paste the code from the creator's social post to unlock the right room.</p>
-        </div>
-        <div className="room-gate-form">
-          <label htmlFor="room-code">Campaign invite code</label>
-          <div className="row">
-            <input
-              id="room-code"
-              value={roomCode}
-              onChange={(e) => setRoomCode(e.target.value)}
-              placeholder="ARISAN-ABCD-2345"
-              autoComplete="off"
-              spellCheck={false}
-            />
-            <button className="primary" disabled={!roomCode.trim()} onClick={() => void openRoom()}>
-              Open room
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div className="toolbar">
-        <div className="toolbar-title">
-          Your circles <span>· {circles.filter((c) => c.state !== "finished").length} active</span>
-        </div>
-        <button className="ghost" onClick={() => setShowNew((s) => !s)}>
-          {showNew ? "Cancel" : "Start a circle"}
-        </button>
-      </div>
-
-      {showNew && (
-        <NewCircle
-          program={program}
-          owner={owner}
-          submit={submit}
-          onDone={async ({ circle, code }) => {
-            rememberAccess(new PublicKey(circle), code);
-            setShowNew(false);
-            setCreatedInvite(code);
-            setNote(`Campaign created. Share this invite code: ${code}`);
-            await refresh();
-            onChanged();
-          }}
-        />
-      )}
-
-      {circles.length === 0 ? (
-        <div className="empty"><span className="jar">🍪</span>No circles yet. Start the first one.</div>
+      {mode === "join" && <section className="join-panel">
+        <span className="action-icon"><Icon name="enter" /></span>
+        <h2>Punya undangan arisan?</h2>
+        <p>Kode diberikan oleh creator campaign. Memasukkan kode belum memindahkan COOK atau membuatmu menjadi anggota.</p>
+        <form onSubmit={e => { e.preventDefault(); void openRoom(); }}>
+          <label htmlFor="room-code">Kode room</label>
+          <div className="code-copy"><input id="room-code" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="ARISAN-ABCD-2345" autoComplete="off" spellCheck={false} /><button className="primary" disabled={opening || circles === null || !roomCode.trim()} aria-busy={opening}>{opening ? "Mencari…" : "Buka room"}<Icon name="arrow" /></button></div>
+        </form>
+        <div className="demo-shortcut"><span>Ingin mencoba? Kode demo: <code>ARISAN-DEMO-9002</code></span><button className="text-button" onClick={() => setRoomCode("ARISAN-DEMO-9002")}>Gunakan kode</button></div>
+        <a href="#guide">Belum paham cara ikut? Buka panduan.</a>
+      </section>}
+      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Muat ulang</button></div>}
+      {note && <div className="banner info" role="status">{note}</div>}
+      {circles !== null && <div className="sync-status"><span>{syncError ? "Pembaruan terputus; data mungkin belum terbaru." : "Status diperbarui otomatis setiap 15 detik."}</span><button className="text-button" onClick={() => void refresh()}>Muat ulang</button></div>}
+      {mode !== "join" && <div className="section-heading"><h2>{mode === "home" ? "Campaign saya" : "Room arisan"} <span className="count">{mine.length}</span></h2><a href="#create" className="text-action"><Icon name="plus" />Create campaign</a></div>}
+      {mode === "campaigns" && <div className="segmented"><button onClick={() => setFilter("mine")} aria-pressed={filter === "mine"}>Dibuat / diikuti</button><button onClick={() => setFilter("opened")} aria-pressed={filter === "opened"}>Undangan dibuka</button></div>}
+      {circles === null ? <div className="skeleton-list" role="status"><span>Memuat campaign…</span><div /><div /></div> : visible.length === 0 ? (
+        mode === "join" ? null : <div className="empty"><span className="empty-symbol"><Icon name="circles" /></span><h3>{owner ? "Belum ada campaign di sini." : "Grup arisanmu akan muncul di sini."}</h3><p>{owner ? "Buat campaign baru atau masuk menggunakan kode dari creator." : "Hubungkan wallet untuk melihat campaign yang kamu buat dan ikuti."}</p><div className="row">{!owner && <WalletMultiButton>Hubungkan wallet</WalletMultiButton>}<button className="ghost" onClick={() => navigate("create")}>Create campaign</button><button className="text-button" onClick={() => navigate("join")}>Saya punya kode<Icon name="arrow" /></button></div></div>
       ) : (
-        <div className="grid">
-          {circles.map((c) => {
+        <div className="campaign-list">
+          {visible.map((c) => {
             const key = c.address.toBase58();
             const board = members[key] ?? [];
             const me = owner ? board.find((m) => m.wallet.equals(owner)) : undefined;
-            const roundOver = c.nextPayoutTs > 0 && Date.now() / 1000 >= c.nextPayoutTs;
+            const roundOver = c.nextPayoutTs > 0 && now / 1000 >= c.nextPayoutTs;
             const owed = me && c.state === "running" && me.paidRound < c.round;
             const isCreator = owner?.equals(c.creator) ?? false;
             const expanded = open === key;
@@ -432,103 +376,105 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
             const unlocked = Boolean(room && (accessCodes[key] || me));
 
             return (
-              <div className="card circle-card" key={key}>
+              <article className="circle-card" key={key}>
                 <div className="spread">
-                  <strong className="circle-name">{c.name}</strong>
+                  <div className="circle-title"><span className="avatar">{c.name.charAt(0)}</span><div><strong className="circle-name">{c.name}</strong><span className="muted">{isCreator ? "Dibuat oleh kamu" : me ? "Kamu anggota campaign ini" : "Undangan campaign"}</span></div></div>
                   <span className={`pill ${c.state === "running" ? "prop" : c.state === "forming" ? "lucky" : "closed"}`}>
-                    {c.state === "forming" ? "taking members" : c.state === "running" ? `round ${c.round}` : "complete"}
+                    {c.state === "forming" ? (c.memberCount >= c.maxMembers ? "Room penuh" : "Menerima anggota") : c.state === "running" ? `Putaran ${c.round}` : "Selesai"}
                   </span>
                 </div>
 
                 <div className="circle-metrics">
-                  <div className="metric"><div className="stat">each round<b>{formatCook(c.contribution)}</b></div></div>
-                  <div className="metric"><div className="stat">in the pot<b>{formatCook(c.pot)}</b></div></div>
-                  <div className="metric"><div className="stat">seats<b>{c.memberCount}/{c.maxMembers}</b></div></div>
+                  <div className="metric"><div className="stat">Iuran per putaran<b>{formatCook(c.contribution)} <small>COOK</small></b></div></div>
+                  <div className="metric"><div className="stat">Kas saat ini<b>{formatCook(c.pot)} <small>COOK</small></b></div></div>
+                  <div className="metric"><div className="stat">Anggota<b>{c.memberCount}/{c.maxMembers}</b></div></div>
                 </div>
 
                 <div className="circle-timing">
                   {c.state === "forming"
-                    ? `${formatCook(c.collateral)} COOK collateral to join`
+                    ? `Jaminan saat join: ${formatCook(c.collateral)} COOK · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
                     : c.state === "running"
                       ? roundOver
-                        ? "this round has closed"
-                        : `${countdown(c.nextPayoutTs)} left this round`
-                      : `all ${c.winnersSoFar} turns taken`}
+                        ? "Batas waktu putaran sudah lewat"
+                        : `Sisa waktu putaran: ${countdown(c.nextPayoutTs)}`
+                      : `Semua ${c.winnersSoFar} giliran selesai`}
                 </div>
 
                 {room ? (
                   <div className="room-details">
-                    <span className="room-author">Campaign by {room.creator.toBase58().slice(0, 4)}…{room.creator.toBase58().slice(-4)}</span>
+                    <span className="room-author">Creator {room.creator.toBase58().slice(0, 4)}…{room.creator.toBase58().slice(-4)}</span>
                     <p>{room.description}</p>
-                    <a href={room.socialUrl} target="_blank" rel="noreferrer">View campaign post ↗</a>
+                    <a href={room.socialUrl} target="_blank" rel="noreferrer">Lihat posting creator ↗</a>
                   </div>
                 ) : (
                   <div className="banner warn room-warning">
-                    This legacy circle needs a campaign room before new members can join.
+                    Campaign lama ini belum memiliki detail room. Hubungi creator sebelum mengundang anggota baru.
                   </div>
                 )}
 
                 {owed && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
-                    You owe {formatCook(c.contribution)} COOK for round {c.round}.
+                    Iuran putaran {c.round}: {formatCook(c.contribution)} COOK belum dibayar.
                   </div>
                 )}
                 {me && !me.active && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
-                    Your collateral ran out, so you cannot take a turn until you
-                    put it back.
+                    Jaminanmu tidak cukup. Isi ulang agar bisa mengambil giliran.
                   </div>
                 )}
 
+                {c.state === "forming" && <p className="next-action"><strong>Langkah berikutnya: </strong>{c.memberCount >= c.maxMembers ? "Room penuh. Tunggu creator memulai arisan." : me ? "Kamu sudah bergabung. Tunggu creator memulai arisan setelah minimal dua anggota masuk." : "Baca posting dan aturan. Join memindahkan jaminan dari wallet kamu."}</p>}
+                {isCreator && accessCodes[key] && <details className="invite-details"><summary>Kode undangan grup</summary><code>{accessCodes[key]}</code><p>Simpan kode dan kirim ke anggota yang kamu undang.</p></details>}
                 <div className="actions">
+                  {!owner && <WalletMultiButton>Hubungkan wallet untuk ikut</WalletMultiButton>}
                   {c.state === "forming" && owner && !me && unlocked && c.memberCount < c.maxMembers && (
                     <button className="primary" disabled={busy !== null} onClick={() => join(c)}>
-                      {busy === key + "join" ? "..." : `Join · ${formatCook(c.collateral)} COOK`}
+                      {busy === key + "join" ? "..." : `Join room · ${formatCook(c.collateral)} COOK`}
                     </button>
                   )}
                   {c.state === "forming" && owner && !me && !unlocked && room && (
-                    <span className="room-lock">Invite code required to join</span>
+                    <span className="room-lock">Masukkan kode dari creator untuk bergabung</span>
                   )}
                   {c.state === "forming" && isCreator && c.memberCount >= 2 && (
                     <button className="primary" disabled={busy !== null} onClick={() => start(c)}>
-                      {busy === key + "start" ? "..." : "Start it"}
+                      {busy === key + "start" ? "..." : "Mulai arisan"}
                     </button>
                   )}
                   {owed && (
                     <button className="primary" disabled={busy !== null} onClick={() => pay(c)}>
-                      {busy === key + "pay" ? "..." : "Pay this round"}
+                      {busy === key + "pay" ? "..." : "Bayar iuran"}
                     </button>
                   )}
                   {c.state === "running" && roundOver && !c.winnerDrawn && (
                     <button className="primary" disabled={busy !== null} onClick={() => draw(c)}>
                       {busy === key + "draw"
                         ? "..."
-                        : c.drawTargetSlot === 0 ? "Draw this round" : "Finish the draw"}
+                        : c.drawTargetSlot === 0 ? "Mulai undian" : "Selesaikan undian"}
                     </button>
                   )}
                   {c.state === "running" && c.winnerDrawn && me?.seat === c.winnerIndex && (
                     <button className="primary" disabled={busy !== null} onClick={() => collect(c)}>
-                      {busy === key + "collect" ? "..." : `Take ${formatCook(c.pot)} COOK`}
+                      {busy === key + "collect" ? "..." : `Ambil giliran · ${formatCook(c.pot)} COOK`}
                     </button>
                   )}
                   {me && !me.active && (
                     <button className="ghost" disabled={busy !== null} onClick={() => topUp(c)}>
-                      {busy === key + "topup" ? "..." : "Put collateral back"}
+                      {busy === key + "topup" ? "..." : "Isi ulang jaminan"}
                     </button>
                   )}
                   {c.state === "finished" && me && me.collateral > 0 && (
                     <button className="primary" disabled={busy !== null} onClick={() => takeBond(c)}>
-                      {busy === key + "bond" ? "..." : `Take back ${formatCook(me.collateral)} COOK`}
+                      {busy === key + "bond" ? "..." : `Tarik jaminan · ${formatCook(me.collateral)} COOK`}
                     </button>
                   )}
-                  <button className="ghost" onClick={() => setOpen(expanded ? null : key)}>
-                    {expanded ? "Hide the books" : "Open the books"}
+                  <button className="ghost" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : key)}>
+                    {expanded ? "Tutup pembukuan" : "Lihat anggota & pembukuan"}
                   </button>
                 </div>
 
                 {c.state === "running" && c.winnerDrawn && (
                   <div className="banner info" style={{ marginTop: 10 }}>
-                    Seat {c.winnerIndex} has this round.
+                    Kursi {c.winnerIndex + 1} mendapat giliran putaran ini.
                   </div>
                 )}
 
@@ -542,7 +488,7 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
                     onChase={(m) => chase(c, m)}
                   />
                 )}
-              </div>
+              </article>
             );
           })}
         </div>
@@ -554,7 +500,7 @@ export function Circles({ program, owner, submit, onChanged }: Props) {
 /**
  * The public ledger. In a real arisan this is a notebook somebody keeps and
  * everybody has to trust. Here it is the chain, so every member can see exactly
- * who has paid, who has missed, and who has already had a turn.
+ * who has paid, who has missed, and who has already sudah menerima.
  */
 function Books({
   circle, board, owner, roundOver, busy, onChase,
@@ -567,7 +513,7 @@ function Books({
   onChase: (m: MemberView) => void;
 }) {
   if (board.length === 0) {
-    return <p className="muted" style={{ marginTop: 12 }}>Nobody has joined yet.</p>;
+    return <p className="muted" style={{ marginTop: 12 }}>Belum ada anggota yang bergabung.</p>;
   }
 
   return (
@@ -578,26 +524,26 @@ function Books({
         return (
           <div key={m.seat} className="book-row">
             <span className="mono book-wallet">
-              seat {m.seat} · {m.wallet.toBase58().slice(0, 4)}…{m.wallet.toBase58().slice(-4)}
-              {isMe && <strong> (you)</strong>}
+              kursi {m.seat + 1} · {m.wallet.toBase58().slice(0, 4)}…{m.wallet.toBase58().slice(-4)}
+              {isMe && <strong> (kamu)</strong>}
             </span>
             <span className="book-status">
-              {m.hasWon && <span className="pill closed">had a turn</span>}
+              {m.hasWon && <span className="pill closed">sudah menerima</span>}
               {m.roundsMissed > 0 && (
-                <span className="pill lucky">missed {m.roundsMissed}</span>
+                <span className="pill lucky">tunggak {m.roundsMissed}</span>
               )}
               {/* Only ever says paid when they actually paid. A round settled by
                   slashing their collateral is a miss, not a payment, and
                   labelling it "paid" would quietly launder the one fact the
                   group most needs to see. */}
               {owes
-                ? <span className="pill lucky">owes round {circle.round}</span>
+                ? <span className="pill lucky">belum setor putaran {circle.round}</span>
                 : circle.state === "running" && m.roundsPaid >= circle.round
-                  ? <span className="pill prop">paid {m.roundsPaid}</span>
+                  ? <span className="pill prop">setor {m.roundsPaid} kali</span>
                   : circle.state === "running" && (
-                      <span className="pill closed">covered from collateral</span>
+                      <span className="pill closed">diselesaikan; cek riwayat iuran</span>
                     )}
-              <span className="mono">{formatCook(m.collateral)} held</span>
+              <span className="mono">jaminan {formatCook(m.collateral)} COOK</span>
               {owes && roundOver && (
                 <button
                   className="ghost"
@@ -606,142 +552,13 @@ function Books({
                 >
                   {busy === circle.address.toBase58() + "slash" + m.seat
                     ? "..."
-                    : "Take it from their collateral"}
+                    : "Tagih dari jaminan"}
                 </button>
               )}
             </span>
           </div>
         );
       })}
-    </div>
-  );
-}
-
-function NewCircle({
-  program, owner, submit, onDone,
-}: Omit<Props, "onChanged"> & { onDone: (result: { circle: string; code: string }) => void }) {
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [socialUrl, setSocialUrl] = useState("");
-  const [contribution, setContribution] = useState("10");
-  const [collateral, setCollateral] = useState("10");
-  const [seats, setSeats] = useState("5");
-  const [days, setDays] = useState("30");
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const create = async () => {
-    if (!owner) return;
-    const amount = Number(contribution);
-    const bond = Number(collateral);
-    const count = Math.round(Number(seats));
-    const roundSeconds = Math.round(Number(days) * 86400);
-
-    if (!name.trim()) { setErr("Give the campaign a name."); return; }
-    if (!description.trim()) { setErr("Explain what this campaign is for."); return; }
-    if (!socialUrl.trim() || !/^https?:\/\//i.test(socialUrl.trim())) {
-      setErr("Add the public social post URL for this campaign."); return;
-    }
-    if (!Number.isFinite(amount) || amount <= 0) { setErr("Set the amount each round."); return; }
-    if (bond < amount) { setErr("Collateral has to cover at least one round, or it guarantees nothing."); return; }
-    if (!Number.isFinite(count) || count < 2 || count > 100) { setErr("Between 2 and 100 seats."); return; }
-    if (roundSeconds < 60) { setErr("A round has to be at least a minute."); return; }
-
-    setErr(null);
-    setBusy(true);
-    try {
-      const id = Math.floor(Date.now() / 1000);
-      const circle = findCircle(owner, id);
-      const inviteCode = generateInviteCode();
-      const inviteCodeHash = await hashInviteCode(inviteCode);
-      await submit(
-        async (payer) => [
-          await program.methods
-            .createCircle(bn(id), name.slice(0, 48), description.trim().slice(0, 280), socialUrl.trim().slice(0, 200), inviteCodeHash,
-              bn(toLamports(amount)),
-              bn(toLamports(bond)), count, bn(roundSeconds))
-            .accountsPartial({
-              creator: owner, payer, config: findConfig(), circle, room: findRoom(circle),
-              pot: findPot(circle), bond: findBond(circle),
-              systemProgram: SystemProgram.programId,
-            })
-            .instruction(),
-        ],
-        "circle+room",
-        "createCircle",
-      );
-      onDone({ circle: circle.toBase58(), code: inviteCode });
-    } catch (e) {
-      setErr(readableError(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="card new-circle">
-      <h3>Start a circle</h3>
-      <p className="muted" style={{ marginTop: 4 }}>
-        A campaign is invite-only. Publish the social post first, then paste its
-        URL here so everyone entering the room can verify the context.
-      </p>
-
-      {err && <div className="banner warn">{err}</div>}
-
-      <label htmlFor="campaign-name">Campaign name</label>
-      <input id="campaign-name" value={name} onChange={(e) => setName(e.target.value)}
-             maxLength={48} placeholder="Arisan Warga RT 04" />
-
-      <label htmlFor="campaign-description">What is this campaign for?</label>
-      <textarea
-        id="campaign-description"
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-        maxLength={280}
-        placeholder="A monthly circle for our design community..."
-      />
-
-      <label htmlFor="campaign-social-url">Public social post URL</label>
-      <input
-        id="campaign-social-url"
-        value={socialUrl}
-        onChange={(e) => setSocialUrl(e.target.value)}
-        type="url"
-        autoComplete="url"
-        placeholder="https://x.com/you/status/..."
-      />
-
-      <div className="row" style={{ gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label>Each round (COOK)</label>
-          <input value={contribution} onChange={(e) => setContribution(e.target.value)} inputMode="decimal" />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label>Collateral to join</label>
-          <input value={collateral} onChange={(e) => setCollateral(e.target.value)} inputMode="decimal" />
-        </div>
-      </div>
-
-      <div className="row" style={{ gap: 12 }}>
-        <div style={{ flex: 1 }}>
-          <label>Seats</label>
-          <input value={seats} onChange={(e) => setSeats(e.target.value)} inputMode="numeric" />
-        </div>
-        <div style={{ flex: 1 }}>
-          <label>Days per round</label>
-          <input value={days} onChange={(e) => setDays(e.target.value)} inputMode="decimal" />
-        </div>
-      </div>
-
-      <p className="muted" style={{ marginTop: 10 }}>
-        Higher collateral makes the circle safer for everybody and harder to
-        join. One round's worth is the floor the program enforces.
-      </p>
-
-      <button className="primary" style={{ marginTop: 8 }} disabled={busy || !owner} onClick={create}>
-        {busy ? "Creating..." : "Create it"}
-      </button>
-      {!owner && <div className="muted" style={{ marginTop: 8 }}>Connect a wallet first.</div>}
     </div>
   );
 }

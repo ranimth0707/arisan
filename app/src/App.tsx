@@ -65,8 +65,8 @@ export default function App() {
           <div className="page-heading"><h1 ref={heading} tabIndex={-1}>{pages[view].title}</h1><p>{pages[view].description}</p></div>
           {view === "home" && <>
             <div className="start-actions">
-              <a className="start-card" href="#create"><span className="action-icon"><Icon name="plus" /></span><h2>Create campaign</h2><p>Atur arisanmu sendiri.<br />Undang anggota lewat kode room.</p><span className="text-action">Buat campaign <Icon name="arrow" /></span></a>
-              <a className="start-card join-card" href="#join"><span className="action-icon"><Icon name="enter" /></span><h2>Join with code</h2><p>Sudah diajak ikut arisan?<br />Masukkan kode dari creator.</p><span className="text-action">Masuk room <Icon name="arrow" /></span></a>
+              <a className="start-card" href="#create"><span className="action-icon"><Icon name="plus" /></span><h2>Create campaign</h2><p>Atur arisanmu sendiri.<br /> Undang anggota lewat kode room.</p><span className="text-action">Buat campaign <Icon name="arrow" /></span></a>
+              <a className="start-card join-card" href="#join"><span className="action-icon"><Icon name="enter" /></span><h2>Join with code</h2><p>Sudah diajak ikut arisan?<br /> Masukkan kode dari creator.</p><span className="text-action">Masuk room <Icon name="arrow" /></span></a>
             </div>
             <a className="learn-banner" href="#guide"><span className="learn-icon"><Icon name="book" /></span><span><strong>Baru pertama kali? Mulai dari sini.</strong><small>Simulasi 3 anggota · 1 putaran · tanpa wallet</small></span><Icon name="arrow" /></a>
           </>}

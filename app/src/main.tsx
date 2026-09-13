@@ -24,7 +24,8 @@ function Root() {
 
   return (
     <ConnectionProvider endpoint={endpoint} config={{ commitment: "confirmed" }}>
-      <WalletProvider wallets={wallets} autoConnect>
+      {/* Explicit connection keeps locked-wallet popups out of onboarding. */}
+      <WalletProvider wallets={wallets} autoConnect={false}>
         <WalletModalProvider>
           <App />
         </WalletModalProvider>

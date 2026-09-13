@@ -144,6 +144,12 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   const [note, setNote] = useState<string | null>(null);
   const [roomCode, setRoomCode] = useState("");
   const [selected, setSelected] = useState<string | null>(null);
+  useEffect(() => {
+    if (mode !== "join" || !selected) return;
+    const room = document.getElementById("room-" + selected);
+    room?.focus({ preventScroll: true });
+    room?.scrollIntoView({ block: "start", behavior: "instant" });
+  }, [mode, selected]);
   const [opening, setOpening] = useState(false);
   const [filter, setFilter] = useState<"mine" | "opened">("mine");
   const [now, setNow] = useState(() => Date.now());
@@ -376,7 +382,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             const unlocked = Boolean(room && (accessCodes[key] || me));
 
             return (
-              <article className="circle-card" key={key}>
+              <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
                 <div className="spread">
                   <div className="circle-title"><span className="avatar">{c.name.charAt(0)}</span><div><strong className="circle-name">{c.name}</strong><span className="muted">{isCreator ? "Dibuat oleh kamu" : me ? "Kamu anggota campaign ini" : "Undangan campaign"}</span></div></div>
                   <span className={`pill ${c.state === "running" ? "prop" : c.state === "forming" ? "lucky" : "closed"}`}>

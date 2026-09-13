@@ -1,9 +1,9 @@
 {
-  "name": "cookie-jar",
+  "name": "bake-care",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Gasless giveaway protocol on Cookie Chain",
+  "description": "On-chain fundraising on Cookie Chain where raised money keeps working while it waits",
   "scripts": {
     "fund": "node scripts/fund-deployer.mjs"
   },

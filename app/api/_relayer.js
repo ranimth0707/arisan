@@ -39,6 +39,11 @@ const SPONSORABLE = new Set([
   "crack", "crack_into_jar", "deposit", "withdraw", "harvest",
   "claim_prize", "request_draw", "finalize_draw", "redraw",
   "fund_jar", "sweep_envelope",
+  // Fundraising. Asking for help and giving to it both have to work from an
+  // empty wallet, which is the entire point: the people most likely to need
+  // this are the least likely to be holding gas money.
+  "create_campaign", "donate", "withdraw_to_jar", "withdraw_raised",
+  "close_campaign",
 ]);
 
 let cached = null;

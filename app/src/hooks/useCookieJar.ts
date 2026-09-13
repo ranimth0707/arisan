@@ -22,7 +22,7 @@ export const SPONSOR_AUTHORITY = new PublicKey(
  * and had the sponsor vault over-paying the relayer by 121,360 lamports on every
  * claim. Verified against the real accounts on chain.
  */
-const SIZES = { claim: 90, position: 130 };
+const SIZES = { claim: 90, position: 130, donation: 90, campaign: 464 };
 
 /**
  * A sponsored transaction carries exactly two signatures, the relayer and the
@@ -31,16 +31,22 @@ const SIZES = { claim: 90, position: 130 };
  */
 const FEE_HEADROOM = 10_000;
 
-let rentCache: Promise<{ claim: number; position: number }> | null = null;
+let rentCache: Promise<{
+  claim: number; position: number; donation: number; campaign: number;
+}> | null = null;
 function rents() {
   rentCache ??= (async () => ({
     claim: await connection.getMinimumBalanceForRentExemption(SIZES.claim),
     position: await connection.getMinimumBalanceForRentExemption(SIZES.position),
+    donation: await connection.getMinimumBalanceForRentExemption(SIZES.donation),
+    campaign: await connection.getMinimumBalanceForRentExemption(SIZES.campaign),
   }))();
   return rentCache;
 }
 
-export type RentKind = "claim" | "position" | "claim+position" | "none";
+export type RentKind =
+  | "claim" | "position" | "claim+position"
+  | "donation" | "campaign" | "none";
 
 /**
  * Mirrors SPONSORABLE in app/api/_relayer.js.
@@ -54,6 +60,8 @@ const SPONSORABLE = new Set([
   "crack", "crackIntoJar", "deposit", "withdraw", "harvest",
   "claimPrize", "requestDraw", "finalizeDraw", "redraw",
   "fundJar", "sweepEnvelope",
+  "createCampaign", "donate", "withdrawToJar", "withdrawRaised",
+  "closeCampaign",
 ]);
 
 export function useCookieJar() {
@@ -86,6 +94,8 @@ export function useCookieJar() {
         kind === "claim" ? r.claim
         : kind === "position" ? r.position
         : kind === "claim+position" ? r.claim + r.position
+        : kind === "donation" ? r.donation
+        : kind === "campaign" ? r.campaign
         : 0;
 
       return await program.methods

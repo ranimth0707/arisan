@@ -111,6 +111,18 @@ label { display: block; font-size: 12px; font-weight: 700; margin: 12px 0 4px; c
 .banner.warn { background: #fdf1d8; border-color: #eccd8e; color: #7a5410; }
 .banner.info { background: #e6f0ea; border-color: #b7d8c6; color: #26543f; }
 
+.meter {
+  height: 10px; border-radius: 999px; background: var(--dough-dark);
+  overflow: hidden; border: 1px solid var(--dough-dark);
+}
+.meter span {
+  display: block; height: 100%; border-radius: 999px;
+  background: linear-gradient(90deg, var(--crust), var(--mint));
+  transition: width 400ms ease;
+}
+
+textarea { resize: vertical; min-height: 72px; font-family: inherit; }
+
 .empty { text-align: center; padding: 44px 16px; color: var(--choc-soft); }
 .empty .jar { font-size: 52px; display: block; margin-bottom: 10px; }
 

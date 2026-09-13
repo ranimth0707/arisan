@@ -47,6 +47,11 @@ export const findEnvelope = (creator: PublicKey, id: number | bigint) =>
 export const findEnvelopeVault = (e: PublicKey) => pda([seed("envelope_vault"), e.toBytes()]);
 export const findClaim = (e: PublicKey, claimer: PublicKey) =>
   pda([seed("claim"), e.toBytes(), claimer.toBytes()]);
+export const findCampaign = (creator: PublicKey, id: number | bigint) =>
+  pda([seed("campaign"), creator.toBytes(), u64(id)]);
+export const findCampaignVault = (c: PublicKey) => pda([seed("campaign_vault"), c.toBytes()]);
+export const findDonation = (c: PublicKey, donor: PublicKey) =>
+  pda([seed("donation"), c.toBytes(), donor.toBytes()]);
 
 export const connection = new Connection(RPC_URL, "confirmed");
 

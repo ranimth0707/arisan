@@ -6,16 +6,17 @@ import { Jars } from "./components/Jars";
 import { Cookies } from "./components/Cookies";
 import { Claim } from "./components/Claim";
 import { Sponsor } from "./components/Sponsor";
+import { Campaigns } from "./components/Campaigns";
 import { TxToast } from "./components/TxToast";
 import { connection, findSponsorVault, formatCook, formatCount } from "./lib/cookiejar";
 import { inspectWallet } from "./lib/chain";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "jars" | "cookies" | "gas";
+type Tab = "care" | "jars" | "cookies" | "gas";
 
 export default function App() {
   const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
-  const [tab, setTab] = useState<Tab>("jars");
+  const [tab, setTab] = useState<Tab>("care");
   const [gasLeft, setGasLeft] = useState<number | null>(null);
   const [nudge, setNudge] = useState(0);
 
@@ -50,8 +51,8 @@ export default function App() {
         <div className="brand">
           <span className="jar">🍪</span>
           <div>
-            <h1>Cookie Jar</h1>
-            <p className="tagline">Giveaways that fill the jar instead of emptying it</p>
+            <h1>Bake Care</h1>
+            <p className="tagline">Ask for help on chain, and give without paying a fee</p>
           </div>
         </div>
         <WalletMultiButton />
@@ -98,6 +99,9 @@ export default function App() {
       ) : (
         <>
           <nav className="tabs">
+            <button className={`tab ${tab === "care" ? "on" : ""}`} onClick={() => setTab("care")}>
+              🤝 Help someone
+            </button>
             <button className={`tab ${tab === "jars" ? "on" : ""}`} onClick={() => setTab("jars")}>
               🍪 Jars
             </button>
@@ -109,6 +113,15 @@ export default function App() {
             </button>
           </nav>
 
+          {tab === "care" && (
+            <Campaigns
+              program={program}
+              owner={owner}
+              submit={submit}
+              sponsored={sponsored}
+              onChanged={() => setNudge((n) => n + 1)}
+            />
+          )}
           {tab === "jars" && (
             <Jars
               program={program}

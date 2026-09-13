@@ -6,6 +6,7 @@
 
 import http from "node:http";
 import { health, rateLimited, sponsor } from "../app/api/_relayer.js";
+import { dispense, faucetAmount, faucetStatus } from "../app/api/_faucet.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
 
@@ -26,6 +27,29 @@ const server = http.createServer(async (req, res) => {
   if (path === "/health") {
     try { return json(res, 200, await health()); }
     catch (e) { return json(res, 503, { ok: false, error: e.message }); }
+  }
+
+  if (path === "/faucet" && req.method === "GET") {
+    try { return json(res, 200, await faucetStatus()); }
+    catch (e) { return json(res, 503, { ok: false, error: e.message }); }
+  }
+
+  if (path === "/faucet" && req.method === "POST") {
+    const client = req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown";
+    let body = "";
+    for await (const chunk of req) {
+      body += chunk;
+      if (body.length > 8_192) return json(res, 413, { error: "too large" });
+    }
+    try {
+      const { wallet } = JSON.parse(body);
+      if (typeof wallet !== "string") {
+        return json(res, 400, { error: "expected a wallet address" });
+      }
+      return json(res, 200, await dispense(wallet, String(client).split(",")[0].trim()));
+    } catch (e) {
+      return json(res, e.status ?? 500, { error: e.message, amountCook: faucetAmount() });
+    }
   }
 
   if (path === "/sponsor" && req.method === "POST") {

@@ -3950,6 +3950,11 @@
       "code": 6059,
       "name": "NothingToWithdraw",
       "msg": "There is nothing to withdraw"
+    },
+    {
+      "code": 6060,
+      "name": "StartRequiresCreatorOrFull",
+      "msg": "Only the creator can start a circle before all seats are filled"
     }
   ],
   "types": [

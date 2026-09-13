@@ -53,6 +53,7 @@ const SPONSORABLE = new Set([
 ]);
 
 let cached = null;
+let cachedFaucet = null;
 
 /**
  * Reads the relayer key from the environment. On Vercel this is an encrypted
@@ -74,6 +75,28 @@ export function loadRelayer() {
     connection: new Connection(RPC_URL, "confirmed"),
   };
   return cached;
+}
+
+/**
+ * Loads the wallet that dispenses demo COOK. A separate secret is preferred so
+ * faucet spend cannot eat into the relayer's fee budget; falling back to the
+ * relayer keeps the existing deployment usable until FAUCET_SECRET_KEY is set.
+ */
+export function loadFaucet() {
+  if (cachedFaucet) return cachedFaucet;
+
+  const raw = process.env.FAUCET_SECRET_KEY?.trim();
+  if (!raw) return loadRelayer();
+
+  const bytes = raw.startsWith("[")
+    ? Uint8Array.from(JSON.parse(raw))
+    : decodeBase58(raw);
+
+  cachedFaucet = {
+    keypair: Keypair.fromSecretKey(bytes),
+    connection: new Connection(RPC_URL, "confirmed"),
+  };
+  return cachedFaucet;
 }
 
 const B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";

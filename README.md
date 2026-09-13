@@ -96,6 +96,14 @@ three seats, nobody can join once it is running, paying twice in one round is
 rejected, drawing before the round closes is rejected, the same absence cannot be
 charged twice, and a member cannot collect two turns.
 
+### Try the live demo
+
+The live app has an open 2-seat circle named **Demo · Try Arisan**. Connect a
+wallet, open **Get demo COOK**, claim 0.5 COOK, then return to **Circles** and
+join it with 0.1 COOK collateral. Once the second seat is filled, either member
+can start the circle. The round lasts one minute, so you can pay, draw and
+collect without waiting a month.
+
 **One thing to know before you try it.** Wallet-adapter's `signTransaction` does
 not forward a chain identifier, and Nightly does not publish Cookie Chain through
 the Wallet Standard even while pointed at it. So a wallet may preview against the
@@ -238,8 +246,10 @@ npm --prefix app run dev      # http://localhost:5174
 ```
 
 Deployment is `app/` as the Vercel root directory. `app/api/*.js` become the
-serverless relayer, `app/dist` is the site, and `RELAYER_SECRET_KEY` is the only
-secret.
+serverless relayer and demo faucet, and `app/dist` is the site.
+`RELAYER_SECRET_KEY` is required; `FAUCET_SECRET_KEY` is recommended for a
+separate faucet wallet and falls back to the relayer wallet until it is
+configured. `FAUCET_AMOUNT_COOK` defaults to 0.5 and is capped at 1.
 
 Two things that will bite on a fresh Vercel project. `@solana/web3.js` pulls in
 `rpc-websockets`, which `require()`s a version of `uuid` that is ESM only, so the

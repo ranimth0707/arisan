@@ -128,4 +128,6 @@ pub enum CookieError {
     PotEmpty,
     #[msg("There is nothing to withdraw")]
     NothingToWithdraw,
+    #[msg("Only the creator can start a circle before all seats are filled")]
+    StartRequiresCreatorOrFull,
 }

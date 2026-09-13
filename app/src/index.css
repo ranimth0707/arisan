@@ -70,6 +70,10 @@ button.ghost {
   font-size: 13px; font-family: inherit;
 }
 
+button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, a:focus-visible {
+  outline: 3px solid var(--mint); outline-offset: 3px;
+}
+
 input, select, textarea {
   width: 100%; padding: 10px 12px; border-radius: 12px; font-size: 14px;
   border: 2px solid var(--dough-dark); background: var(--cream);
@@ -90,6 +94,10 @@ label { display: block; font-size: 12px; font-weight: 700; margin: 12px 0 4px; c
 
 .stat { font-size: 12px; color: var(--choc-soft); }
 .stat b { display: block; font-size: 19px; color: var(--choc); font-variant-numeric: tabular-nums; }
+
+.faucet-card { max-width: 760px; margin: 0 auto; }
+.faucet-stats { display: flex; gap: 24px; flex-wrap: wrap; margin: 16px 0; }
+.faucet-footnote { margin: 12px 0 0; max-width: 640px; }
 
 .muted { color: var(--choc-soft); font-size: 13px; }
 .mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px; }
@@ -127,3 +135,10 @@ textarea { resize: vertical; min-height: 72px; font-family: inherit; }
 .empty .jar { font-size: 52px; display: block; margin-bottom: 10px; }
 
 .wallet-adapter-button-trigger { background: var(--choc) !important; border-radius: 12px !important; }
+
+@media (max-width: 560px) {
+  .shell { padding-top: 16px; }
+  .card { padding: 15px; }
+  .faucet-stats { gap: 14px; }
+  .faucet-stats .stat { min-width: 110px; }
+}

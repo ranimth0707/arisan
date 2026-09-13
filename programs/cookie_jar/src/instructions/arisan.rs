@@ -260,6 +260,13 @@ pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
 
     require!(c.state == CircleState::Forming, CookieError::CircleAlreadyStarted);
     require!(c.member_count >= 2, CookieError::CircleTooSmall);
+    // The organiser can start a partially filled circle, as before. Once every
+    // seat is occupied, any member can start it so a demo or an absent organiser
+    // cannot leave a perfectly formed circle stuck in the lobby.
+    require!(
+        c.creator == ctx.accounts.creator.key() || c.member_count == c.max_members,
+        CookieError::StartRequiresCreatorOrFull
+    );
 
     c.state = CircleState::Running;
     c.round = 1;

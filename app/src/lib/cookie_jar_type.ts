@@ -3956,6 +3956,11 @@ export type CookieJar = {
       "code": 6059,
       "name": "nothingToWithdraw",
       "msg": "There is nothing to withdraw"
+    },
+    {
+      "code": 6060,
+      "name": "startRequiresCreatorOrFull",
+      "msg": "Only the creator can start a circle before all seats are filled"
     }
   ],
   "types": [

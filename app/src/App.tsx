@@ -66,9 +66,10 @@ export default function App() {
       )}
       {sponsored && gasLeft !== null && (
         <div className="banner info">
-          Gas is covered for everyone. {formatCook(gasLeft)} COOK left in the
-          sponsor tank, good for at least {formatCount(Math.floor(gasLeft / 5_000_000))}{" "}
-          more free claims.
+          Nobody pays gas here. {formatCook(gasLeft)} COOK left in the sponsor
+          tank, enough to cover at least{" "}
+          {formatCount(Math.floor(gasLeft / 5_000_000))} more donations, requests
+          and claims.
         </div>
       )}
 

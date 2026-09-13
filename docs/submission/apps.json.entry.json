@@ -1,20 +1,27 @@
 {
-  "id": "cookie-jar",
-  "title": "Cookie Jar",
-  "shortDescription": "Gasless giveaways where claiming raises TVL instead of draining it.",
-  "description": "Cookie Jar solves two problems that keep Cookie Chain quiet. A new wallet cannot do anything because every action needs COOK it does not have, and a normal giveaway produces a spike of transactions and zero lasting TVL because claimed funds leave the contract immediately. Cookie Jar inverts both. A Fortune Cookie is a giveaway escrow anyone can crack open with a shareable link, and cracking it into a Cookie Jar is one atomic instruction that moves COOK from one program vault into another, so it never touches an outside wallet and the claim is an inflow. Gas is paid by a relayer that is reimbursed a capped amount from a sponsor vault inside the same transaction, which means a wallet holding exactly zero COOK can participate. Jars pay out two ways: Proportional streams rewards by amount and time held, and Lucky gives one entry per wallet regardless of deposit size, settled against a slot hash committed before that slot exists. Principal is never at risk, deposits and reward pools live in separate PDAs so rewards cannot structurally be paid from anyone's deposit, and withdrawal stays open even while the protocol is paused. Every sponsor funds their own gas vault, so any Cookie Chain project can point a deployment at its own budget without another app being able to spend it.",
+  "id": "bake-care",
+  "title": "Bake Care",
+  "shortDescription": "Ask for help on Cookie Chain with an empty wallet, give without paying a fee.",
+  "description": "Bake Care is on-chain fundraising for Cookie Chain. Anyone can open a request for help with a title, a story and a goal, and anyone can give to it. There is no approval step, no platform cut, and no COOK needed to start, because the account rent and the transaction fee are both covered by a sponsor vault. A donor spends exactly what they meant to give, down to the lamport: their fee and the rent for their donation record come from the sponsor, not from them. The donor count is one per wallet rather than one per gift, so giving twice does not inflate how many people actually helped. The default route out of a campaign is into the asker's own jar rather than their wallet, so raised money stays withdrawable the moment a bill arrives while earning from a sponsor-funded pool as it waits, and a successful fundraiser moves value inside the protocol instead of draining it. Two supporting primitives make that work: jars, which are non-custodial vaults paying either a continuous stream weighted by amount and time or a lucky draw with one equal entry per wallet regardless of deposit size, and Fortune Cookies, shareable giveaway links that get COOK into the hands of people who have none so they can take part at all. Principal is never at risk anywhere in the protocol: deposits and reward pools live in separate program accounts, so rewards structurally cannot be paid from anyone else's money, and withdrawal stays open even while the protocol is paused. Every project on Cookie Chain can fund its own gas vault and point a deployment at it without another app being able to spend that budget.",
   "category": "DeFi",
-  "tags": ["DeFi", "Gasless", "Giveaways", "Onboarding", "Anchor", "TVL"],
+  "tags": [
+    "DeFi",
+    "Fundraising",
+    "Crowdfunding",
+    "Gasless",
+    "Onboarding",
+    "Anchor"
+  ],
   "links": {
-    "website": "https://cookiejar-cook.vercel.app",
-    "demo": "https://cookiejar-cook.vercel.app",
-    "github": "https://github.com/ranimth0707/cookie-jar",
+    "website": "https://bakecare-cook.vercel.app",
+    "demo": "https://bakecare-cook.vercel.app",
+    "github": "https://github.com/ranimth0707/bake-care",
     "x": "REPLACE_WITH_YOUR_X_URL",
-    "docs": "https://github.com/ranimth0707/cookie-jar/blob/main/docs/ARCHITECTURE.md",
+    "docs": "https://github.com/ranimth0707/bake-care/blob/main/docs/ARCHITECTURE.md",
     "video": null
   },
   "media": {
-    "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/cookie-jar.png",
+    "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/bake-care.png",
     "banner": null,
     "screenshots": []
   },

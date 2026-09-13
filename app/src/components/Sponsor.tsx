@@ -90,15 +90,17 @@ export function Sponsor({ program, owner, submit, onChanged }: Props) {
         <strong>Who pays for gas</strong>
         <p className="muted" style={{ marginTop: 4 }}>
           On Cookie Chain a new wallet is stuck before it starts, because every
-          action needs COOK it does not have. A sponsor vault covers that fee so
-          somebody with an empty wallet can still open a cookie.
+          action needs COOK it does not have. That falls hardest on the people
+          most likely to be asking for help. A sponsor vault covers the fee so
+          somebody with an empty wallet can still ask, and so a donor spends
+          exactly what they meant to give and nothing more.
         </p>
 
         {publicTank !== null && (
           <div className="banner info">
-            The public tank holds {formatCook(publicTank)} COOK, good for at
-            least {formatCount(Math.floor(publicTank / 5_000_000))} more free
-            claims. Anyone can use it.
+            The public tank holds {formatCook(publicTank)} COOK, enough for at
+            least {formatCount(Math.floor(publicTank / 5_000_000))} more
+            sponsored actions. Anyone can use it.
           </div>
         )}
 

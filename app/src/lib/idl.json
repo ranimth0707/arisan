@@ -116,6 +116,107 @@
       "args": []
     },
     {
+      "name": "claim_turn",
+      "discriminator": [
+        50,
+        199,
+        31,
+        228,
+        90,
+        225,
+        126,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "winner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "winner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "close_campaign",
       "discriminator": [
         65,
@@ -162,6 +263,107 @@
               }
             ]
           }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "contribute",
+      "discriminator": [
+        82,
+        33,
+        68,
+        131,
+        32,
+        0,
+        205,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -654,6 +856,157 @@
         },
         {
           "name": "deadline_ts",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "create_circle",
+      "discriminator": [
+        186,
+        99,
+        49,
+        131,
+        31,
+        51,
+        13,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent. May be the relayer, so an empty wallet can still organise."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "circle_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "docs": [
+            "Holds contributions. This is the pot that gets paid out."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "docs": [
+            "Holds collateral. Separate from the pot on purpose: collateral belongs to",
+            "the member until they default, and must never be payable as a prize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "circle_id",
+          "type": "u64"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "contribution",
+          "type": "u64"
+        },
+        {
+          "name": "collateral",
+          "type": "u64"
+        },
+        {
+          "name": "max_members",
+          "type": "u16"
+        },
+        {
+          "name": "round_seconds",
           "type": "i64"
         }
       ]
@@ -1369,6 +1722,55 @@
       "args": []
     },
     {
+      "name": "finalize_turn",
+      "discriminator": [
+        45,
+        238,
+        187,
+        134,
+        191,
+        255,
+        28,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slot_hashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "fund_jar",
       "discriminator": [
         7,
@@ -1612,6 +2014,215 @@
       ]
     },
     {
+      "name": "join_circle",
+      "discriminator": [
+        231,
+        168,
+        235,
+        18,
+        99,
+        12,
+        22,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "leave_circle",
+      "discriminator": [
+        90,
+        250,
+        45,
+        116,
+        132,
+        126,
+        209,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "redraw",
       "discriminator": [
         86,
@@ -1646,6 +2257,51 @@
                 "kind": "account",
                 "path": "jar.jar_id",
                 "account": "Jar"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redraw_turn",
+      "discriminator": [
+        123,
+        231,
+        67,
+        166,
+        94,
+        83,
+        113,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
               }
             ]
           }
@@ -1800,6 +2456,51 @@
       "args": []
     },
     {
+      "name": "request_turn",
+      "discriminator": [
+        104,
+        70,
+        220,
+        51,
+        219,
+        142,
+        166,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "set_paused",
       "discriminator": [
         91,
@@ -1888,6 +2589,173 @@
       ]
     },
     {
+      "name": "slash_absent",
+      "discriminator": [
+        43,
+        91,
+        26,
+        165,
+        123,
+        12,
+        53,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "membership.wallet",
+                "account": "Member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "start_circle",
+      "discriminator": [
+        53,
+        52,
+        187,
+        212,
+        217,
+        132,
+        253,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "sweep_envelope",
       "discriminator": [
         44,
@@ -1973,6 +2841,112 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "top_up_bond",
+      "discriminator": [
+        110,
+        37,
+        8,
+        119,
+        210,
+        231,
+        202,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "withdraw",
@@ -2084,6 +3058,107 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdraw_bond",
+      "discriminator": [
+        222,
+        199,
+        141,
+        31,
+        188,
+        93,
+        155,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "Circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circle_id",
+                "account": "Circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdraw_gas",
@@ -2458,6 +3533,19 @@
       ]
     },
     {
+      "name": "Circle",
+      "discriminator": [
+        27,
+        59,
+        8,
+        117,
+        62,
+        199,
+        222,
+        252
+      ]
+    },
+    {
       "name": "Config",
       "discriminator": [
         155,
@@ -2520,6 +3608,19 @@
         216,
         114,
         137
+      ]
+    },
+    {
+      "name": "Member",
+      "discriminator": [
+        54,
+        19,
+        162,
+        21,
+        29,
+        166,
+        17,
+        198
       ]
     },
     {
@@ -2759,6 +3860,96 @@
       "code": 6041,
       "name": "NothingRaised",
       "msg": "Not that much has been raised"
+    },
+    {
+      "code": 6042,
+      "name": "BadMemberCount",
+      "msg": "A circle needs between 2 and 100 seats"
+    },
+    {
+      "code": 6043,
+      "name": "BadRoundLength",
+      "msg": "Round length is outside the allowed range"
+    },
+    {
+      "code": 6044,
+      "name": "CollateralTooSmall",
+      "msg": "Collateral must cover at least one contribution"
+    },
+    {
+      "code": 6045,
+      "name": "CircleAlreadyStarted",
+      "msg": "This circle has already started"
+    },
+    {
+      "code": 6046,
+      "name": "CircleNotRunning",
+      "msg": "This circle is not running"
+    },
+    {
+      "code": 6047,
+      "name": "CircleNotFinished",
+      "msg": "This circle has not finished"
+    },
+    {
+      "code": 6048,
+      "name": "CircleFull",
+      "msg": "Every seat is taken"
+    },
+    {
+      "code": 6049,
+      "name": "CircleTooSmall",
+      "msg": "A circle needs at least two members to start"
+    },
+    {
+      "code": 6050,
+      "name": "AlreadyPaidThisRound",
+      "msg": "You have already settled this round"
+    },
+    {
+      "code": 6051,
+      "name": "RoundNotOver",
+      "msg": "The round is not over yet"
+    },
+    {
+      "code": 6052,
+      "name": "NothingToSlash",
+      "msg": "There is no collateral left to slash"
+    },
+    {
+      "code": 6053,
+      "name": "TurnAlreadyDrawn",
+      "msg": "This round has already been drawn"
+    },
+    {
+      "code": 6054,
+      "name": "NotYourTurn",
+      "msg": "This round is not yours"
+    },
+    {
+      "code": 6055,
+      "name": "AlreadyHadATurn",
+      "msg": "You have already had your turn"
+    },
+    {
+      "code": 6056,
+      "name": "MemberSidelined",
+      "msg": "Top your collateral back up first"
+    },
+    {
+      "code": 6057,
+      "name": "PayFirst",
+      "msg": "Pay this round before collecting it"
+    },
+    {
+      "code": 6058,
+      "name": "PotEmpty",
+      "msg": "The pot is empty"
+    },
+    {
+      "code": 6059,
+      "name": "NothingToWithdraw",
+      "msg": "There is nothing to withdraw"
     }
   ],
   "types": [
@@ -2826,6 +4017,131 @@
           {
             "name": "vault_bump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Circle",
+      "docs": [
+        "A rotating savings circle.",
+        "",
+        "Every field below is written once at creation and never changed, which is the",
+        "reason anybody should be willing to join one: the organiser cannot raise the",
+        "contribution or weaken the collateral after money is committed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "circle_id",
+            "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "contribution",
+            "docs": [
+              "Owed by every member, every round."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "collateral",
+            "docs": [
+              "Posted on joining. Missing a round is taken out of this."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "max_members",
+            "type": "u16"
+          },
+          {
+            "name": "round_seconds",
+            "type": "i64"
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "CircleState"
+              }
+            }
+          },
+          {
+            "name": "member_count",
+            "type": "u16"
+          },
+          {
+            "name": "round",
+            "type": "u16"
+          },
+          {
+            "name": "next_payout_ts",
+            "type": "i64"
+          },
+          {
+            "name": "paid_this_round",
+            "type": "u16"
+          },
+          {
+            "name": "pot_amount",
+            "docs": [
+              "What the pot holds right now. Reset to zero when a turn is collected."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "winners_so_far",
+            "type": "u16"
+          },
+          {
+            "name": "draw_target_slot",
+            "type": "u64"
+          },
+          {
+            "name": "winner_index",
+            "type": "u16"
+          },
+          {
+            "name": "winner_drawn",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "pot_bump",
+            "type": "u8"
+          },
+          {
+            "name": "bond_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "CircleState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Forming"
+          },
+          {
+            "name": "Running"
+          },
+          {
+            "name": "Finished"
           }
         ]
       }
@@ -3181,6 +4497,72 @@
       }
     },
     {
+      "name": "Member",
+      "docs": [
+        "One per wallet per circle. The public ledger everyone in the group can read:",
+        "what you posted, what you paid, what you missed, whether you have had a turn."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "seat",
+            "docs": [
+              "Position in the circle, and what the draw selects."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "collateral",
+            "type": "u64"
+          },
+          {
+            "name": "paid_round",
+            "docs": [
+              "Last round this member settled, by paying or by being slashed."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "rounds_paid",
+            "type": "u16"
+          },
+          {
+            "name": "rounds_missed",
+            "type": "u16"
+          },
+          {
+            "name": "has_won",
+            "type": "bool"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "False once collateral drops below one contribution. Cannot win until",
+              "topped back up."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "joined_ts",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "Position",
       "type": {
         "kind": "struct",
@@ -3290,6 +4672,11 @@
   ],
   "constants": [
     {
+      "name": "BOND_SEED",
+      "type": "bytes",
+      "value": "[98, 111, 110, 100]"
+    },
+    {
       "name": "CAMPAIGN_SEED",
       "type": "bytes",
       "value": "[99, 97, 109, 112, 97, 105, 103, 110]"
@@ -3298,6 +4685,11 @@
       "name": "CAMPAIGN_VAULT_SEED",
       "type": "bytes",
       "value": "[99, 97, 109, 112, 97, 105, 103, 110, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "CIRCLE_SEED",
+      "type": "bytes",
+      "value": "[99, 105, 114, 99, 108, 101]"
     },
     {
       "name": "CLAIM_SEED",
@@ -3349,9 +4741,19 @@
       "value": "5000000"
     },
     {
+      "name": "MEMBER_SEED",
+      "type": "bytes",
+      "value": "[109, 101, 109, 98, 101, 114]"
+    },
+    {
       "name": "POSITION_SEED",
       "type": "bytes",
       "value": "[112, 111, 115, 105, 116, 105, 111, 110]"
+    },
+    {
+      "name": "POT_SEED",
+      "type": "bytes",
+      "value": "[112, 111, 116]"
     },
     {
       "name": "REWARD_VAULT_SEED",

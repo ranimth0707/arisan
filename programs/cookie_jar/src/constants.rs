@@ -27,6 +27,14 @@ pub const CAMPAIGN_SEED: &[u8] = b"campaign";
 pub const CAMPAIGN_VAULT_SEED: &[u8] = b"campaign_vault";
 #[constant]
 pub const DONATION_SEED: &[u8] = b"donation";
+#[constant]
+pub const CIRCLE_SEED: &[u8] = b"circle";
+#[constant]
+pub const POT_SEED: &[u8] = b"pot";
+#[constant]
+pub const BOND_SEED: &[u8] = b"bond";
+#[constant]
+pub const MEMBER_SEED: &[u8] = b"member";
 
 /// Fixed-point scale for the reward-per-share accumulator.
 pub const ACC_PRECISION: u128 = 1_000_000_000_000;
@@ -65,6 +73,20 @@ pub const MAX_JAR_NAME_LEN: usize = 32;
 pub const MAX_ENVELOPE_MESSAGE_LEN: usize = 64;
 pub const MAX_CAMPAIGN_TITLE_LEN: usize = 64;
 pub const MAX_CAMPAIGN_STORY_LEN: usize = 280;
+pub const MAX_CIRCLE_NAME_LEN: usize = 48;
+
+/// Two is the smallest arrangement that is still a circle. The ceiling keeps a
+/// seat number inside a u16 and keeps the draw cheap.
+pub const MAX_CIRCLE_MEMBERS: u16 = 100;
+
+/// A minute is short enough to demo a full cycle, a year long enough for a real
+/// monthly circle.
+pub const MIN_ROUND_SECONDS: i64 = 60;
+pub const MAX_ROUND_SECONDS: i64 = 60 * 60 * 24 * 60;
+
+/// How long the drawn seat has to collect before anyone may redraw. Without it
+/// one absent member stalls everybody else's money indefinitely.
+pub const TURN_CLAIM_WINDOW: i64 = 60 * 60 * 24;
 
 /// Floor for any single envelope share, so a Surprise split can never hand out
 /// a zero amount.

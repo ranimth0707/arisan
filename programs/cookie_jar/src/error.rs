@@ -91,4 +91,41 @@ pub enum CookieError {
     CampaignEnded,
     #[msg("Not that much has been raised")]
     NothingRaised,
+
+    #[msg("A circle needs between 2 and 100 seats")]
+    BadMemberCount,
+    #[msg("Round length is outside the allowed range")]
+    BadRoundLength,
+    #[msg("Collateral must cover at least one contribution")]
+    CollateralTooSmall,
+    #[msg("This circle has already started")]
+    CircleAlreadyStarted,
+    #[msg("This circle is not running")]
+    CircleNotRunning,
+    #[msg("This circle has not finished")]
+    CircleNotFinished,
+    #[msg("Every seat is taken")]
+    CircleFull,
+    #[msg("A circle needs at least two members to start")]
+    CircleTooSmall,
+    #[msg("You have already settled this round")]
+    AlreadyPaidThisRound,
+    #[msg("The round is not over yet")]
+    RoundNotOver,
+    #[msg("There is no collateral left to slash")]
+    NothingToSlash,
+    #[msg("This round has already been drawn")]
+    TurnAlreadyDrawn,
+    #[msg("This round is not yours")]
+    NotYourTurn,
+    #[msg("You have already had your turn")]
+    AlreadyHadATurn,
+    #[msg("Top your collateral back up first")]
+    MemberSidelined,
+    #[msg("Pay this round before collecting it")]
+    PayFirst,
+    #[msg("The pot is empty")]
+    PotEmpty,
+    #[msg("There is nothing to withdraw")]
+    NothingToWithdraw,
 }

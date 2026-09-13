@@ -122,6 +122,107 @@ export type CookieJar = {
       "args": []
     },
     {
+      "name": "claimTurn",
+      "discriminator": [
+        50,
+        199,
+        31,
+        228,
+        90,
+        225,
+        126,
+        183
+      ],
+      "accounts": [
+        {
+          "name": "winner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "winner"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "closeCampaign",
       "discriminator": [
         65,
@@ -168,6 +269,107 @@ export type CookieJar = {
               }
             ]
           }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "contribute",
+      "discriminator": [
+        82,
+        33,
+        68,
+        131,
+        32,
+        0,
+        205,
+        95
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -660,6 +862,157 @@ export type CookieJar = {
         },
         {
           "name": "deadlineTs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "createCircle",
+      "discriminator": [
+        186,
+        99,
+        49,
+        131,
+        31,
+        51,
+        13,
+        198
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent. May be the relayer, so an empty wallet can still organise."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "circleId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "docs": [
+            "Holds contributions. This is the pot that gets paid out."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "docs": [
+            "Holds collateral. Separate from the pot on purpose: collateral belongs to",
+            "the member until they default, and must never be payable as a prize."
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "circleId",
+          "type": "u64"
+        },
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "contribution",
+          "type": "u64"
+        },
+        {
+          "name": "collateral",
+          "type": "u64"
+        },
+        {
+          "name": "maxMembers",
+          "type": "u16"
+        },
+        {
+          "name": "roundSeconds",
           "type": "i64"
         }
       ]
@@ -1375,6 +1728,55 @@ export type CookieJar = {
       "args": []
     },
     {
+      "name": "finalizeTurn",
+      "discriminator": [
+        45,
+        238,
+        187,
+        134,
+        191,
+        255,
+        28,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "slotHashes",
+          "address": "SysvarS1otHashes111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "fundJar",
       "discriminator": [
         7,
@@ -1618,6 +2020,215 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "joinCircle",
+      "discriminator": [
+        231,
+        168,
+        235,
+        18,
+        99,
+        12,
+        22,
+        7
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "leaveCircle",
+      "discriminator": [
+        90,
+        250,
+        45,
+        116,
+        132,
+        126,
+        209,
+        126
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "redraw",
       "discriminator": [
         86,
@@ -1652,6 +2263,51 @@ export type CookieJar = {
                 "kind": "account",
                 "path": "jar.jarId",
                 "account": "jar"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "redrawTurn",
+      "discriminator": [
+        123,
+        231,
+        67,
+        166,
+        94,
+        83,
+        113,
+        135
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
               }
             ]
           }
@@ -1806,6 +2462,51 @@ export type CookieJar = {
       "args": []
     },
     {
+      "name": "requestTurn",
+      "discriminator": [
+        104,
+        70,
+        220,
+        51,
+        219,
+        142,
+        166,
+        159
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "setPaused",
       "discriminator": [
         91,
@@ -1894,6 +2595,173 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "slashAbsent",
+      "discriminator": [
+        43,
+        91,
+        26,
+        165,
+        123,
+        12,
+        53,
+        142
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "pot",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "membership.wallet",
+                "account": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "startCircle",
+      "discriminator": [
+        53,
+        52,
+        187,
+        212,
+        217,
+        132,
+        253,
+        102
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "sweepEnvelope",
       "discriminator": [
         44,
@@ -1979,6 +2847,112 @@ export type CookieJar = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "topUpBond",
+      "discriminator": [
+        110,
+        37,
+        8,
+        119,
+        210,
+        231,
+        202,
+        197
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     },
     {
       "name": "withdraw",
@@ -2090,6 +3064,107 @@ export type CookieJar = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawBond",
+      "discriminator": [
+        222,
+        199,
+        141,
+        31,
+        188,
+        93,
+        155,
+        40
+      ],
+      "accounts": [
+        {
+          "name": "member",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "member"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "withdrawGas",
@@ -2464,6 +3539,19 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "circle",
+      "discriminator": [
+        27,
+        59,
+        8,
+        117,
+        62,
+        199,
+        222,
+        252
+      ]
+    },
+    {
       "name": "config",
       "discriminator": [
         155,
@@ -2526,6 +3614,19 @@ export type CookieJar = {
         216,
         114,
         137
+      ]
+    },
+    {
+      "name": "member",
+      "discriminator": [
+        54,
+        19,
+        162,
+        21,
+        29,
+        166,
+        17,
+        198
       ]
     },
     {
@@ -2765,6 +3866,96 @@ export type CookieJar = {
       "code": 6041,
       "name": "nothingRaised",
       "msg": "Not that much has been raised"
+    },
+    {
+      "code": 6042,
+      "name": "badMemberCount",
+      "msg": "A circle needs between 2 and 100 seats"
+    },
+    {
+      "code": 6043,
+      "name": "badRoundLength",
+      "msg": "Round length is outside the allowed range"
+    },
+    {
+      "code": 6044,
+      "name": "collateralTooSmall",
+      "msg": "Collateral must cover at least one contribution"
+    },
+    {
+      "code": 6045,
+      "name": "circleAlreadyStarted",
+      "msg": "This circle has already started"
+    },
+    {
+      "code": 6046,
+      "name": "circleNotRunning",
+      "msg": "This circle is not running"
+    },
+    {
+      "code": 6047,
+      "name": "circleNotFinished",
+      "msg": "This circle has not finished"
+    },
+    {
+      "code": 6048,
+      "name": "circleFull",
+      "msg": "Every seat is taken"
+    },
+    {
+      "code": 6049,
+      "name": "circleTooSmall",
+      "msg": "A circle needs at least two members to start"
+    },
+    {
+      "code": 6050,
+      "name": "alreadyPaidThisRound",
+      "msg": "You have already settled this round"
+    },
+    {
+      "code": 6051,
+      "name": "roundNotOver",
+      "msg": "The round is not over yet"
+    },
+    {
+      "code": 6052,
+      "name": "nothingToSlash",
+      "msg": "There is no collateral left to slash"
+    },
+    {
+      "code": 6053,
+      "name": "turnAlreadyDrawn",
+      "msg": "This round has already been drawn"
+    },
+    {
+      "code": 6054,
+      "name": "notYourTurn",
+      "msg": "This round is not yours"
+    },
+    {
+      "code": 6055,
+      "name": "alreadyHadATurn",
+      "msg": "You have already had your turn"
+    },
+    {
+      "code": 6056,
+      "name": "memberSidelined",
+      "msg": "Top your collateral back up first"
+    },
+    {
+      "code": 6057,
+      "name": "payFirst",
+      "msg": "Pay this round before collecting it"
+    },
+    {
+      "code": 6058,
+      "name": "potEmpty",
+      "msg": "The pot is empty"
+    },
+    {
+      "code": 6059,
+      "name": "nothingToWithdraw",
+      "msg": "There is nothing to withdraw"
     }
   ],
   "types": [
@@ -2832,6 +4023,131 @@ export type CookieJar = {
           {
             "name": "vaultBump",
             "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "circle",
+      "docs": [
+        "A rotating savings circle.",
+        "",
+        "Every field below is written once at creation and never changed, which is the",
+        "reason anybody should be willing to join one: the organiser cannot raise the",
+        "contribution or weaken the collateral after money is committed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "circleId",
+            "type": "u64"
+          },
+          {
+            "name": "name",
+            "type": "string"
+          },
+          {
+            "name": "contribution",
+            "docs": [
+              "Owed by every member, every round."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "collateral",
+            "docs": [
+              "Posted on joining. Missing a round is taken out of this."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "maxMembers",
+            "type": "u16"
+          },
+          {
+            "name": "roundSeconds",
+            "type": "i64"
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "circleState"
+              }
+            }
+          },
+          {
+            "name": "memberCount",
+            "type": "u16"
+          },
+          {
+            "name": "round",
+            "type": "u16"
+          },
+          {
+            "name": "nextPayoutTs",
+            "type": "i64"
+          },
+          {
+            "name": "paidThisRound",
+            "type": "u16"
+          },
+          {
+            "name": "potAmount",
+            "docs": [
+              "What the pot holds right now. Reset to zero when a turn is collected."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "winnersSoFar",
+            "type": "u16"
+          },
+          {
+            "name": "drawTargetSlot",
+            "type": "u64"
+          },
+          {
+            "name": "winnerIndex",
+            "type": "u16"
+          },
+          {
+            "name": "winnerDrawn",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "potBump",
+            "type": "u8"
+          },
+          {
+            "name": "bondBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "circleState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "forming"
+          },
+          {
+            "name": "running"
+          },
+          {
+            "name": "finished"
           }
         ]
       }
@@ -3187,6 +4503,72 @@ export type CookieJar = {
       }
     },
     {
+      "name": "member",
+      "docs": [
+        "One per wallet per circle. The public ledger everyone in the group can read:",
+        "what you posted, what you paid, what you missed, whether you have had a turn."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "seat",
+            "docs": [
+              "Position in the circle, and what the draw selects."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "collateral",
+            "type": "u64"
+          },
+          {
+            "name": "paidRound",
+            "docs": [
+              "Last round this member settled, by paying or by being slashed."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "roundsPaid",
+            "type": "u16"
+          },
+          {
+            "name": "roundsMissed",
+            "type": "u16"
+          },
+          {
+            "name": "hasWon",
+            "type": "bool"
+          },
+          {
+            "name": "active",
+            "docs": [
+              "False once collateral drops below one contribution. Cannot win until",
+              "topped back up."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "joinedTs",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
       "name": "position",
       "type": {
         "kind": "struct",
@@ -3296,6 +4678,11 @@ export type CookieJar = {
   ],
   "constants": [
     {
+      "name": "bondSeed",
+      "type": "bytes",
+      "value": "[98, 111, 110, 100]"
+    },
+    {
       "name": "campaignSeed",
       "type": "bytes",
       "value": "[99, 97, 109, 112, 97, 105, 103, 110]"
@@ -3304,6 +4691,11 @@ export type CookieJar = {
       "name": "campaignVaultSeed",
       "type": "bytes",
       "value": "[99, 97, 109, 112, 97, 105, 103, 110, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "circleSeed",
+      "type": "bytes",
+      "value": "[99, 105, 114, 99, 108, 101]"
     },
     {
       "name": "claimSeed",
@@ -3355,9 +4747,19 @@ export type CookieJar = {
       "value": "5000000"
     },
     {
+      "name": "memberSeed",
+      "type": "bytes",
+      "value": "[109, 101, 109, 98, 101, 114]"
+    },
+    {
       "name": "positionSeed",
       "type": "bytes",
       "value": "[112, 111, 115, 105, 116, 105, 111, 110]"
+    },
+    {
+      "name": "potSeed",
+      "type": "bytes",
+      "value": "[112, 111, 116]"
     },
     {
       "name": "rewardVaultSeed",

@@ -116,6 +116,66 @@ pub mod cookie_jar {
         instructions::draw::handle_redraw(ctx)
     }
 
+    // --- arisan, rotating savings circles ---
+
+    pub fn create_circle(
+        ctx: Context<CreateCircle>,
+        circle_id: u64,
+        name: String,
+        contribution: u64,
+        collateral: u64,
+        max_members: u16,
+        round_seconds: i64,
+    ) -> Result<()> {
+        instructions::arisan::handle_create_circle(
+            ctx, circle_id, name, contribution, collateral, max_members, round_seconds,
+        )
+    }
+
+    pub fn join_circle(ctx: Context<JoinCircle>) -> Result<()> {
+        instructions::arisan::handle_join_circle(ctx)
+    }
+
+    pub fn leave_circle(ctx: Context<LeaveCircle>) -> Result<()> {
+        instructions::arisan::handle_leave_circle(ctx)
+    }
+
+    pub fn start_circle(ctx: Context<StartCircle>) -> Result<()> {
+        instructions::arisan::handle_start_circle(ctx)
+    }
+
+    pub fn contribute(ctx: Context<Contribute>) -> Result<()> {
+        instructions::arisan::handle_contribute(ctx)
+    }
+
+    pub fn slash_absent(ctx: Context<SlashAbsent>) -> Result<()> {
+        instructions::arisan::handle_slash_absent(ctx)
+    }
+
+    pub fn top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
+        instructions::arisan::handle_top_up_bond(ctx, amount)
+    }
+
+    pub fn request_turn(ctx: Context<RequestTurn>) -> Result<()> {
+        instructions::arisan::handle_request_turn(ctx)
+    }
+
+    pub fn finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
+        instructions::arisan::handle_finalize_turn(ctx)
+    }
+
+    pub fn claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
+        instructions::arisan::handle_claim_turn(ctx)
+    }
+
+    pub fn redraw_turn(ctx: Context<RedrawTurn>) -> Result<()> {
+        instructions::arisan::handle_redraw_turn(ctx)
+    }
+
+    pub fn withdraw_bond(ctx: Context<WithdrawBond>) -> Result<()> {
+        instructions::arisan::handle_withdraw_bond(ctx)
+    }
+
     // --- fundraisers ---
 
     pub fn create_campaign(

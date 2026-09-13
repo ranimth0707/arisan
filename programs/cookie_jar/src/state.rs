@@ -81,6 +81,76 @@ pub struct Donation {
     pub bump: u8,
 }
 
+#[derive(AnchorSerialize, AnchorDeserialize, Clone, Copy, PartialEq, Eq, Debug, InitSpace)]
+pub enum CircleState {
+    /// Taking members. Anyone may still join or leave.
+    Forming,
+    /// Rounds are running. Membership is closed.
+    Running,
+    /// Everyone has had a turn. Collateral can be withdrawn.
+    Finished,
+}
+
+/// A rotating savings circle.
+///
+/// Every field below is written once at creation and never changed, which is the
+/// reason anybody should be willing to join one: the organiser cannot raise the
+/// contribution or weaken the collateral after money is committed.
+#[account]
+#[derive(InitSpace)]
+pub struct Circle {
+    pub creator: Pubkey,
+    pub circle_id: u64,
+    #[max_len(MAX_CIRCLE_NAME_LEN)]
+    pub name: String,
+
+    /// Owed by every member, every round.
+    pub contribution: u64,
+    /// Posted on joining. Missing a round is taken out of this.
+    pub collateral: u64,
+    pub max_members: u16,
+    pub round_seconds: i64,
+
+    pub state: CircleState,
+    pub member_count: u16,
+    pub round: u16,
+    pub next_payout_ts: i64,
+    pub paid_this_round: u16,
+    /// What the pot holds right now. Reset to zero when a turn is collected.
+    pub pot_amount: u64,
+    pub winners_so_far: u16,
+
+    pub draw_target_slot: u64,
+    pub winner_index: u16,
+    pub winner_drawn: bool,
+
+    pub bump: u8,
+    pub pot_bump: u8,
+    pub bond_bump: u8,
+}
+
+/// One per wallet per circle. The public ledger everyone in the group can read:
+/// what you posted, what you paid, what you missed, whether you have had a turn.
+#[account]
+#[derive(InitSpace)]
+pub struct Member {
+    pub circle: Pubkey,
+    pub wallet: Pubkey,
+    /// Position in the circle, and what the draw selects.
+    pub seat: u16,
+    pub collateral: u64,
+    /// Last round this member settled, by paying or by being slashed.
+    pub paid_round: u16,
+    pub rounds_paid: u16,
+    pub rounds_missed: u16,
+    pub has_won: bool,
+    /// False once collateral drops below one contribution. Cannot win until
+    /// topped back up.
+    pub active: bool,
+    pub joined_ts: i64,
+    pub bump: u8,
+}
+
 /// One per sponsor. Sponsors fund their own users' gas rather than drawing from
 /// a shared pool, so nobody can spend someone else's balance.
 #[account]

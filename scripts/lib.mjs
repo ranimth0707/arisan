@@ -65,6 +65,12 @@ export const findCampaignVault = (campaign) =>
   pda([enc("campaign_vault"), campaign.toBuffer()]);
 export const findDonation = (campaign, donor) =>
   pda([enc("donation"), campaign.toBuffer(), donor.toBuffer()]);
+export const findCircle = (creator, id) =>
+  pda([enc("circle"), creator.toBuffer(), u64(id)]);
+export const findPot = (circle) => pda([enc("pot"), circle.toBuffer()]);
+export const findBond = (circle) => pda([enc("bond"), circle.toBuffer()]);
+export const findMember = (circle, wallet) =>
+  pda([enc("member"), circle.toBuffer(), wallet.toBuffer()]);
 
 export const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 

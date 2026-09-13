@@ -129,7 +129,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       const position = findPosition(jar.address, owner);
       const isNew = !(await connection.getAccountInfo(position));
       if (kind === "deposit") {
-        await assertCanAfford(owner, toLamports(value), "put that much in a jar");
+        await assertCanAfford(owner, toLamports(value), "put that much in a tin");
       }
 
       await submit(
@@ -267,28 +267,30 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
 
   if (!jars) return <div className="empty"><span className="jar">🍪</span>Reading the shelf...</div>;
 
+  const openCount = jars.filter((j) => j.endTs > Date.now() / 1000).length;
+
   return (
     <>
       <div className="card" style={{ marginBottom: 18 }}>
-        <strong>Put COOK in a jar. You cannot lose it.</strong>
+        <strong>Put COOK in a tin. You cannot lose it.</strong>
         <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
           Your deposit is yours the whole time and comes back in full whenever
           you ask. There is no lending it out, no trading it, and no way for the
-          jar to hand it to anybody else. What you are playing for is the prize
+          tin to hand it to anybody else. What you are playing for is the prize
           pool on top, which a sponsor puts in.
         </p>
         <div className="row" style={{ gap: 18, marginTop: 14 }}>
           <div className="stat">
-            streaming jars
+            streaming tins
             <b style={{ fontSize: 14 }}>everyone earns, by amount and time</b>
           </div>
           <div className="stat">
-            lucky jars
+            lucky tins
             <b style={{ fontSize: 14 }}>one entry each, winner takes the pot</b>
           </div>
         </div>
         <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
-          In a lucky jar a 1 COOK deposit and a 1,000 COOK deposit have exactly
+          In a lucky tin a 1 COOK deposit and a 1,000 COOK deposit have exactly
           the same odds. Deliberate, so the biggest wallet does not simply win.
         </p>
       </div>
@@ -296,9 +298,9 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       {localError && <div className="banner warn">{localError}</div>}
 
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
-        <span className="muted">{jars.length} jar{jars.length === 1 ? "" : "s"} open</span>
+        <span className="muted">{openCount} of {jars.length} tins still open</span>
         <button className="ghost" onClick={() => setShowCreate((s) => !s)}>
-          {showCreate ? "Cancel" : "Open a jar"}
+          {showCreate ? "Cancel" : "Open a tin"}
         </button>
       </div>
 
@@ -312,7 +314,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       )}
 
       {jars.length === 0 ? (
-        <div className="empty"><span className="jar">🍪</span>No jars yet. Open the first one.</div>
+        <div className="empty"><span className="jar">🍪</span>No tins yet. Open the first one.</div>
       ) : (
         <div className="grid">
           {jars.map((jar) => {
@@ -322,14 +324,14 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
             return (
               <div className="card" key={key}>
                 <div className="spread">
-                  <strong>{jar.name || "Unnamed jar"}</strong>
+                  <strong>{jar.name || "Unnamed tin"}</strong>
                   <span className={`pill ${!open ? "closed" : jar.lucky ? "lucky" : "prop"}`}>
                     {!open ? "closed" : jar.lucky ? "lucky draw" : "streaming"}
                   </span>
                 </div>
 
                 <div className="row" style={{ gap: 20, margin: "14px 0" }}>
-                  <div className="stat">in the jar<b>{formatCook(jar.totalDeposited)}</b></div>
+                  <div className="stat">in the tin<b>{formatCook(jar.totalDeposited)}</b></div>
                   <div className="stat">prize pool<b>{formatCook(jar.rewardPool)}</b></div>
                   <div className="stat">{jar.lucky ? "entries" : "savers"}<b>{jar.lucky ? jar.entries : jar.depositors}</b></div>
                 </div>
@@ -430,7 +432,7 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
     if (!owner) return;
     const duration = Math.round(Number(hours) * 3600);
     if (!Number.isFinite(duration) || duration < 60) {
-      setErr("A jar has to stay open for at least a minute.");
+      setErr("A tin has to stay open for at least a minute.");
       return;
     }
     setErr(null);
@@ -465,7 +467,7 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
 
   return (
     <div className="card" style={{ marginBottom: 16 }}>
-      <strong>Open a jar</strong>
+      <strong>Open a tin</strong>
       <p className="muted" style={{ marginTop: 4 }}>
         Everything put in here is withdrawable at any time. The prize comes from
         the pool you fund, never from anyone's deposit.
@@ -473,7 +475,7 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
       {err && <div className="banner warn">{err}</div>}
 
       <label>Name</label>
-      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Cookie Jar" maxLength={32} />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Cookie Tin" maxLength={32} />
 
       <label>How the prize is shared</label>
       <select value={mode} onChange={(e) => setMode(e.target.value as never)}>
@@ -499,7 +501,7 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
       </div>
 
       <button className="primary" style={{ marginTop: 14 }} disabled={busy || !owner} onClick={create}>
-        {busy ? "Opening..." : "Open jar"}
+        {busy ? "Opening..." : "Open tin"}
       </button>
     </div>
   );
@@ -571,7 +573,7 @@ function DrawPanel({ jar, mine, busy, onDraw, onCollect, onRedraw }: DrawPanelPr
       <div style={{ marginBottom: 8 }}>
         {requested
           ? "Draw requested against a future block. Finish it once that block exists."
-          : "This jar has closed. Anyone can run the draw."}
+          : "This tin has closed. Anyone can run the draw."}
       </div>
       <button className="primary" disabled={busy !== null} onClick={onDraw}>
         {busy === key + "draw" ? "..." : requested ? "Finish the draw" : "Run the draw"}

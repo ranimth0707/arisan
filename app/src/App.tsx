@@ -86,7 +86,7 @@ export default function App() {
       <>
           <nav className="tabs">
             <button className={`tab ${tab === "jars" ? "on" : ""}`} onClick={() => setTab("jars")}>
-              🍪 The jars
+              🍪 The tins
             </button>
             <button className={`tab ${tab === "gas" ? "on" : ""}`} onClick={() => setTab("gas")}>
               ⚡ Who pays gas

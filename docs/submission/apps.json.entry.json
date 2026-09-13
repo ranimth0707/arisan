@@ -1,0 +1,29 @@
+{
+  "id": "cookie-jar",
+  "title": "Cookie Jar",
+  "shortDescription": "Gasless giveaways where claiming raises TVL instead of draining it.",
+  "description": "Cookie Jar solves two problems that keep Cookie Chain quiet. A new wallet cannot do anything because every action needs COOK it does not have, and a normal giveaway produces a spike of transactions and zero lasting TVL because claimed funds leave the contract immediately. Cookie Jar inverts both. A Fortune Cookie is a giveaway escrow anyone can crack open with a shareable link, and cracking it into a Cookie Jar is one atomic instruction that moves COOK from one program vault into another, so it never touches an outside wallet and the claim is an inflow. Gas is paid by a relayer that is reimbursed a capped amount from a sponsor vault inside the same transaction, which means a wallet holding exactly zero COOK can participate. Jars pay out two ways: Proportional streams rewards by amount and time held, and Lucky gives one entry per wallet regardless of deposit size, settled against a slot hash committed before that slot exists. Principal is never at risk, deposits and reward pools live in separate PDAs so rewards cannot structurally be paid from anyone's deposit, and withdrawal stays open even while the protocol is paused. Every sponsor funds their own gas vault, so any Cookie Chain project can point a deployment at its own budget without another app being able to spend it.",
+  "category": "DeFi",
+  "tags": ["DeFi", "Gasless", "Giveaways", "Onboarding", "Anchor", "TVL"],
+  "links": {
+    "website": "https://cookiejar-cook.vercel.app",
+    "demo": "https://cookiejar-cook.vercel.app",
+    "github": "https://github.com/ranimth0707/cookie-jar",
+    "x": "REPLACE_WITH_YOUR_X_URL",
+    "docs": "https://github.com/ranimth0707/cookie-jar/blob/main/docs/ARCHITECTURE.md",
+    "video": null
+  },
+  "media": {
+    "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/cookie-jar.png",
+    "banner": null,
+    "screenshots": []
+  },
+  "team": [
+    {
+      "name": "Rani",
+      "role": "Developer",
+      "x": "REPLACE_WITH_YOUR_X_URL",
+      "github": "https://github.com/ranimth0707"
+    }
+  ]
+}

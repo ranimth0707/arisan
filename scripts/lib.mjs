@@ -30,8 +30,11 @@ export function loadProgram(payer) {
     new anchor.Wallet(payer),
     { commitment: "confirmed", preflightCommitment: "confirmed" },
   );
+  // Reads the committed copy, not target/idl, which is gitignored and absent on
+  // a fresh clone or after a clean. It is also the exact IDL the app was built
+  // against, so scripts and frontend can never disagree about the program.
   const idl = JSON.parse(
-    fs.readFileSync(new URL("../target/idl/cookie_jar.json", import.meta.url), "utf8"),
+    fs.readFileSync(new URL("../app/src/lib/idl.json", import.meta.url), "utf8"),
   );
   return new anchor.Program(idl, provider);
 }

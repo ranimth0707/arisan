@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#f5e3c3"/>
+
+  <!-- jar lid -->
+  <rect x="150" y="112" width="212" height="46" rx="18" fill="#c98a3c"/>
+  <rect x="168" y="100" width="176" height="26" rx="13" fill="#e0a355"/>
+
+  <!-- jar body -->
+  <path d="M158 166 h196 a26 26 0 0 1 26 26 v168 a52 52 0 0 1 -52 52 h-144 a52 52 0 0 1 -52 -52 v-168 a26 26 0 0 1 26 -26 z"
+        fill="#fffaf0" stroke="#c98a3c" stroke-width="14"/>
+
+  <!-- cookies inside -->
+  <circle cx="212" cy="268" r="44" fill="#d9a45f"/>
+  <circle cx="199" cy="255" r="8" fill="#4a2c17"/>
+  <circle cx="226" cy="277" r="7" fill="#4a2c17"/>
+  <circle cx="210" cy="288" r="6" fill="#4a2c17"/>
+
+  <circle cx="300" cy="300" r="50" fill="#c98a3c"/>
+  <circle cx="286" cy="286" r="9" fill="#4a2c17"/>
+  <circle cx="315" cy="309" r="8" fill="#4a2c17"/>
+  <circle cx="296" cy="320" r="7" fill="#4a2c17"/>
+
+  <circle cx="235" cy="356" r="38" fill="#e0b978"/>
+  <circle cx="224" cy="346" r="7" fill="#4a2c17"/>
+  <circle cx="247" cy="364" r="6" fill="#4a2c17"/>
+
+  <!-- arrow going in, the whole point: claiming fills the jar -->
+  <path d="M392 214 l0 74 m0 -74 l-22 22 m22 -22 l22 22"
+        fill="none" stroke="#3f8f6d" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"
+        transform="rotate(180 392 251)"/>
+</svg>

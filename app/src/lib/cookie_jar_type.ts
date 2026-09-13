@@ -122,6 +122,57 @@ export type CookieJar = {
       "args": []
     },
     {
+      "name": "closeCampaign",
+      "discriminator": [
+        65,
+        49,
+        110,
+        7,
+        63,
+        238,
+        206,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign.creator",
+                "account": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "campaign.campaignId",
+                "account": "campaign"
+              }
+            ]
+          }
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "crack",
       "discriminator": [
         196,
@@ -479,6 +530,139 @@ export type CookieJar = {
         }
       ],
       "args": []
+    },
+    {
+      "name": "createCampaign",
+      "discriminator": [
+        111,
+        131,
+        187,
+        98,
+        160,
+        193,
+        114,
+        244
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for the campaign account. May be the relayer, so somebody",
+            "with an empty wallet can still ask for help."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              },
+              {
+                "kind": "arg",
+                "path": "campaignId"
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaignVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "campaignId",
+          "type": "u64"
+        },
+        {
+          "name": "title",
+          "type": "string"
+        },
+        {
+          "name": "story",
+          "type": "string"
+        },
+        {
+          "name": "target",
+          "type": "u64"
+        },
+        {
+          "name": "deadlineTs",
+          "type": "i64"
+        }
+      ]
     },
     {
       "name": "createEnvelope",
@@ -978,6 +1162,153 @@ export type CookieJar = {
               {
                 "kind": "account",
                 "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "donate",
+      "discriminator": [
+        121,
+        186,
+        218,
+        211,
+        73,
+        70,
+        196,
+        180
+      ],
+      "accounts": [
+        {
+          "name": "donor",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for a first-time donation record."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign.creator",
+                "account": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "campaign.campaignId",
+                "account": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaignVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "donation",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  100,
+                  111,
+                  110,
+                  97,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "donor"
               }
             ]
           }
@@ -1843,9 +2174,295 @@ export type CookieJar = {
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "withdrawRaised",
+      "discriminator": [
+        236,
+        55,
+        151,
+        110,
+        163,
+        152,
+        41,
+        251
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign.creator",
+                "account": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "campaign.campaignId",
+                "account": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaignVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "withdrawToJar",
+      "discriminator": [
+        253,
+        40,
+        205,
+        176,
+        43,
+        194,
+        45,
+        77
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the rent for a first-time position."
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "campaign",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign.creator",
+                "account": "campaign"
+              },
+              {
+                "kind": "account",
+                "path": "campaign.campaignId",
+                "account": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "campaignVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  97,
+                  109,
+                  112,
+                  97,
+                  105,
+                  103,
+                  110,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "campaign"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jar",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar.creator",
+                "account": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "jar.jarId",
+                "account": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "jarVault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  97,
+                  114,
+                  95,
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              }
+            ]
+          }
+        },
+        {
+          "name": "position",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  112,
+                  111,
+                  115,
+                  105,
+                  116,
+                  105,
+                  111,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "jar"
+              },
+              {
+                "kind": "account",
+                "path": "creator"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
+    {
+      "name": "campaign",
+      "discriminator": [
+        50,
+        40,
+        49,
+        11,
+        157,
+        220,
+        229,
+        192
+      ]
+    },
     {
       "name": "config",
       "discriminator": [
@@ -1857,6 +2474,19 @@ export type CookieJar = {
         250,
         204,
         130
+      ]
+    },
+    {
+      "name": "donation",
+      "discriminator": [
+        189,
+        210,
+        54,
+        77,
+        216,
+        85,
+        7,
+        68
       ]
     },
     {
@@ -2105,9 +2735,107 @@ export type CookieJar = {
       "code": 6035,
       "name": "jarMismatch",
       "msg": "Envelope and jar do not use the same vault owner"
+    },
+    {
+      "code": 6036,
+      "name": "titleRequired",
+      "msg": "A campaign needs a title"
+    },
+    {
+      "code": 6037,
+      "name": "titleTooLong",
+      "msg": "Campaign title is too long"
+    },
+    {
+      "code": 6038,
+      "name": "storyTooLong",
+      "msg": "Campaign story is too long"
+    },
+    {
+      "code": 6039,
+      "name": "campaignClosed",
+      "msg": "This campaign is closed"
+    },
+    {
+      "code": 6040,
+      "name": "campaignEnded",
+      "msg": "This campaign has passed its deadline"
+    },
+    {
+      "code": 6041,
+      "name": "nothingRaised",
+      "msg": "Not that much has been raised"
     }
   ],
   "types": [
+    {
+      "name": "campaign",
+      "docs": [
+        "A request for help. Anyone can open one, there is no approval step and no",
+        "platform cut, because the person asking is usually the one who can least",
+        "afford either."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "campaignId",
+            "type": "u64"
+          },
+          {
+            "name": "title",
+            "type": "string"
+          },
+          {
+            "name": "story",
+            "type": "string"
+          },
+          {
+            "name": "target",
+            "type": "u64"
+          },
+          {
+            "name": "raised",
+            "type": "u64"
+          },
+          {
+            "name": "withdrawn",
+            "type": "u64"
+          },
+          {
+            "name": "donorCount",
+            "docs": [
+              "Distinct wallets, not gifts. Giving twice does not inflate it."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "donationCount",
+            "type": "u64"
+          },
+          {
+            "name": "deadlineTs",
+            "type": "i64"
+          },
+          {
+            "name": "closed",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vaultBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
     {
       "name": "config",
       "type": {
@@ -2139,6 +2867,51 @@ export type CookieJar = {
           {
             "name": "envelopeCount",
             "type": "u64"
+          },
+          {
+            "name": "bump",
+            "docs": [
+              "No campaign counter here on purpose. This account is already live on",
+              "mainnet at its original size, and adding a field would push it past the",
+              "space it was allocated. Campaigns are counted by listing them instead."
+            ],
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "donation",
+      "docs": [
+        "One per wallet per campaign. Its existence is what makes an honest donor",
+        "count possible, and it doubles as the public record of who helped."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "campaign",
+            "type": "pubkey"
+          },
+          {
+            "name": "donor",
+            "type": "pubkey"
+          },
+          {
+            "name": "total",
+            "type": "u64"
+          },
+          {
+            "name": "times",
+            "type": "u16"
+          },
+          {
+            "name": "firstTs",
+            "type": "i64"
+          },
+          {
+            "name": "lastTs",
+            "type": "i64"
           },
           {
             "name": "bump",
@@ -2523,6 +3296,16 @@ export type CookieJar = {
   ],
   "constants": [
     {
+      "name": "campaignSeed",
+      "type": "bytes",
+      "value": "[99, 97, 109, 112, 97, 105, 103, 110]"
+    },
+    {
+      "name": "campaignVaultSeed",
+      "type": "bytes",
+      "value": "[99, 97, 109, 112, 97, 105, 103, 110, 95, 118, 97, 117, 108, 116]"
+    },
+    {
       "name": "claimSeed",
       "type": "bytes",
       "value": "[99, 108, 97, 105, 109]"
@@ -2531,6 +3314,11 @@ export type CookieJar = {
       "name": "configSeed",
       "type": "bytes",
       "value": "[99, 111, 110, 102, 105, 103]"
+    },
+    {
+      "name": "donationSeed",
+      "type": "bytes",
+      "value": "[100, 111, 110, 97, 116, 105, 111, 110]"
     },
     {
       "name": "envelopeSeed",

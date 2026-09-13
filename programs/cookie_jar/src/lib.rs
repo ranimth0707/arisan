@@ -116,6 +116,37 @@ pub mod cookie_jar {
         instructions::draw::handle_redraw(ctx)
     }
 
+    // --- fundraisers ---
+
+    pub fn create_campaign(
+        ctx: Context<CreateCampaign>,
+        campaign_id: u64,
+        title: String,
+        story: String,
+        target: u64,
+        deadline_ts: i64,
+    ) -> Result<()> {
+        instructions::campaign::handle_create_campaign(
+            ctx, campaign_id, title, story, target, deadline_ts,
+        )
+    }
+
+    pub fn donate(ctx: Context<Donate>, amount: u64) -> Result<()> {
+        instructions::campaign::handle_donate(ctx, amount)
+    }
+
+    pub fn withdraw_to_jar(ctx: Context<WithdrawToJar>, amount: u64) -> Result<()> {
+        instructions::campaign::handle_withdraw_to_jar(ctx, amount)
+    }
+
+    pub fn withdraw_raised(ctx: Context<WithdrawRaised>, amount: u64) -> Result<()> {
+        instructions::campaign::handle_withdraw_raised(ctx, amount)
+    }
+
+    pub fn close_campaign(ctx: Context<CloseCampaign>) -> Result<()> {
+        instructions::campaign::handle_close_campaign(ctx)
+    }
+
     // --- fortune cookies ---
 
     pub fn create_envelope(

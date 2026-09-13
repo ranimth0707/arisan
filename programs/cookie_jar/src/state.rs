@@ -37,6 +37,47 @@ pub struct Config {
     pub paused: bool,
     pub jar_count: u64,
     pub envelope_count: u64,
+    /// No campaign counter here on purpose. This account is already live on
+    /// mainnet at its original size, and adding a field would push it past the
+    /// space it was allocated. Campaigns are counted by listing them instead.
+    pub bump: u8,
+}
+
+/// A request for help. Anyone can open one, there is no approval step and no
+/// platform cut, because the person asking is usually the one who can least
+/// afford either.
+#[account]
+#[derive(InitSpace)]
+pub struct Campaign {
+    pub creator: Pubkey,
+    pub campaign_id: u64,
+    #[max_len(MAX_CAMPAIGN_TITLE_LEN)]
+    pub title: String,
+    #[max_len(MAX_CAMPAIGN_STORY_LEN)]
+    pub story: String,
+    pub target: u64,
+    pub raised: u64,
+    pub withdrawn: u64,
+    /// Distinct wallets, not gifts. Giving twice does not inflate it.
+    pub donor_count: u64,
+    pub donation_count: u64,
+    pub deadline_ts: i64,
+    pub closed: bool,
+    pub bump: u8,
+    pub vault_bump: u8,
+}
+
+/// One per wallet per campaign. Its existence is what makes an honest donor
+/// count possible, and it doubles as the public record of who helped.
+#[account]
+#[derive(InitSpace)]
+pub struct Donation {
+    pub campaign: Pubkey,
+    pub donor: Pubkey,
+    pub total: u64,
+    pub times: u16,
+    pub first_ts: i64,
+    pub last_ts: i64,
     pub bump: u8,
 }
 

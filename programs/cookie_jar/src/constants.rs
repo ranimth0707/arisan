@@ -21,6 +21,12 @@ pub const ENVELOPE_SEED: &[u8] = b"envelope";
 pub const ENVELOPE_VAULT_SEED: &[u8] = b"envelope_vault";
 #[constant]
 pub const CLAIM_SEED: &[u8] = b"claim";
+#[constant]
+pub const CAMPAIGN_SEED: &[u8] = b"campaign";
+#[constant]
+pub const CAMPAIGN_VAULT_SEED: &[u8] = b"campaign_vault";
+#[constant]
+pub const DONATION_SEED: &[u8] = b"donation";
 
 /// Fixed-point scale for the reward-per-share accumulator.
 pub const ACC_PRECISION: u128 = 1_000_000_000_000;
@@ -57,6 +63,8 @@ pub const MAX_JAR_DURATION: i64 = 60 * 60 * 24 * 365;
 pub const MAX_ENVELOPE_CLAIMS: u16 = 1000;
 pub const MAX_JAR_NAME_LEN: usize = 32;
 pub const MAX_ENVELOPE_MESSAGE_LEN: usize = 64;
+pub const MAX_CAMPAIGN_TITLE_LEN: usize = 64;
+pub const MAX_CAMPAIGN_STORY_LEN: usize = 280;
 
 /// Floor for any single envelope share, so a Surprise split can never hand out
 /// a zero amount.

@@ -59,6 +59,12 @@ export const findEnvelope = (creator, id) => pda([enc("envelope"), creator.toBuf
 export const findEnvelopeVault = (envelope) => pda([enc("envelope_vault"), envelope.toBuffer()]);
 export const findClaim = (envelope, claimer) =>
   pda([enc("claim"), envelope.toBuffer(), claimer.toBuffer()]);
+export const findCampaign = (creator, id) =>
+  pda([enc("campaign"), creator.toBuffer(), u64(id)]);
+export const findCampaignVault = (campaign) =>
+  pda([enc("campaign_vault"), campaign.toBuffer()]);
+export const findDonation = (campaign, donor) =>
+  pda([enc("donation"), campaign.toBuffer(), donor.toBuffer()]);
 
 export const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 

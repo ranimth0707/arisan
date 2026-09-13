@@ -4,12 +4,15 @@ export const PROGRAM_ADDRESS = "Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg";
 
 export const DISCRIMINATORS = {
   "claim_prize": [157, 233, 139, 121, 246, 62, 234, 235],
+  "close_campaign": [65, 49, 110, 7, 63, 238, 206, 77],
   "crack": [196, 252, 76, 139, 68, 46, 178, 32],
   "crack_into_jar": [246, 13, 176, 113, 41, 242, 193, 103],
+  "create_campaign": [111, 131, 187, 98, 160, 193, 114, 244],
   "create_envelope": [2, 25, 194, 180, 238, 31, 234, 20],
   "create_jar": [79, 12, 25, 249, 245, 177, 203, 232],
   "deposit": [242, 35, 198, 137, 82, 225, 242, 182],
   "deposit_gas": [164, 223, 20, 23, 50, 107, 168, 108],
+  "donate": [121, 186, 218, 211, 73, 70, 196, 180],
   "finalize_draw": [112, 9, 234, 94, 99, 176, 12, 181],
   "fund_jar": [7, 109, 53, 116, 129, 46, 10, 55],
   "harvest": [228, 241, 31, 182, 53, 169, 59, 199],
@@ -22,4 +25,6 @@ export const DISCRIMINATORS = {
   "sweep_envelope": [44, 157, 60, 235, 95, 141, 15, 71],
   "withdraw": [183, 18, 70, 156, 148, 109, 161, 34],
   "withdraw_gas": [35, 60, 150, 196, 226, 110, 54, 45],
+  "withdraw_raised": [236, 55, 151, 110, 163, 152, 41, 251],
+  "withdraw_to_jar": [253, 40, 205, 176, 43, 194, 45, 77],
 };

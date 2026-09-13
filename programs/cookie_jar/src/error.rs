@@ -78,4 +78,17 @@ pub enum CookieError {
     BadExpiry,
     #[msg("Envelope and jar do not use the same vault owner")]
     JarMismatch,
+
+    #[msg("A campaign needs a title")]
+    TitleRequired,
+    #[msg("Campaign title is too long")]
+    TitleTooLong,
+    #[msg("Campaign story is too long")]
+    StoryTooLong,
+    #[msg("This campaign is closed")]
+    CampaignClosed,
+    #[msg("This campaign has passed its deadline")]
+    CampaignEnded,
+    #[msg("Not that much has been raised")]
+    NothingRaised,
 }

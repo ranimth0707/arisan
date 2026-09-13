@@ -129,6 +129,23 @@ pub struct Circle {
     pub bond_bump: u8,
 }
 
+/// Public campaign details and the invite gate for a circle.
+///
+/// Kept in its own PDA so adding room metadata does not invalidate Circle
+/// accounts that were created before campaign rooms existed.
+#[account]
+#[derive(InitSpace)]
+pub struct CircleRoom {
+    pub circle: Pubkey,
+    pub creator: Pubkey,
+    #[max_len(MAX_CIRCLE_DESCRIPTION_LEN)]
+    pub description: String,
+    #[max_len(MAX_CIRCLE_SOCIAL_URL_LEN)]
+    pub social_url: String,
+    pub invite_code_hash: [u8; 32],
+    pub bump: u8,
+}
+
 /// One per wallet per circle. The public ledger everyone in the group can read:
 /// what you posted, what you paid, what you missed, whether you have had a turn.
 #[account]

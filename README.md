@@ -98,11 +98,12 @@ charged twice, and a member cannot collect two turns.
 
 ### Try the live demo
 
-The live app has an open 2-seat circle named **Demo · Try Arisan**. Connect a
-wallet, open **Get demo COOK**, claim 0.5 COOK, then return to **Circles** and
-join it with 0.1 COOK collateral. Once the second seat is filled, either member
-can start the circle. The round lasts one minute, so you can pay, draw and
-collect without waiting a month.
+The live app has an invite-only 3-seat room named **Demo · Join by code**. Its
+invite code is **ARISAN-DEMO-9002**. Connect a wallet, open **Get demo COOK**,
+claim 0.5 COOK, then return to **Circles**, paste the code, and join with 0.1
+COOK collateral. Once the room has at least two members, the creator can start
+it. The round lasts one minute, so you can pay, draw and collect without waiting
+a month.
 
 ### Campaign rooms
 

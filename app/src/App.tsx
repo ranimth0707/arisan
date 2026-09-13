@@ -3,24 +3,20 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import { useCookieJar } from "./hooks/useCookieJar";
 import { Jars } from "./components/Jars";
-import { Cookies } from "./components/Cookies";
-import { Claim } from "./components/Claim";
 import { Sponsor } from "./components/Sponsor";
-import { Campaigns } from "./components/Campaigns";
 import { TxToast } from "./components/TxToast";
-import { connection, findSponsorVault, formatCook, formatCount } from "./lib/cookiejar";
+import { connection, findSponsorVault, formatCook } from "./lib/cookiejar";
 import { inspectWallet } from "./lib/chain";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "care" | "jars" | "cookies" | "gas";
+type Tab = "jars" | "gas";
 
 export default function App() {
   const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
-  const [tab, setTab] = useState<Tab>("care");
+  const [tab, setTab] = useState<Tab>("jars");
   const [gasLeft, setGasLeft] = useState<number | null>(null);
   const [nudge, setNudge] = useState(0);
 
-  const cookieParam = new URLSearchParams(window.location.search).get("cookie");
 
   const refreshGas = useCallback(async () => {
     try {
@@ -51,8 +47,8 @@ export default function App() {
         <div className="brand">
           <span className="jar">🍪</span>
           <div>
-            <h1>Bake Care</h1>
-            <p className="tagline">Ask for help on chain, and give without paying a fee</p>
+            <h1>Cookie Tin</h1>
+            <p className="tagline">Save COOK, never lose it, one saver wins the pot</p>
           </div>
         </div>
         <WalletMultiButton />
@@ -66,10 +62,8 @@ export default function App() {
       )}
       {sponsored && gasLeft !== null && (
         <div className="banner info">
-          Nobody pays gas here. {formatCook(gasLeft)} COOK left in the sponsor
-          tank, enough to cover at least{" "}
-          {formatCount(Math.floor(gasLeft / 5_000_000))} more donations, requests
-          and claims.
+          Nobody pays gas here. Depositing, withdrawing and collecting are all
+          covered, with {formatCook(gasLeft)} COOK left in the sponsor tank.
         </div>
       )}
 
@@ -89,40 +83,16 @@ export default function App() {
         </div>
       )}
 
-      {cookieParam ? (
-        <Claim
-          program={program}
-          owner={owner}
-          submit={submit}
-          sponsored={sponsored}
-          address={cookieParam}
-        />
-      ) : (
-        <>
+      <>
           <nav className="tabs">
-            <button className={`tab ${tab === "care" ? "on" : ""}`} onClick={() => setTab("care")}>
-              🤝 Help someone
-            </button>
             <button className={`tab ${tab === "jars" ? "on" : ""}`} onClick={() => setTab("jars")}>
-              🍪 Jars
-            </button>
-            <button className={`tab ${tab === "cookies" ? "on" : ""}`} onClick={() => setTab("cookies")}>
-              🥠 Fortune cookies
+              🍪 The jars
             </button>
             <button className={`tab ${tab === "gas" ? "on" : ""}`} onClick={() => setTab("gas")}>
-              ⚡ Gas
+              ⚡ Who pays gas
             </button>
           </nav>
 
-          {tab === "care" && (
-            <Campaigns
-              program={program}
-              owner={owner}
-              submit={submit}
-              sponsored={sponsored}
-              onChanged={() => setNudge((n) => n + 1)}
-            />
-          )}
           {tab === "jars" && (
             <Jars
               program={program}
@@ -130,9 +100,6 @@ export default function App() {
               submit={submit}
               onChanged={() => setNudge((n) => n + 1)}
             />
-          )}
-          {tab === "cookies" && (
-            <Cookies program={program} owner={owner} submit={submit} />
           )}
           {tab === "gas" && (
             <Sponsor
@@ -142,8 +109,7 @@ export default function App() {
               onChanged={() => setNudge((n) => n + 1)}
             />
           )}
-        </>
-      )}
+      </>
 
       <footer className="muted" style={{ marginTop: 40, textAlign: "center", fontSize: 12 }}>
         Running on Cookie Chain.{" "}

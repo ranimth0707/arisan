@@ -1,15 +1,14 @@
-# 🤝 Bake Care
+# 🍪 Cookie Tin
 
-**Ask for help on chain. Give without paying a fee. What is raised keeps working
-while it waits.**
+**Put COOK in a tin. You cannot lose it. One saver wins the pot.**
 
-Somebody with an empty wallet can open a request for help. Somebody else can give
-to it and pay nothing but the gift itself. And money that has been raised does
-not sit idle until the bill arrives.
+Your deposit is yours the whole time and comes back in full whenever you ask.
+There is no lending it out, no trading it, and no instruction that can hand it to
+anybody else. What you are playing for is the prize pool a sponsor puts on top.
 
 | | |
 |---|---|
-| Live app | **https://bakecare-cook.vercel.app** |
+| Live app | **https://cookietin-cook.vercel.app** |
 | Program | [`Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`](https://cookiescan.io/account/Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg) |
 | Network | Cookie Chain mainnet |
 | Wallet | Nightly |
@@ -18,49 +17,44 @@ not sit idle until the bill arrives.
 
 ## The problem
 
-Crowdfunding platforms take a cut, decide whose story qualifies, and hold the
-money in between. On a chain that cut could be zero and the gate could not exist
-at all. Except nobody can use a chain they have no gas for, and the people most
-likely to need help are the least likely to be holding any.
+Cookie Chain is empty. Sampling 258 consecutive blocks, roughly 103 seconds of
+real time, turned up **3 non-vote transactions from 3 wallets**. Its only
+launchpad sits at $0 TVL. The whole chain does about 8 swaps a day.
 
-Cookie Chain shows what that does to a network. Its only launchpad sits at **$0
-TVL**. The whole chain does roughly **8 swaps a day**. Every action needs COOK
-that a new wallet does not have, and getting some means bridging from Solana,
-which needs SOL they may not have either.
+There are two reasons nothing sticks here.
 
-And the usual fix makes it worse. Airdropping tokens at people produces a spike
-of transactions and nothing lasting, because the money leaves the moment it is
-claimed. Base lost 30% of its TVL within two weeks of Onchain Summer ending.
-Blast's TVL and activity both collapsed the week its airdrop opened.
+**Nobody can start.** Every action needs COOK a new wallet does not have, and
+getting some means bridging from Solana, which needs SOL they may not have
+either.
 
-## What Bake Care does
+**Anything that pays people out drains itself.** Airdrops and giveaways produce a
+spike of transactions and nothing lasting, because the money leaves the moment it
+is claimed. Base lost 30% of its TVL within two weeks of Onchain Summer ending.
+Blast's collapsed the week its airdrop opened.
 
-**Ask, with nothing.** Open a request with a title, a story and a goal. No
-approval step, no platform cut, and no COOK needed to start. The rent for the
-account is sponsored.
+## What Cookie Tin does
 
-**Give, and pay only the gift.** A donor's transaction fee and the rent for their
-donation record are both covered. They spend exactly what they meant to give, to
-the lamport. The donor count is one per wallet rather than one per gift, so
-giving twice does not inflate the number of people who actually helped.
+A tin is a vault you put COOK into. Two things make it different from a yield
+farm.
 
-**Raised money does not sit idle.** The default route out of a campaign is into
-the asker's own jar, not their wallet. It stays withdrawable the moment a bill
-arrives, and earns from a sponsor-funded pool while it waits. A successful
-campaign moves value inside the protocol instead of draining it.
+**Your deposit cannot be lost.** Principal and prize money live in separate
+program accounts. No instruction moves lamports out of a tin to anybody but the
+owner of that position. That is structural, not a check somebody could forget.
+Withdrawal stays open even while the protocol is paused.
 
-Two other primitives support that:
+**The prize is somebody else's money.** A sponsor funds the pool. Savers are
+never paying each other, which is what separates this from the mechanics it
+superficially resembles.
 
-**🫙 Jars.** A non-custodial vault. **Streaming** pays everyone continuously by
-amount and time held. **Lucky** gives one entry per wallet, so a 1 COOK deposit
-and a 1,000 COOK deposit have identical odds.
+Two payout shapes:
 
-**🥠 Fortune Cookies.** A shareable giveaway link, for getting COOK into the
-hands of people who have none so they can take part at all. Cracking one open
-deposits straight into a jar, so even a giveaway is an inflow.
+- **Streaming.** Everyone earns continuously, weighted by amount and time held.
+- **Lucky.** One entry per wallet. A 1 COOK deposit and a 1,000 COOK deposit have
+  identical odds, so the biggest wallet does not simply win. Winner takes the
+  pool.
 
-Principal is never at risk anywhere. No lending, no trading, and no path by which
-a depositor ends up with less than they put in.
+And the gas is covered. Depositing, withdrawing and collecting are all paid by a
+sponsor vault, so a wallet holding exactly zero COOK can still take part.
 
 ## See it work
 
@@ -68,15 +62,13 @@ Every line below is a real transaction on Cookie Chain mainnet. Click them.
 
 | What it proves | Transaction |
 |---|---|
-| A stranger gave 25 COOK and **paid exactly 25 COOK**, fee and account rent covered | [`3bkvRh78…`](https://cookiescan.io/tx/3bkvRh78V2q3dhAeHHZedjez6Ds5yZSXtiSBxsrFbHedyoeERHU7R3rZYqSEB38qHxbpspLxr5vUv6u5cufFJuby) |
+| A Lucky draw settled against a slot hash that **did not exist when the draw was requested** | [`RSjz1pvv…`](https://cookiescan.io/tx/RSjz1pvvjEnarqG1x2nHhwBZqWKNm9PYSS2qeXofGxy49T2c25emH5FjB9giv8bqHpW4tCPWiEFhDd9M9WekG8q) |
+| The winner collected the whole 25 COOK pool | [`5Sd8oYZ8…`](https://cookiescan.io/tx/5Sd8oYZ8GwVzq77K3G6DA3PJDDaV9uShY9hcKP4XSR4Lyqkvz2Jvyw3njnRrm2YC4j8i4GihxGS2MtgsJj6zDW2h) |
 | **A real Nightly wallet holding zero COOK** took part and paid nothing | [`63nPzm62…`](https://cookiescan.io/tx/63nPzm62sSE6bvYeTitre8vDLgWRHb8GB1kMMuZqABdFoH3bkPux6pnTdAe2LWg93NnMP3WK9k9YsULAf2Fb2eGY) |
 | A zero-balance wallet signed while somebody else paid the fee | [`dFWFof5b…`](https://cookiescan.io/tx/dFWFof5bH4PKDhmawnNhytvztrhBHSA8C5jEfcfMCf1S2Yw2fazQA7K4uBht6kovdghnv1EaQddfMfzLZk7PUgq) |
-| A Lucky draw settled against a slot hash that did not exist when it was requested | [`RSjz1pvv…`](https://cookiescan.io/tx/RSjz1pvvjEnarqG1x2nHhwBZqWKNm9PYSS2qeXofGxy49T2c25emH5FjB9giv8bqHpW4tCPWiEFhDd9M9WekG8q) |
 
-On the first one, read the balances directly: the donor went down by exactly
-25,000,000,000 lamports and the campaign vault went up by exactly the same. The
-fee and the 1,517,280 lamports of rent for their donation record came from the
-sponsor vault, not from them.
+On the third one, read the balances directly: the wallet went from 0 lamports to
+0 lamports while taking part. The fee came from the sponsor vault, not from them.
 
 **One thing to know before you try it.** Wallet-adapter's `signTransaction` does
 not forward a chain identifier, and Nightly does not publish Cookie Chain through
@@ -86,44 +78,40 @@ covers the transaction bytes and says nothing about which chain it runs on.
 
 ## How this produces Volume and TVL
 
-**TVL** is the sum of live program vaults, all withdrawable by their owner and
-none of them locked:
+**TVL is the product, not a side effect.** In most apps a balance is something
+that accumulates if things go well. Here the deposits *are* the thing being
+built, and two properties make them stay:
 
 | Vault | Why it stays |
 |---|---|
-| Campaign escrow | Raised and not yet needed. |
-| Jar principal | Withdrawing forfeits future rewards, never principal. |
-| Reward pools | Sponsor-funded budgets, locked until earned or drawn. |
+| Tin principal | Withdrawing forfeits future prize share, never principal. |
+| Prize pools | Sponsor-funded, locked until earned or drawn. |
 | Gas vault | At 10,000 lamports a transaction, a deposit here is effectively permanent. |
-| Fortune Cookie escrow | Unclaimed giveaways. |
 
-The route from a campaign into a jar is what keeps a successful fundraiser from
-being a TVL event that reverses itself. A DefiLlama adapter summing these PDA
-types is about twenty lines, and matches the methodology already used for
-CookieSwap on this chain.
+A DefiLlama adapter summing these PDA types is about twenty lines, and matches
+the methodology already used for CookieSwap on this chain.
 
-**Volume** is recurring rather than one-shot. A plain airdrop is one transaction
-per user, ever. Here the same person opens a request, receives many gifts, moves
-the result into a jar, harvests, withdraws in pieces as bills arrive.
+**Volume is recurring rather than one-shot.** An airdrop is one transaction per
+user, ever. Here the same wallet deposits, collects, tops up, withdraws part,
+and cranks a draw, and the draw itself is permissionless so a closed tin never
+waits on its creator.
 
 **What sponsoring costs.** The fee is 10,000 lamports, two signatures at 5,000
-each. A first-time donation also opens a 90-byte record, 1,517,280 lamports of
-rent. So a brand new donor costs 0.001527 COOK and every gift after that costs
-0.00001. The 100 COOK in the public gas vault covers roughly **65,000 first-time
-donors**, for under a cent.
+each. A first deposit also opens a 130-byte position, 1,795,680 lamports of rent.
+So a brand new saver costs 0.001806 COOK and everything they do afterwards costs
+0.00001. The 150 COOK in the public gas vault covers roughly **80,000 first-time
+savers**, for about a cent and a half.
 
 ## Architecture
 
 ```
-  ask for help ──▶ Campaign ──donate──▶ Campaign vault
-                       │                     │
-                       │              withdraw_to_jar
-                       │                     ▼
-                       │                 Jar vault ──▶ Position (the asker's)
-                       │                                withdraw any time,
-                       │                                earns while it waits
-                       ▼
-                 goal, story, deadline
+  sponsor ──funds──▶ Prize vault ─────┐
+                                      │  streamed, or drawn to one winner
+  saver ──deposits──▶ Tin vault ──▶ Position (yours)
+                          │            withdraw in full, any time
+                          └────────────┘
+              two separate accounts, so the prize can never
+              be paid out of somebody else's deposit
 
    Relayer ──pays the fee──▶ transaction
       ▲                           │
@@ -138,12 +126,7 @@ Full design notes are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Security
 
-**Nobody but the asker can touch what was raised.** `withdraw_raised` and
-`withdraw_to_jar` both constrain the signer to the campaign creator, and neither
-can move more than `raised - withdrawn`. Closing a campaign stops new gifts but
-never strands what people already gave.
-
-**Rewards can never be paid from someone's deposit.** Principal and rewards sit
+**The prize can never be paid from someone's deposit.** Principal and rewards sit
 in separate PDAs. No instruction moves lamports out of a jar vault to anyone but
 the owner of that position. Structural, not a check that could be forgotten.
 
@@ -154,10 +137,6 @@ paused, so pausing can never trap anyone's money.
 **A stolen relayer key cannot drain a vault.** The relayer is a fee payer and
 nothing else, with no authority anywhere in the program, and the most it can
 reclaim per transaction is capped on-chain at 0.005 COOK.
-
-**Double claiming is impossible rather than checked.** A claim creates a PDA
-keyed to the envelope and the claimer. Creating it twice fails at the runtime
-level.
 
 **The draw commits to a slot that does not exist yet.** `request_draw` records a
 target three slots ahead and `finalize_draw` reads that slot's hash, bounded to a
@@ -174,14 +153,12 @@ may not appear anywhere else in the account list.
 Everything runs against mainnet with real COOK.
 
 ```bash
-node scripts/test-campaign.mjs  # ask, give gasless, move the result into a jar
-node scripts/e2e.mjs            # zero-balance claim raises TVL
-node scripts/test-flows.mjs     # reward accrual, withdrawal, full draw cycle
+node scripts/test-flows.mjs     # accrual, withdrawal, full draw cycle
+node scripts/e2e.mjs            # a zero-balance wallet taking part
 node scripts/test-relayer.mjs   # seven attacks on the relayer, then the real path
 ```
 
-Current results: **16/16** fundraising, **6/6** gasless claim, **17/17**
-protocol, **9/9** relayer.
+Current results: **17/17** protocol, **6/6** gasless, **9/9** relayer.
 
 The relayer suite is adversarial. It tries to drain the relayer with a bare
 transfer, ride it for a foreign program, ask above the cap, skip the
@@ -191,19 +168,23 @@ and stack two reimbursements. All seven are refused and the real path still work
 Bugs found by running against a live chain rather than a local validator, all
 fixed:
 
-1. Anchor billed account rent to the claimer, breaking the one thing the protocol
+1. Anchor billed account rent to the user, which broke the one thing the protocol
    promises. Paying and authorising are now separate accounts.
 2. The draw pinned itself to an exact slot. Solana skips slots, so a skipped
    target meant a prize locked forever.
 3. The rent estimate double-counted the account discriminator, quietly moving
-   121,360 lamports per claim from the sponsor vault to the relayer. Caught by
+   121,360 lamports per action from the sponsor vault to the relayer. Caught by
    reading the balance deltas of a real user's transaction, not by a test, which
    had the same wrong constant in it.
+
+The program also carries instructions for giveaway envelopes and for fundraising
+campaigns, both deployed and tested, both currently hidden from the interface.
+They were explored and set aside rather than deleted.
 
 ## Run it locally
 
 ```bash
-git clone <this repo> && cd bake-care
+git clone <this repo> && cd cookie-tin
 npm --prefix app install
 
 # relayer, the same code that runs as a Vercel function in production
@@ -267,11 +248,11 @@ relayer that signs as fee payer and nothing more.
 
 ## What it does not do yet
 
-- Campaign stories are 280 characters on chain. No images, no updates feed.
-- No refunds if a goal is missed. Whatever was raised stays with the asker, the
-  way a physical collection tin works.
-- Nothing verifies that a request is genuine. That is a real gap for anything
-  handling need at scale, and the honest answer today is that this is a proof of
-  the mechanism, not a charity.
-- Randomness is a slot-hash commitment, not a VRF.
-- Native COOK only. No SPL tokens.
+- Randomness is a slot-hash commitment, not a VRF. A block producer controlling
+  the target slot can bias a draw. Acceptable at these prize sizes, written down
+  rather than hidden, and replaceable in one function.
+- Native COOK only. No SPL tokens in tins.
+- Prize pools are funded by whoever opens a tin. There is no protocol revenue and
+  no fee, so nothing funds them at scale yet.
+- One sponsor covers gas for the public deployment. The program already supports
+  a sponsor account per app, so any project can fund its own users.

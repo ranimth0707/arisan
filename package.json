@@ -1,9 +1,9 @@
 {
-  "name": "bake-care",
+  "name": "cookie-tin",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "On-chain fundraising on Cookie Chain where raised money keeps working while it waits",
+  "description": "Prize savings on Cookie Chain where your deposit can never be lost",
   "scripts": {
     "fund": "node scripts/fund-deployer.mjs"
   },

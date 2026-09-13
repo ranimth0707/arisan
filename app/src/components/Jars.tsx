@@ -55,7 +55,15 @@ export async function loadJars(program: CookieJarProgram): Promise<JarView[]> {
       winnerIndex: j.account.winnerIndex.toNumber(),
       winner: j.account.winner ?? null,
     }))
-    .sort((a, b) => b.endTs - a.endTs);
+    // Open jars first. A page that opens on a wall of closed test jars tells a
+    // visitor nothing they can act on.
+    .sort((a, b) => {
+      const now = Date.now() / 1000;
+      const aOpen = a.endTs > now;
+      const bOpen = b.endTs > now;
+      if (aOpen !== bOpen) return aOpen ? -1 : 1;
+      return aOpen ? a.endTs - b.endTs : b.endTs - a.endTs;
+    });
 }
 
 interface Props {
@@ -261,12 +269,36 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
 
   return (
     <>
+      <div className="card" style={{ marginBottom: 18 }}>
+        <strong>Put COOK in a jar. You cannot lose it.</strong>
+        <p className="muted" style={{ marginTop: 6, marginBottom: 0 }}>
+          Your deposit is yours the whole time and comes back in full whenever
+          you ask. There is no lending it out, no trading it, and no way for the
+          jar to hand it to anybody else. What you are playing for is the prize
+          pool on top, which a sponsor puts in.
+        </p>
+        <div className="row" style={{ gap: 18, marginTop: 14 }}>
+          <div className="stat">
+            streaming jars
+            <b style={{ fontSize: 14 }}>everyone earns, by amount and time</b>
+          </div>
+          <div className="stat">
+            lucky jars
+            <b style={{ fontSize: 14 }}>one entry each, winner takes the pot</b>
+          </div>
+        </div>
+        <p className="muted" style={{ marginTop: 12, marginBottom: 0 }}>
+          In a lucky jar a 1 COOK deposit and a 1,000 COOK deposit have exactly
+          the same odds. Deliberate, so the biggest wallet does not simply win.
+        </p>
+      </div>
+
       {localError && <div className="banner warn">{localError}</div>}
 
       <div className="row" style={{ justifyContent: "space-between", marginBottom: 14 }}>
-        <span className="muted">{jars.length} jar{jars.length === 1 ? "" : "s"} on the shelf</span>
+        <span className="muted">{jars.length} jar{jars.length === 1 ? "" : "s"} open</span>
         <button className="ghost" onClick={() => setShowCreate((s) => !s)}>
-          {showCreate ? "Cancel" : "Open a new jar"}
+          {showCreate ? "Cancel" : "Open a jar"}
         </button>
       </div>
 

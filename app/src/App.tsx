@@ -4,13 +4,12 @@ import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useCookieJar } from "./hooks/useCookieJar";
 import { Circles } from "./components/Circles";
 import { Faucet } from "./components/Faucet";
-import { Sponsor } from "./components/Sponsor";
 import { TxToast } from "./components/TxToast";
 import { connection, findSponsorVault, formatCook } from "./lib/cookiejar";
 import { inspectWallet } from "./lib/chain";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "circles" | "gas" | "faucet";
+type Tab = "circles" | "faucet";
 
 export default function App() {
   const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
@@ -90,9 +89,6 @@ export default function App() {
             <button className={`tab ${tab === "circles" ? "on" : ""}`} onClick={() => setTab("circles")}>
               🍪 Circles
             </button>
-            <button className={`tab ${tab === "gas" ? "on" : ""}`} onClick={() => setTab("gas")}>
-              ⚡ Who pays gas
-            </button>
             <button className={"tab " + (tab === "faucet" ? "on" : "")} onClick={() => setTab("faucet")}>
               ⚡ Get demo COOK
             </button>
@@ -100,14 +96,6 @@ export default function App() {
 
           {tab === "circles" && (
             <Circles
-              program={program}
-              owner={owner}
-              submit={submit}
-              onChanged={() => setNudge((n) => n + 1)}
-            />
-          )}
-          {tab === "gas" && (
-            <Sponsor
               program={program}
               owner={owner}
               submit={submit}

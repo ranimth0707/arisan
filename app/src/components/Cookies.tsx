@@ -3,7 +3,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 import {
   bn, connection, countdown, findConfig, findEnvelope, findEnvelopeVault,
-  formatCook, readableError, toLamports,
+  assertCanAfford, formatCook, readableError, toLamports,
   type CookieJarProgram,
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
@@ -44,7 +44,11 @@ export async function loadCookies(program: CookieJarProgram): Promise<CookieView
 interface Props {
   program: CookieJarProgram;
   owner: PublicKey | null;
-  submit: (build: InstructionBuilder, rent?: RentKind) => Promise<{ signature: string; sponsored: boolean }>;
+  submit: (
+    build: InstructionBuilder,
+    rent?: RentKind,
+    instruction?: string,
+  ) => Promise<{ signature: string; sponsored: boolean }>;
 }
 
 export function Cookies({ program, owner, submit }: Props) {
@@ -77,7 +81,7 @@ export function Cookies({ program, owner, submit }: Props) {
           envelopeVault: findEnvelopeVault(c.address),
           systemProgram: SystemProgram.programId,
         }).instruction(),
-      ]);
+      ], "none", "sweepEnvelope");
       await refresh();
     } catch (e) {
       setErr(readableError(e));
@@ -176,6 +180,8 @@ function BakeCookie({ program, owner, submit, onDone }: Props & { onDone: () => 
     setErr(null);
     setBusy(true);
     try {
+      await assertCanAfford(owner, toLamports(total), "fill a cookie with that much");
+
       const now = Math.floor(Date.now() / 1000);
       const id = now;
       const envelope = findEnvelope(owner, id);
@@ -190,7 +196,7 @@ function BakeCookie({ program, owner, submit, onDone }: Props & { onDone: () => 
           envelopeVault: findEnvelopeVault(envelope),
           systemProgram: SystemProgram.programId,
         })
-        .instruction()]);
+        .instruction()], "none", "createEnvelope");
       const url = `${window.location.origin}${window.location.pathname}?cookie=${envelope.toBase58()}`;
       setLink(url);
       void navigator.clipboard.writeText(url);

@@ -33,14 +33,16 @@ export default function App() {
 
   const owner = wallet.publicKey ?? null;
 
-  // A wallet pointed at another network simulates this transaction against the
-  // wrong chain and warns the user it will fail, on a transaction that is fine.
-  // Saying so up front beats letting them stare at a red popup.
+  // The Solana Wallet Standard has no equivalent of EVM's switch-chain request,
+  // so an app cannot ask a wallet to move networks. It can only name the chain
+  // when asking for a signature, and only if the wallet publishes that chain.
+  // Nightly currently publishes solana:devnet, testnet and mainnet and nothing
+  // else, even while pointed at Cookie Chain, so this warns rather than accuses.
   const walletChains = useMemo(
     () => inspectWallet(wallet.wallet, owner),
     [wallet.wallet, owner],
   );
-  const wrongNetwork = Boolean(owner && !walletChains.knowsCookieChain);
+  const cannotNameChain = Boolean(owner && !walletChains.knowsCookieChain);
 
   return (
     <div className="shell">
@@ -69,16 +71,17 @@ export default function App() {
         </div>
       )}
 
-      {wrongNetwork && (
+      {cannotNameChain && (
         <div className="banner warn">
-          <strong>{walletChains.walletName ?? "Your wallet"} is not set to Cookie Chain.</strong>{" "}
-          It will preview this against the wrong network and warn that the
-          transaction fails. Switch its network to Cookie Chain. Approving anyway
-          still works, because a signature covers the transaction itself and says
-          nothing about which chain it is for.
+          <strong>Your wallet may warn that a transaction will fail. It will not.</strong>{" "}
+          {walletChains.walletName ?? "This wallet"} does not publish Cookie Chain
+          through the Wallet Standard, so we cannot tell it which chain to preview
+          against and it falls back to whichever Solana network it knows. Approving
+          is safe: a signature covers the transaction itself and says nothing about
+          the chain it runs on.
           {walletChains.chains.length > 0 && (
-            <div className="mono" style={{ marginTop: 6, opacity: 0.8 }}>
-              wallet reports: {walletChains.chains.join(", ")}
+            <div className="mono" style={{ marginTop: 6, opacity: 0.75 }}>
+              wallet publishes: {walletChains.chains.join(", ")}
             </div>
           )}
         </div>

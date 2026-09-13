@@ -42,6 +42,20 @@ function rents() {
 
 export type RentKind = "claim" | "position" | "claim+position" | "none";
 
+/**
+ * Mirrors SPONSORABLE in app/api/_relayer.js.
+ *
+ * Attempting a sponsored transaction the relayer will refuse is not harmless:
+ * the wallet is asked to sign it first, simulates it, shows the user a failure
+ * popup, and then has to ask for a second signature on the self-paid version.
+ * Checking here means the user is only ever asked once.
+ */
+const SPONSORABLE = new Set([
+  "crack", "crackIntoJar", "deposit", "withdraw", "harvest",
+  "claimPrize", "requestDraw", "finalizeDraw", "redraw",
+  "fundJar", "sweepEnvelope",
+]);
+
 export function useCookieJar() {
   const wallet = useWallet();
   const [relayer, setRelayer] = useState<PublicKey | null>(null);
@@ -96,13 +110,15 @@ export function useCookieJar() {
    * ends up being used, so callers never have to guess.
    */
   const submit = useCallback(
-    async (build: InstructionBuilder, rentKind: RentKind = "none", trySponsor = true) => {
+    async (
+      build: InstructionBuilder,
+      rentKind: RentKind = "none",
+      instruction?: string,
+    ) => {
       setError(null);
       try {
-        // Gas vault actions skip the sponsored path on purpose. The relayer
-        // refuses them, so attempting it would only produce a confusing
-        // fallback message on the way to the same result.
-        const reimbursement = trySponsor ? await buildReimbursement(rentKind) : undefined;
+        const canSponsor = instruction !== undefined && SPONSORABLE.has(instruction);
+        const reimbursement = canSponsor ? await buildReimbursement(rentKind) : undefined;
         const result = await send(
           {
             publicKey: wallet.publicKey,

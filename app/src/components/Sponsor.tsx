@@ -14,7 +14,7 @@ interface Props {
   submit: (
     build: InstructionBuilder,
     rent?: RentKind,
-    trySponsor?: boolean,
+    instruction?: string,
   ) => Promise<{ signature: string; sponsored: boolean }>;
   onChanged: () => void;
 }
@@ -74,7 +74,7 @@ export function Sponsor({ program, owner, submit, onChanged }: Props) {
               sponsorVault: findSponsorVault(owner),
               systemProgram: SystemProgram.programId,
             }).instruction(),
-      ], "none", false);
+      ], "none", kind === "deposit" ? "depositGas" : "withdrawGas");
       await refresh();
       onChanged();
     } catch (e) {

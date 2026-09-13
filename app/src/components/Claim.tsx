@@ -14,7 +14,11 @@ import type { InstructionBuilder } from "../lib/send";
 interface Props {
   program: CookieJarProgram;
   owner: PublicKey | null;
-  submit: (build: InstructionBuilder, rent?: RentKind) => Promise<{ signature: string; sponsored: boolean }>;
+  submit: (
+    build: InstructionBuilder,
+    rent?: RentKind,
+    instruction?: string,
+  ) => Promise<{ signature: string; sponsored: boolean }>;
   sponsored: boolean;
   address: string;
 }
@@ -110,7 +114,7 @@ export function Claim({ program, owner, submit, sponsored, address }: Props) {
         ];
       }
 
-      const { signature } = await submit(build, rent);
+      const { signature } = await submit(build, rent, intoJar ? "crackIntoJar" : "crack");
 
       const vaultAfter = intoJar && target
         ? await connection.getBalance(findJarVault(new PublicKey(target)))

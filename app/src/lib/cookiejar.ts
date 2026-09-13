@@ -100,6 +100,24 @@ export async function getBalances(addresses: PublicKey[]): Promise<number[]> {
   return out;
 }
 
+/**
+ * Some actions inherently spend the user's own COOK: filling a cookie, opening a
+ * jar with a prize, topping up a pool. Sponsorship covers the fee, never the
+ * money being given away. Checking first turns a raw
+ * "Transfer: insufficient lamports 0" into something a person can act on.
+ */
+export async function assertCanAfford(owner: PublicKey, lamports: number, what: string) {
+  const balance = await connection.getBalance(owner);
+  // Leave room for the account rent this will also open.
+  const needed = lamports + 2_000_000;
+  if (balance >= needed) return;
+  throw new Error(
+    `You need about ${formatCook(needed)} COOK to ${what}, and this wallet holds ` +
+    `${formatCook(balance)}. Gas is covered for you, but the COOK you give away ` +
+    `has to be yours.`,
+  );
+}
+
 export function txUrl(signature: string) {
   return `${EXPLORER}/tx/${signature}`;
 }

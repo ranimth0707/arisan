@@ -4,7 +4,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 import {
   bn, connection, countdown, findConfig, findJar, findJarVault, findPosition,
   findRewardVault, formatCook, getBalances, readableError, toLamports,
-  SLOT_HASHES, type CookieJarProgram,
+  assertCanAfford, SLOT_HASHES, type CookieJarProgram,
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
@@ -61,7 +61,11 @@ export async function loadJars(program: CookieJarProgram): Promise<JarView[]> {
 interface Props {
   program: CookieJarProgram;
   owner: PublicKey | null;
-  submit: (build: InstructionBuilder, rent?: RentKind) => Promise<{ signature: string; sponsored: boolean }>;
+  submit: (
+    build: InstructionBuilder,
+    rent?: RentKind,
+    instruction?: string,
+  ) => Promise<{ signature: string; sponsored: boolean }>;
   onChanged: () => void;
 }
 
@@ -116,6 +120,9 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
     try {
       const position = findPosition(jar.address, owner);
       const isNew = !(await connection.getAccountInfo(position));
+      if (kind === "deposit") {
+        await assertCanAfford(owner, toLamports(value), "put that much in a jar");
+      }
 
       await submit(
         async (payer) =>
@@ -136,6 +143,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
                 })
                 .instruction()],
         (kind === "deposit" && isNew ? "position" : "none") as RentKind,
+        kind,
       );
       setAmounts((a) => ({ ...a, [jar.address.toBase58()]: "" }));
       await refresh();
@@ -160,7 +168,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
             systemProgram: SystemProgram.programId,
           })
           .instruction(),
-      ]);
+      ], "none", "harvest");
       await refresh();
     } catch { /* surfaced by toast */ } finally { setBusy(null); }
   };
@@ -175,14 +183,14 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
         await submit(async () => [
           await program.methods.requestDraw()
             .accountsPartial({ jar: jar.address }).instruction(),
-        ]);
+        ], "none", "requestDraw");
         setLocalError("Draw requested. Give it a few seconds, then finish it.");
       } else {
         await submit(async () => [
           await program.methods.finalizeDraw()
             .accountsPartial({ jar: jar.address, slotHashes: SLOT_HASHES })
             .instruction(),
-        ]);
+        ], "none", "finalizeDraw");
       }
       await refresh();
       onChanged();
@@ -202,7 +210,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       await submit(async () => [
         await program.methods.redraw()
           .accountsPartial({ jar: jar.address }).instruction(),
-      ]);
+      ], "none", "redraw");
       await refresh();
     } catch (e) {
       setLocalError(readableError(e));
@@ -221,7 +229,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
           position: findPosition(jar.address, owner),
           systemProgram: SystemProgram.programId,
         }).instruction(),
-      ]);
+      ], "none", "claimPrize");
       await refresh();
       onChanged();
     } catch { /* surfaced by toast */ } finally { setBusy(null); }
@@ -242,7 +250,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
           rewardVault: findRewardVault(jar.address),
           systemProgram: SystemProgram.programId,
         }).instruction(),
-      ]);
+      ], "none", "fundJar");
       setAmounts((a) => ({ ...a, [jar.address.toBase58()]: "" }));
       await refresh();
       onChanged();
@@ -396,6 +404,8 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
     setErr(null);
     setBusy(true);
     try {
+      await assertCanAfford(owner, toLamports(Number(reward) || 0), "fund that prize pool");
+
       const now = Math.floor(Date.now() / 1000);
       const jarId = now;
       const jar = findJar(owner, jarId);
@@ -412,7 +422,7 @@ function CreateJar({ program, owner, submit, onDone }: CreateJarProps) {
           jarVault: findJarVault(jar), rewardVault: findRewardVault(jar),
           systemProgram: SystemProgram.programId,
         })
-        .instruction()]);
+        .instruction()], "none", "createJar");
       onDone();
     } catch (e) {
       setErr(readableError(e));

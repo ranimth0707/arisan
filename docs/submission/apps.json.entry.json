@@ -1,27 +1,27 @@
 {
-  "id": "cookie-tin",
-  "title": "Cookie Tin",
-  "shortDescription": "Prize savings on Cookie Chain. Your deposit cannot be lost, and one saver wins the pot.",
-  "description": "Cookie Tin is a savings vault on Cookie Chain where the deposit can never be lost and the prize is somebody else's money. A saver puts COOK into a tin and it comes back in full whenever they ask: there is no lending it out, no trading it, and no instruction in the program that moves lamports out of a tin to anybody but the owner of that position. Principal and prize money live in entirely separate program accounts, so paying a prize out of another saver's deposit is structurally impossible rather than merely checked, and withdrawal stays open even while the protocol is paused. What savers play for is a pool that a sponsor funds on top. Tins pay out in two shapes: streaming, where everyone earns continuously weighted by amount and time held, and lucky, where each wallet gets exactly one entry so a 1 COOK deposit and a 1,000 COOK deposit have identical odds and the largest wallet does not simply win. The lucky draw settles against the hash of a slot that did not exist when the draw was requested, and finalizing is bounded to a 300 slot window so nobody can stall until a hash they have already seen comes back into reach. Running the draw is permissionless, so a closed tin never waits on an absent creator to pay out. Gas is covered throughout by a sponsor vault, which means a wallet holding exactly zero COOK can deposit, withdraw and collect, and the relayer that fronts those fees has no authority over any vault and can reclaim at most 0.005 COOK per transaction, enforced on chain.",
+  "id": "arisan",
+  "title": "Arisan",
+  "shortDescription": "Rotating savings circles on Cookie Chain, backed by collateral instead of trust.",
+  "description": "An arisan is a rotating savings circle: a group agrees an amount and a period, every round each member pays that in, and one member who has not had a turn yet takes the whole pot. It is how tens of millions of Indonesian households actually save, and it works offline because everyone in the group knows each other. Online it collapses two ways, and this program is built around both. Somebody stops paying once they have already had their turn, so every member posts collateral when they join and a missed round is taken out of that collateral and put into the pot, which means the round still pays out in full and the people who did pay are made whole by the person who did not; drop below one contribution of collateral and you are sidelined from taking a turn until you put it back. The organiser disappears with the money, so nobody holds it: the pot is a program account with no key, contributions can only leave in the direction of the drawn member, and every group parameter is frozen at creation so the rules cannot change after money is committed. The draw commits to the hash of a block three slots in the future, so at the moment it is called nobody including the organiser can know who wins, which matters because the organiser is a participant. Running the draw and charging a missed round to a defaulter's collateral are both permissionless, so an absent organiser cannot stall the circle. Eligibility is checked when the pot is collected rather than when it is drawn: the claimer must hold the drawn seat, not have had a turn, be active, and have settled the round. The books are public, so every member can see who paid, who missed and how often, who has already had a turn, and how much collateral each person still holds. Every transaction fee is sponsored, so a member with an empty wallet can join, pay a round and collect, while the contribution and the collateral always come from their own wallet.",
   "category": "DeFi",
   "tags": [
     "DeFi",
     "Savings",
-    "No-loss",
+    "ROSCA",
+    "Arisan",
     "Gasless",
-    "Anchor",
-    "TVL"
+    "Anchor"
   ],
   "links": {
-    "website": "https://cookietin-cook.vercel.app",
-    "demo": "https://cookietin-cook.vercel.app",
-    "github": "https://github.com/ranimth0707/cookie-tin",
+    "website": "https://arisan-cook.vercel.app",
+    "demo": "https://arisan-cook.vercel.app",
+    "github": "https://github.com/ranimth0707/arisan",
     "x": "REPLACE_WITH_YOUR_X_URL",
-    "docs": "https://github.com/ranimth0707/cookie-tin/blob/main/docs/ARCHITECTURE.md",
+    "docs": "https://github.com/ranimth0707/arisan/blob/main/README.md",
     "video": null
   },
   "media": {
-    "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/cookie-tin.png",
+    "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/arisan.png",
     "banner": null,
     "screenshots": []
   },

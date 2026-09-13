@@ -2,18 +2,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 
 import { useCookieJar } from "./hooks/useCookieJar";
-import { Jars } from "./components/Jars";
+import { Circles } from "./components/Circles";
 import { Sponsor } from "./components/Sponsor";
 import { TxToast } from "./components/TxToast";
 import { connection, findSponsorVault, formatCook } from "./lib/cookiejar";
 import { inspectWallet } from "./lib/chain";
 import { SPONSOR_AUTHORITY } from "./hooks/useCookieJar";
 
-type Tab = "jars" | "gas";
+type Tab = "circles" | "gas";
 
 export default function App() {
   const { wallet, program, relayer, relayerChecked, sponsored, progress, submit } = useCookieJar();
-  const [tab, setTab] = useState<Tab>("jars");
+  const [tab, setTab] = useState<Tab>("circles");
   const [gasLeft, setGasLeft] = useState<number | null>(null);
   const [nudge, setNudge] = useState(0);
 
@@ -47,8 +47,8 @@ export default function App() {
         <div className="brand">
           <span className="jar">🍪</span>
           <div>
-            <h1>Cookie Tin</h1>
-            <p className="tagline">Save COOK, never lose it, one saver wins the pot</p>
+            <h1>Arisan</h1>
+            <p className="tagline">Rotating savings where nobody can run off with the pot</p>
           </div>
         </div>
         <WalletMultiButton />
@@ -62,8 +62,9 @@ export default function App() {
       )}
       {sponsored && gasLeft !== null && (
         <div className="banner info">
-          Nobody pays gas here. Depositing, withdrawing and collecting are all
-          covered, with {formatCook(gasLeft)} COOK left in the sponsor tank.
+          Nobody pays gas here. Joining, paying a round and taking your turn are
+          all covered, with {formatCook(gasLeft)} COOK left in the sponsor tank.
+          Your contribution and collateral always come from your own wallet.
         </div>
       )}
 
@@ -85,16 +86,16 @@ export default function App() {
 
       <>
           <nav className="tabs">
-            <button className={`tab ${tab === "jars" ? "on" : ""}`} onClick={() => setTab("jars")}>
-              🍪 The tins
+            <button className={`tab ${tab === "circles" ? "on" : ""}`} onClick={() => setTab("circles")}>
+              🍪 Circles
             </button>
             <button className={`tab ${tab === "gas" ? "on" : ""}`} onClick={() => setTab("gas")}>
               ⚡ Who pays gas
             </button>
           </nav>
 
-          {tab === "jars" && (
-            <Jars
+          {tab === "circles" && (
+            <Circles
               program={program}
               owner={owner}
               submit={submit}

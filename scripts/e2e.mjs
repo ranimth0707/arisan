@@ -36,14 +36,14 @@ line(`relayer         : ${relayer.publicKey.toBase58()}`);
 step(1, "Fund the relayer so it can front transaction fees");
 
 let relayerBalance = await conn.getBalance(relayer.publicKey);
-if (relayerBalance < toLamports(1)) {
+if (relayerBalance < toLamports(0.5)) {
   const msg = new TransactionMessage({
     payerKey: sponsor.publicKey,
     recentBlockhash: (await conn.getLatestBlockhash()).blockhash,
     instructions: [SystemProgram.transfer({
       fromPubkey: sponsor.publicKey,
       toPubkey: relayer.publicKey,
-      lamports: toLamports(5),
+      lamports: toLamports(2),
     })],
   }).compileToV0Message();
   const tx = new VersionedTransaction(msg);
@@ -60,21 +60,28 @@ step(2, "Deposit COOK into the sponsor gas vault");
 const sponsorPda = findSponsor(sponsor.publicKey);
 const sponsorVault = findSponsorVault(sponsor.publicKey);
 
-await program.methods
-  .depositGas(bn(toLamports(50)))
-  .accountsPartial({
-    authority: sponsor.publicKey,
-    sponsor: sponsorPda,
-    sponsorVault,
-    systemProgram: SystemProgram.programId,
-  })
-  .rpc();
+// Only top up when the tank is actually low. Depositing every run drained the
+// funding wallet and made the suite fail for a reason that had nothing to do
+// with what it tests.
+const tank = await conn.getBalance(sponsorVault);
+if (tank < toLamports(20)) {
+  await program.methods
+    .depositGas(bn(toLamports(20)))
+    .accountsPartial({
+      authority: sponsor.publicKey,
+      sponsor: sponsorPda,
+      sponsorVault,
+      systemProgram: SystemProgram.programId,
+    })
+    .rpc();
+  line("topped the sponsor tank up");
+}
 
 const sponsorVaultBefore = await conn.getBalance(sponsorVault);
 line(`sponsor vault   : ${cook(sponsorVaultBefore)} COOK  (counts as TVL)`);
 
 // ------------------------------------------------------------------ 3. a jar
-step(3, "Open a Lucky jar with a 50 COOK prize");
+step(3, "Open a Lucky jar with a 2 COOK prize");
 
 const jar = findJar(sponsor.publicKey, jarId);
 const jarVault = findJarVault(jar);
@@ -87,8 +94,8 @@ await program.methods
     { lucky: {} },
     bn(now),
     bn(now + 3600),
-    bn(toLamports(1)),
-    bn(toLamports(50)),
+    bn(toLamports(0.5)),
+    bn(toLamports(2)),
   )
   .accountsPartial({
     creator: sponsor.publicKey,
@@ -104,7 +111,7 @@ line(`jar             : ${jar.toBase58()}`);
 line(`reward vault    : ${cook(await conn.getBalance(rewardVault))} COOK`);
 
 // ------------------------------------------------------------ 4. an envelope
-step(4, "Fill a Fortune Cookie with 100 COOK for 3 claimers");
+step(4, "Fill a Fortune Cookie with 6 COOK for 3 claimers");
 
 const envelope = findEnvelope(sponsor.publicKey, envelopeId);
 const envelopeVault = findEnvelopeVault(envelope);
@@ -113,7 +120,7 @@ await program.methods
   .createEnvelope(
     bn(envelopeId),
     "welcome to Cookie Chain",
-    bn(toLamports(100)),
+    bn(toLamports(6)),
     3,
     { surprise: {} },
     bn(now + 86400),

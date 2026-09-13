@@ -44,6 +44,12 @@ const SPONSORABLE = new Set([
   // this are the least likely to be holding gas money.
   "create_campaign", "donate", "withdraw_to_jar", "withdraw_raised",
   "close_campaign",
+  // Arisan. Sponsoring these covers the transaction fee and account rent only.
+  // The contribution and the collateral always come from the member's own
+  // wallet, because a stake somebody else paid for guarantees nothing.
+  "create_circle", "join_circle", "leave_circle", "start_circle", "contribute",
+  "slash_absent", "top_up_bond", "request_turn", "finalize_turn", "claim_turn",
+  "redraw_turn", "withdraw_bond",
 ]);
 
 let cached = null;

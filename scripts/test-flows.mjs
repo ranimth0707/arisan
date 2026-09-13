@@ -39,7 +39,7 @@ const pPos = findPosition(pJar, user.publicKey);
 
 await program.methods
   .createJar(bn(pid), "Streaming Jar", { proportional: {} },
-    bn(pNow), bn(pNow + 120), bn(toLamports(0.1)), bn(toLamports(60)))
+    bn(pNow), bn(pNow + 120), bn(toLamports(0.1)), bn(toLamports(6)))
   .accountsPartial({
     creator: user.publicKey, config, jar: pJar,
     jarVault: pVault, rewardVault: pReward,
@@ -53,20 +53,20 @@ line(`stream rate     : ${cook(pState0.rewardRate)} COOK/sec`);
 // The rate is spread over the window still remaining when the transaction
 // lands, which is a second or two short of the nominal 120, so this checks the
 // ballpark rather than an exact quotient.
-const idealRate = toLamports(60) / 120;
+const idealRate = toLamports(6) / 120;
 check("rate spreads the budget across the remaining window",
   pState0.rewardRate.toNumber() >= idealRate
   && pState0.rewardRate.toNumber() <= idealRate * 1.05);
 
 await program.methods
-  .deposit(bn(toLamports(10)))
+  .deposit(bn(toLamports(1)))
   .accountsPartial({
     owner: user.publicKey, payer: user.publicKey, config, jar: pJar,
     jarVault: pVault, position: pPos,
     systemProgram: SystemProgram.programId,
   })
   .rpc();
-line(`deposited       : 10 COOK`);
+line(`deposited       : 1 COOK`);
 
 line(`waiting 30s for rewards to accrue...`);
 await sleep(30_000);
@@ -89,7 +89,7 @@ line(`tx              : ${explorer(hSig)}`);
 const harvested = pPosState.rewardsClaimed.toNumber();
 check("rewards actually accrued", harvested > 0);
 check("amount matches elapsed time, within a few seconds",
-  harvested >= toLamports(12) && harvested <= toLamports(20));
+  harvested >= toLamports(1.2) && harvested <= toLamports(2));
 check("wallet balance rose", balAfterHarvest > balBeforeHarvest);
 
 // ================================================================ WITHDRAW
@@ -97,7 +97,7 @@ step("Withdrawal: full principal back, no penalty");
 
 const vaultBeforeW = await conn.getBalance(pVault);
 await program.methods
-  .withdraw(bn(toLamports(10)))
+  .withdraw(bn(toLamports(1)))
   .accountsPartial({
     owner: user.publicKey, jar: pJar, jarVault: pVault,
     position: pPos, systemProgram: SystemProgram.programId,
@@ -109,7 +109,7 @@ const pPosAfterW = await program.account.position.fetch(pPos);
 const pJarAfterW = await program.account.jar.fetch(pJar);
 
 line(`jar vault       : ${cook(vaultBeforeW)} -> ${cook(vaultAfterW)} COOK`);
-check("full principal returned", vaultBeforeW - vaultAfterW === toLamports(10));
+check("full principal returned", vaultBeforeW - vaultAfterW === toLamports(1));
 check("position emptied", pPosAfterW.amount.toNumber() === 0);
 check("jar total_deposited back to zero", pJarAfterW.totalDeposited.toNumber() === 0);
 check("vault kept its rent floor", vaultAfterW > 0);
@@ -126,7 +126,7 @@ const lPos = findPosition(lJar, user.publicKey);
 
 await program.methods
   .createJar(bn(lid), "Lucky Jar", { lucky: {} },
-    bn(lNow), bn(lNow + 65), bn(toLamports(1)), bn(toLamports(25)))
+    bn(lNow), bn(lNow + 65), bn(toLamports(0.5)), bn(toLamports(2)))
   .accountsPartial({
     creator: user.publicKey, config, jar: lJar,
     jarVault: lVault, rewardVault: lReward,
@@ -135,7 +135,7 @@ await program.methods
   .rpc();
 
 await program.methods
-  .deposit(bn(toLamports(2)))
+  .deposit(bn(toLamports(1)))
   .accountsPartial({
     owner: user.publicKey, payer: user.publicKey, config, jar: lJar,
     jarVault: lVault, position: lPos,

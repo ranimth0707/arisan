@@ -1,16 +1,17 @@
 # Submission drafts
 
-Three things to post. Everything below is ready to copy, except the two
-`REPLACE_WITH_YOUR_X_URL` placeholders in `apps.json.entry.json`.
+Everything below is ready to copy, except the two `REPLACE_WITH_YOUR_X_URL`
+placeholders in `apps.json.entry.json`.
 
 ## Where the field stands
 
-Eleven submissions: four merged, seven open PRs. Categories are crowded in
-Tooling, and `cookie-jar` is already taken by a different project. Cookie Tin goes
-in as DeFi. The nearest neighbours are `cookiepad` (launchpad) and
-`crumbs-portfolio` (positions viewer). Nothing else in the field holds deposits,
-which matters because Volume and TVL are named judging criteria and every other
-entry's TVL is incidental rather than the product.
+Eleven submissions: four merged, seven open PRs, mostly Tooling. Nothing else in
+the field is a savings circle, and nothing else locks deposits for a fixed term.
+That matters because Volume and TVL are named judging criteria, and every other
+entry's TVL is incidental rather than the mechanism itself.
+
+`cookie-jar` was already taken by another entry, which is why this is filed as
+`arisan`.
 
 ---
 
@@ -21,8 +22,8 @@ cd /tmp
 gh repo fork cookiechain/superteam-hackathon-submissions --clone --remote
 cd superteam-hackathon-submissions
 
-cp ~/Documents/zerion-cli/cookiejar/docs/submission/cookie-tin.png logos/cookie-tin.png
-mkdir -p screenshots/cookie-tin
+cp ~/Documents/zerion-cli/cookiejar/docs/submission/arisan.png logos/arisan.png
+mkdir -p screenshots/arisan
 # add screenshots here as 01-*.png, 02-*.png before committing
 
 node -e '
@@ -37,96 +38,118 @@ fs.writeFileSync("apps.json", JSON.stringify(apps, null, 2) + "\n");
 console.log("added, now", list.length, "entries");
 '
 
-git checkout -b add-cookie-tin
-git add apps.json logos/cookie-tin.png screenshots/cookie-tin
-git commit -m "Add Cookie Tin"
-git push -u origin add-cookie-tin
+git checkout -b add-arisan
+git add apps.json logos/arisan.png screenshots/arisan
+git commit -m "Add Arisan"
+git push -u origin add-arisan
 gh pr create --repo cookiechain/superteam-hackathon-submissions \
-  --title "Add Cookie Tin" \
-  --body "On-chain fundraising for Cookie Chain: ask for help with an empty wallet, give without paying a fee.
+  --title "Add Arisan" \
+  --body "Rotating savings circles on Cookie Chain, backed by collateral instead of trust.
 
-Live: https://cookietin-cook.vercel.app
-Source: https://github.com/ranimth0707/cookie-tin
+Live: https://arisan-cook.vercel.app
+Source: https://github.com/ranimth0707/arisan
 Program: Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg
 
-A donor spends exactly what they meant to give. Their fee and the rent for their
-donation record come from a sponsor vault, not from them. Real transaction, donor
-down exactly 25,000,000,000 lamports and the campaign vault up exactly the same:
-https://cookiescan.io/tx/3bkvRh78V2q3dhAeHHZedjez6Ds5yZSXtiSBxsrFbHedyoeERHU7R3rZYqSEB38qHxbpspLxr5vUv6u5cufFJuby
+An arisan works offline because everyone in the group knows each other. Online it
+breaks two ways, and both are handled in the program rather than in a promise.
 
-Raised funds default into the asker's own jar rather than their wallet, so a
-successful campaign moves value inside the protocol rather than draining it, and
-the money still comes out the moment a bill arrives."
+Somebody stops paying after they have had their turn, so every member posts
+collateral on joining and a missed round comes out of it and goes into the pot.
+Verified on mainnet with a three-member circle: in round two only two members
+paid, the defaulter's collateral went from 10 COOK to 0, the pot still paid out
+the full 30, and the defaulter could not collect a turn while carrying the miss.
+
+The organiser runs off with the money, so nobody holds it. The pot is a program
+account, the draw commits to a block three slots ahead so even the organiser
+cannot time their own turn, running the draw and charging a defaulter are both
+permissionless, and every group parameter is frozen at creation.
+
+19/19 checks on mainnet, including the refusals: a fourth member cannot squeeze
+into three seats, nobody joins once it is running, paying twice in a round is
+rejected, and the same absence cannot be charged twice.
+
+Prior art is credited in the README. The design follows Akyba Protocol's ROSCA
+spec on Cardano. What is different here is that it runs on Cookie Chain and every
+fee is sponsored, so a member with an empty wallet can join, pay and collect."
 ```
 
 ---
 
 ## 2. X thread, Indonesian
 
-Your audience, your voice. Open a tin with a real prize first, then put its link
-in the last tweet.
+Your audience, your voice. Start a real circle first, then put its link in the
+last tweet.
 
 > **1/**
-> jujur, tiap kali lihat produk DeFi aku selalu nanya hal yang sama: kalau salah,
-> duitku hilang gak?
+> jujur, arisan online itu konsepnya bagus banget tapi rawan banget.
 >
-> dan jawabannya hampir selalu "bisa".
+> yang udah dapet giliran tiba-tiba ngilang. atau yang megang uangnya yang ngilang.
 >
-> jadi 2 minggu ini aku garap yang jawabannya gak bisa ✨
+> nah 2 minggu ini aku garap arisan yang dua-duanya gak bisa kejadian ✨
 
 > **2/**
-> namanya Cookie Tin, jalan di Cookie Chain.
+> masalah pertama: yang udah dapet arisan terus berhenti bayar.
 >
-> kamu simpan COOK di dalam kaleng. kapan pun mau ambil, balik utuh. gak
-> dipinjamkan ke siapa-siapa, gak ditradingkan, gak dipakai apa-apa.
+> di sini tiap anggota naruh jaminan pas gabung. bulan ini gak bayar? jaminannya
+> yang dipotong, dan potongannya masuk ke kas.
 >
-> yang kamu perebutkan itu hadiah di atasnya, yang diisi sponsor.
+> jadi yang rajin bayar tetep dapet utuh. yang nunggak yang nanggung sendiri.
 
 > **3/**
-> ini bagian yang paling aku jagain pas bikin.
+> aku tes beneran di mainnet, 3 orang, iuran 10 per putaran.
 >
-> modal dan hadiah disimpan di dua akun terpisah di dalam kontraknya.
+> putaran 2 cuma 2 orang yang bayar. hasilnya:
 >
-> jadi bukan cuma "aku janji gak akan bayar hadiah pakai duit orang lain". emang
-> gak ada jalannya secara struktur. mau pun gak bisa.
+> jaminan si penunggak: 10 → 0
+> kas: 20 → 30
+>
+> kasnya tetep penuh. dan dia gak bisa ambil arisan walaupun nomornya keluar.
 
 > **4/**
-> ada 2 model kaleng:
+> masalah kedua: yang megang uang kabur.
 >
-> streaming, semua yang nyimpen dapat, dihitung dari jumlah dikali lama
+> di sini gak ada yang megang. kasnya ada di kontrak, dan ketuanya gak punya
+> kunci ke sana sama sekali.
 >
-> lucky, satu dompet satu kupon. simpan 1 COOK dan 1.000 COOK peluangnya sama
-> persis. ini sengaja, biar dompet paling gede gak otomatis menang
+> uang cuma bisa keluar ke satu arah: ke orang yang nomornya keluar.
 
 > **5/**
-> undiannya juga gak bisa diatur.
+> terus gimana biar undiannya gak diatur?
 >
-> pas undian diminta, hasilnya diikat ke blok yang saat itu belum ada. jadi yang
-> manggil undian pun gak tahu bakal keluar apa.
+> pas undian dimulai, hasilnya diikat ke blok yang saat itu belum ada.
 >
-> dan siapa pun boleh menjalankan undiannya, gak harus si pembuat. jadi hadiah
-> gak bisa ngendon gara-gara yang punya kaleng menghilang.
+> jadi ketua pun gak bisa ngatur waktu biar gilirannya keluar duluan. gak ada
+> yang tau hasilnya, termasuk yang mencet tombolnya.
 
 > **6/**
-> satu hal lagi: gasnya ditanggung.
+> dan ini yang aku suka:
 >
-> nyimpen, ngambil, ngumpulin hadiah, semuanya gratis biaya transaksi.
+> siapa pun boleh menjalankan undian, dan siapa pun boleh nagih jaminan si
+> penunggak. gak harus ketua.
 >
-> dompet isi 0 pun bisa ikut. aku udah tes sendiri pakai dompet kosong, dan
-> saldonya tetap 0 sebelum dan sesudah.
+> di test kemarin, yang nagih malah dompet yang bukan anggota sama sekali. jadi
+> arisan gak bisa macet gara-gara ketuanya ngilang.
 
 > **7/**
-> semua yang aku klaim di atas ada transaksinya di explorer, tinggal klik.
+> semua pembukuan kebuka.
 >
-> repo-nya juga kebuka >> github.com/ranimth0707/cookie-tin
+> siapa udah bayar, siapa nunggak dan berapa kali, siapa udah dapet giliran,
+> jaminan masing-masing sisa berapa.
 >
-> jujur ini bukan ide paling rumit, tapi aku lebih milih bikin satu hal yang
-> beneran kelar daripada lima yang setengah jadi wkwkwk
+> di arisan beneran ini catatan di buku yang dipegang satu orang. di sini semua
+> anggota bisa lihat sendiri.
 
 > **8/**
-> aku udah buka satu kaleng berhadiah, siapa pun boleh ikut.
+> oh iya, biaya transaksinya ditanggung. gabung, bayar, ambil giliran, semua
+> gratis ongkos.
 >
-> LINK_KALENG_DISINI
+> tapi iuran sama jaminan tetep dari duit kalian sendiri ya. jaminan yang
+> dibayarin orang lain gak menjamin apa-apa wkwkwk
+
+> **9/**
+> aku udah buka satu arisan, siapa pun boleh ikut.
+>
+> LINK_ARISAN_DISINI
 >
 > catatan: wallet kalian mungkin kasih warning transaksi bakal gagal. itu karena
 > dia ngintip di jaringan yang salah, transaksinya sendiri aman.
@@ -135,35 +158,40 @@ in the last tweet.
 >
 > see u and byeeee ✨
 
+---
+
 ## 3. English, for the Cookie Chain Telegram and as a quote-tweet
 
-> Built **Cookie Tin** for the Superteam bounty: prize savings on Cookie Chain
-> where the deposit cannot be lost.
+> Built **Arisan** for the Superteam bounty: rotating savings circles on Cookie
+> Chain, backed by collateral instead of trust.
 >
-> Principal and prize money live in separate program accounts, so paying a prize
-> out of somebody else's deposit is structurally impossible rather than checked.
-> Withdrawal stays open even while the protocol is paused. The prize comes from a
-> sponsor, never from other savers.
+> A group agrees an amount and a period, everyone pays in each round, and one
+> member who has not had a turn takes the pot. It works offline because everyone
+> knows each other. Online it breaks two ways, and both are handled in the
+> program rather than in a promise.
 >
-> Lucky tins give one entry per wallet, so 1 COOK and 1,000 COOK have identical
-> odds. The draw settles against the hash of a slot that did not exist when it was
-> requested, and running it is permissionless so a closed tin never waits on its
-> creator.
+> Somebody stops paying after their turn: every member posts collateral, and a
+> missed round comes out of it and goes into the pot. Tested on mainnet with
+> three members. Round two, only two paid. The defaulter's collateral went from
+> 10 COOK to 0, the pot still paid out the full 30, and they could not collect a
+> turn while carrying the miss.
 >
-> Gas is covered throughout. A wallet holding exactly zero COOK can deposit,
-> withdraw and collect. Real one, 0 lamports before and 0 after:
-> https://cookiescan.io/tx/63nPzm62sSE6bvYeTitre8vDLgWRHb8GB1kMMuZqABdFoH3bkPux6pnTdAe2LWg93NnMP3WK9k9YsULAf2Fb2eGY
+> The organiser runs off: nobody holds the money. The pot is a program account,
+> the draw commits to a block three slots ahead so even the organiser cannot time
+> their own turn, running the draw and charging a defaulter are both
+> permissionless, and every parameter is frozen at creation.
 >
-> Live: https://cookietin-cook.vercel.app
-> Code: https://github.com/ranimth0707/cookie-tin
+> 19/19 on mainnet including the refusals.
+>
+> Live: https://arisan-cook.vercel.app
+> Code: https://github.com/ranimth0707/arisan
 > Program: `Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`
 >
-> Any project here can fund its own gas vault and point a deployment at it, so
-> your users never hit the empty-wallet wall. Happy to help wire it up.
+> Prior art credited in the README: the design follows Akyba Protocol's ROSCA
+> spec on Cardano. What is different is that it runs here, and every fee is
+> sponsored, so a member with an empty wallet can join, pay and collect.
 >
 > Two gotchas for everyone building on Cookie Chain. Programs must be built for
-> SBPF v0, and the loader does not support `ExtendProgram`, so deploy with a
-> generous `--max-len` because a program account cannot be grown later. And
-> wallet-adapter's `signTransaction` does not forward a chain id, so a wallet
-> previews against whichever Solana network it knows and warns that a perfectly
-> good transaction will fail.
+> SBPF v0, and `anchor build` leaves a v3 binary, so run `cargo-build-sbf --arch
+> v0` after it. And the loader does not support `ExtendProgram`, so deploy with a
+> generous `--max-len`, because a program account cannot be grown later.

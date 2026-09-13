@@ -1,16 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
   <rect width="512" height="512" rx="96" fill="#f5e3c3"/>
-  <rect x="146" y="122" width="220" height="44" rx="16" fill="#c98a3c"/>
-  <rect x="164" y="110" width="184" height="24" rx="12" fill="#e0a355"/>
-  <path d="M158 172 h196 a24 24 0 0 1 24 24 v162 a48 48 0 0 1 -48 48 h-148 a48 48 0 0 1 -48 -48 v-162 a24 24 0 0 1 24 -24 z"
-        fill="#fffaf0" stroke="#c98a3c" stroke-width="14"/>
-  <circle cx="212" cy="272" r="42" fill="#d9a45f"/>
-  <circle cx="200" cy="260" r="8" fill="#4a2c17"/>
-  <circle cx="225" cy="281" r="7" fill="#4a2c17"/>
-  <circle cx="300" cy="302" r="48" fill="#c98a3c"/>
-  <circle cx="287" cy="289" r="9" fill="#4a2c17"/>
-  <circle cx="314" cy="311" r="8" fill="#4a2c17"/>
-  <circle cx="236" cy="354" r="36" fill="#e0b978"/>
-  <circle cx="226" cy="345" r="7" fill="#4a2c17"/>
-  <path d="M256 402 m-70 0 a70 70 0 0 0 140 0" fill="none" stroke="#3f8f6d" stroke-width="12" stroke-linecap="round"/>
+  <circle cx="256" cy="256" r="132" fill="none" stroke="#e0cfa8" stroke-width="16"/>
+
+  <!-- the shared pot at the centre -->
+  <circle cx="256" cy="256" r="62" fill="#d9a45f" stroke="#c98a3c" stroke-width="9"/>
+  <circle cx="238" cy="240" r="10" fill="#4a2c17"/>
+  <circle cx="274" cy="258" r="9" fill="#4a2c17"/>
+  <circle cx="248" cy="276" r="8" fill="#4a2c17"/>
+
+  <!-- six seats around it, one highlighted: whose turn it is -->
+  <circle cx="256" cy="102" r="34" fill="#3f8f6d"/>
+  <circle cx="389" cy="179" r="30" fill="#c98a3c"/>
+  <circle cx="389" cy="333" r="30" fill="#c98a3c"/>
+  <circle cx="256" cy="410" r="30" fill="#c98a3c"/>
+  <circle cx="123" cy="333" r="30" fill="#c98a3c"/>
+  <circle cx="123" cy="179" r="30" fill="#c98a3c"/>
+
+  <path d="M240 102 l12 12 l20 -24" fill="none" stroke="#fffaf0"
+        stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

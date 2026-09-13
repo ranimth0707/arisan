@@ -1,7 +1,7 @@
 // A full arisan cycle on Cookie Chain mainnet, including the case the whole
 // design exists for: a member who stops paying.
 //
-// Three members, 10 COOK a round, 10 COOK collateral each. Member C pays the
+// Three members, 1 COOK a round, 1 COOK collateral each. Member C pays the
 // first round and then goes quiet, so the suite can check that the round still
 // pays out in full, that C funds the shortfall out of their own collateral, and
 // that C cannot collect a turn while sitting on a missed round.
@@ -31,8 +31,8 @@ const check = (label, pass, note = "") => {
   line(`${pass ? "PASS" : "FAIL"}  ${label}${note ? `  (${note})` : ""}`);
 };
 
-const CONTRIBUTION = 10;
-const COLLATERAL = 10;
+const CONTRIBUTION = 1;
+const COLLATERAL = 1;
 const ROUND_SECONDS = 60;
 
 // ------------------------------------------------------------ three wallets
@@ -47,7 +47,7 @@ const seed = new TransactionMessage({
   instructions: members.map((m) => SystemProgram.transfer({
     fromPubkey: funder.publicKey,
     toPubkey: m.publicKey,
-    lamports: toLamports(60),
+    lamports: toLamports(6),
   })),
 }).compileToV0Message();
 const seedTx = new VersionedTransaction(seed);
@@ -58,7 +58,7 @@ for (const [i, m] of members.entries()) {
 }
 
 // --------------------------------------------------------------- the circle
-step("Open a circle: 3 seats, 10 COOK a round, 10 COOK collateral");
+step("Open a circle: 3 seats, 1 COOK a round, 1 COOK collateral");
 
 const circleId = Math.floor(Date.now() / 1000);
 const circle = findCircle(funder.publicKey, circleId);

@@ -1,9 +1,9 @@
 {
-  "name": "cookie-tin",
+  "name": "arisan-cook",
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Prize savings on Cookie Chain where your deposit can never be lost",
+  "description": "Rotating savings circles on Cookie Chain, with collateral instead of trust",
   "scripts": {
     "fund": "node scripts/fund-deployer.mjs"
   },

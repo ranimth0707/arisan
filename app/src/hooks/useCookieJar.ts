@@ -22,7 +22,7 @@ export const SPONSOR_AUTHORITY = new PublicKey(
  * and had the sponsor vault over-paying the relayer by 121,360 lamports on every
  * claim. Verified against the real accounts on chain.
  */
-const SIZES = { claim: 90, position: 130, donation: 90, campaign: 464 };
+const SIZES = { claim: 90, position: 130, donation: 90, campaign: 464, circle: 165, member: 99 };
 
 /**
  * A sponsored transaction carries exactly two signatures, the relayer and the
@@ -33,6 +33,7 @@ const FEE_HEADROOM = 10_000;
 
 let rentCache: Promise<{
   claim: number; position: number; donation: number; campaign: number;
+  circle: number; member: number;
 }> | null = null;
 function rents() {
   rentCache ??= (async () => ({
@@ -40,13 +41,16 @@ function rents() {
     position: await connection.getMinimumBalanceForRentExemption(SIZES.position),
     donation: await connection.getMinimumBalanceForRentExemption(SIZES.donation),
     campaign: await connection.getMinimumBalanceForRentExemption(SIZES.campaign),
+    circle: await connection.getMinimumBalanceForRentExemption(SIZES.circle),
+    member: await connection.getMinimumBalanceForRentExemption(SIZES.member),
   }))();
   return rentCache;
 }
 
 export type RentKind =
   | "claim" | "position" | "claim+position"
-  | "donation" | "campaign" | "none";
+  | "donation" | "campaign"
+  | "circle" | "member" | "none";
 
 /**
  * Mirrors SPONSORABLE in app/api/_relayer.js.
@@ -62,6 +66,9 @@ const SPONSORABLE = new Set([
   "fundJar", "sweepEnvelope",
   "createCampaign", "donate", "withdrawToJar", "withdrawRaised",
   "closeCampaign",
+  "createCircle", "joinCircle", "leaveCircle", "startCircle", "contribute",
+  "slashAbsent", "topUpBond", "requestTurn", "finalizeTurn", "claimTurn",
+  "redrawTurn", "withdrawBond",
 ]);
 
 export function useCookieJar() {
@@ -96,6 +103,8 @@ export function useCookieJar() {
         : kind === "claim+position" ? r.claim + r.position
         : kind === "donation" ? r.donation
         : kind === "campaign" ? r.campaign
+        : kind === "circle" ? r.circle
+        : kind === "member" ? r.member
         : 0;
 
       return await program.methods

@@ -7,12 +7,13 @@
 // that C cannot collect a turn while sitting on a missed round.
 
 import anchor from "@coral-xyz/anchor";
+import { createHash } from "node:crypto";
 import {
   Keypair, SystemProgram, TransactionMessage, VersionedTransaction,
 } from "@solana/web3.js";
 import {
   KEYS, SLOT_HASHES, connection, cook, explorer, findBond, findCircle,
-  findConfig, findMember, findPot, loadKeypair, loadProgram, toLamports,
+  findConfig, findMember, findPot, findRoom, loadKeypair, loadProgram, toLamports,
 } from "./lib.mjs";
 
 const bn = (n) => new anchor.BN(n.toString());
@@ -34,6 +35,8 @@ const check = (label, pass, note = "") => {
 const CONTRIBUTION = 1;
 const COLLATERAL = 1;
 const ROUND_SECONDS = 60;
+const INVITE_CODE = "ARISAN-TEST-2026";
+const inviteCodeHash = Array.from(createHash("sha256").update(INVITE_CODE).digest());
 
 // ------------------------------------------------------------ three wallets
 step("Give three members enough COOK to take part");
@@ -66,27 +69,43 @@ const pot = findPot(circle);
 const bond = findBond(circle);
 
 await program.methods
-  .createCircle(bn(circleId), "Arisan Warga", bn(toLamports(CONTRIBUTION)),
+  .createCircle(bn(circleId), "Arisan Warga", "A test campaign for the public ledger.",
+    "https://x.com/arisan/status/test", inviteCodeHash, bn(toLamports(CONTRIBUTION)),
     bn(toLamports(COLLATERAL)), 3, bn(ROUND_SECONDS))
   .accountsPartial({
     creator: funder.publicKey, payer: funder.publicKey, config,
-    circle, pot, bond, systemProgram: SystemProgram.programId,
+    circle, room: findRoom(circle), pot, bond, systemProgram: SystemProgram.programId,
   })
   .rpc();
 
 const c0 = await program.account.circle.fetch(circle);
+const room0 = await program.account.circleRoom.fetch(findRoom(circle));
 line(`circle   : ${circle.toBase58()}`);
 check("circle opens empty and forming",
   c0.memberCount === 0 && c0.state.forming !== undefined);
+check("campaign room stores public details",
+  room0.socialUrl.startsWith("https://") && room0.description.length > 0);
 
 // ------------------------------------------------------------------ joining
 step("Everyone joins and posts collateral");
 
+let wrongInviteBlocked = false;
+try {
+  await program.methods.joinCircle(Array.from(createHash("sha256").update("WRONG-CODE").digest()))
+    .accountsPartial({
+      member: members[0].publicKey, payer: members[0].publicKey, circle, bond,
+      membership: findMember(circle, members[0].publicKey), room: findRoom(circle),
+      systemProgram: SystemProgram.programId,
+    })
+    .signers([members[0]]).rpc();
+} catch { wrongInviteBlocked = true; }
+check("a wrong invite code cannot enter the room", wrongInviteBlocked);
+
 for (const [i, m] of members.entries()) {
-  await program.methods.joinCircle()
+  await program.methods.joinCircle(inviteCodeHash)
     .accountsPartial({
       member: m.publicKey, payer: m.publicKey, circle, bond,
-      membership: findMember(circle, m.publicKey),
+      membership: findMember(circle, m.publicKey), room: findRoom(circle),
       systemProgram: SystemProgram.programId,
     })
     .signers([m]).rpc();
@@ -102,10 +121,10 @@ check("collateral is held by the program, not a person",
 let fourthBlocked = false;
 try {
   const gate = Keypair.generate();
-  await program.methods.joinCircle()
+  await program.methods.joinCircle(inviteCodeHash)
     .accountsPartial({
       member: gate.publicKey, payer: funder.publicKey, circle, bond,
-      membership: findMember(circle, gate.publicKey),
+      membership: findMember(circle, gate.publicKey), room: findRoom(circle),
       systemProgram: SystemProgram.programId,
     })
     .signers([gate]).rpc();
@@ -124,10 +143,10 @@ check("running, on round 1", c2.state.running !== undefined && c2.round === 1);
 let joinAfterStart = false;
 try {
   const late = Keypair.generate();
-  await program.methods.joinCircle()
+    await program.methods.joinCircle(inviteCodeHash)
     .accountsPartial({
       member: late.publicKey, payer: funder.publicKey, circle, bond,
-      membership: findMember(circle, late.publicKey),
+      membership: findMember(circle, late.publicKey), room: findRoom(circle),
       systemProgram: SystemProgram.programId,
     })
     .signers([late]).rpc();

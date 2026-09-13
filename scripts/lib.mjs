@@ -67,6 +67,8 @@ export const findDonation = (campaign, donor) =>
   pda([enc("donation"), campaign.toBuffer(), donor.toBuffer()]);
 export const findCircle = (creator, id) =>
   pda([enc("circle"), creator.toBuffer(), u64(id)]);
+export const findRoom = (circle) =>
+  pda([enc("room"), circle.toBuffer()]);
 export const findPot = (circle) => pda([enc("pot"), circle.toBuffer()]);
 export const findBond = (circle) => pda([enc("bond"), circle.toBuffer()]);
 export const findMember = (circle, wallet) =>

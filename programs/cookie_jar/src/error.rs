@@ -130,4 +130,16 @@ pub enum CookieError {
     NothingToWithdraw,
     #[msg("Only the creator can start a circle before all seats are filled")]
     StartRequiresCreatorOrFull,
+    #[msg("A campaign needs a description")]
+    RoomDescriptionRequired,
+    #[msg("The social post link is required")]
+    SocialPostRequired,
+    #[msg("The social post link is invalid")]
+    InvalidSocialPost,
+    #[msg("This room needs an invite code")]
+    InviteCodeRequired,
+    #[msg("That invite code does not open this room")]
+    InviteCodeMismatch,
+    #[msg("This circle has no campaign room yet")]
+    RoomRequired,
 }

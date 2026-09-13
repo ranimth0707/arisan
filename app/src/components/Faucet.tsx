@@ -68,8 +68,9 @@ export function Faucet({ owner, onChanged }: Props) {
     <div className="card faucet-card">
       <div className="spread">
         <div>
-          <strong>Get demo COOK</strong>
-          <p className="muted" style={{ marginTop: 4 }}>
+          <p className="intro-kicker">Public demo faucet</p>
+          <h2>Get demo COOK</h2>
+          <p className="muted faucet-copy">
             New wallet? Claim a small amount to join the demo circle and try a
             real round on Cookie Chain. Transaction fees are sponsored separately.
           </p>

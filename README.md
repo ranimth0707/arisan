@@ -104,6 +104,19 @@ join it with 0.1 COOK collateral. Once the second seat is filled, either member
 can start the circle. The round lasts one minute, so you can pay, draw and
 collect without waiting a month.
 
+### Campaign rooms
+
+Circles are invite-only rooms, not an open pool for unrelated wallets. A creator
+opens a campaign with a short description and a public social-post URL. The
+program stores those details in a `CircleRoom` PDA and stores only the SHA-256
+hash of the generated invite code. The creator shares the code with the people
+who saw the post.
+
+Joining requires the room PDA and the matching code hash on-chain. A wallet that
+knows a circle address but does not have its invite code cannot join. Circle
+accounts created before rooms existed remain readable; their creator must run
+`scripts/seed-demo-circle.mjs` or configure a room before new members can enter.
+
 **One thing to know before you try it.** Wallet-adapter's `signTransaction` does
 not forward a chain identifier, and Nightly does not publish Cookie Chain through
 the Wallet Standard even while pointed at it. So a wallet may preview against the

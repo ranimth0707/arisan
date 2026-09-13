@@ -30,6 +30,8 @@ pub const DONATION_SEED: &[u8] = b"donation";
 #[constant]
 pub const CIRCLE_SEED: &[u8] = b"circle";
 #[constant]
+pub const ROOM_SEED: &[u8] = b"room";
+#[constant]
 pub const POT_SEED: &[u8] = b"pot";
 #[constant]
 pub const BOND_SEED: &[u8] = b"bond";
@@ -74,6 +76,8 @@ pub const MAX_ENVELOPE_MESSAGE_LEN: usize = 64;
 pub const MAX_CAMPAIGN_TITLE_LEN: usize = 64;
 pub const MAX_CAMPAIGN_STORY_LEN: usize = 280;
 pub const MAX_CIRCLE_NAME_LEN: usize = 48;
+pub const MAX_CIRCLE_DESCRIPTION_LEN: usize = 280;
+pub const MAX_CIRCLE_SOCIAL_URL_LEN: usize = 200;
 
 /// Two is the smallest arrangement that is still a circle. The ceiling keeps a
 /// seat number inside a u16 and keeps the draw cheap.

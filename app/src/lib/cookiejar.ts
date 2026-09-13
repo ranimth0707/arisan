@@ -54,6 +54,8 @@ export const findDonation = (c: PublicKey, donor: PublicKey) =>
   pda([seed("donation"), c.toBytes(), donor.toBytes()]);
 export const findCircle = (creator: PublicKey, id: number | bigint) =>
   pda([seed("circle"), creator.toBytes(), u64(id)]);
+export const findRoom = (circle: PublicKey) =>
+  pda([seed("room"), circle.toBytes()]);
 export const findPot = (circle: PublicKey) => pda([seed("pot"), circle.toBytes()]);
 export const findBond = (circle: PublicKey) => pda([seed("bond"), circle.toBytes()]);
 export const findMember = (circle: PublicKey, wallet: PublicKey) =>
@@ -131,6 +133,25 @@ export async function assertCanAfford(owner: PublicKey, lamports: number, what: 
 
 export function txUrl(signature: string) {
   return `${EXPLORER}/tx/${signature}`;
+}
+
+export function normalizeInviteCode(code: string) {
+  return code.trim().toUpperCase();
+}
+
+export async function hashInviteCode(code: string): Promise<number[]> {
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(normalizeInviteCode(code)),
+  );
+  return Array.from(new Uint8Array(digest));
+}
+
+export function generateInviteCode() {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(8));
+  const code = Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
+  return `ARISAN-${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
 export function countdown(endTs: number) {

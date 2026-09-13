@@ -42,26 +42,60 @@ export default function App() {
   const cannotNameChain = Boolean(owner && !walletChains.knowsCookieChain);
 
   return (
-    <div className="shell">
-      <header className="bar">
-        <div className="brand">
-          <span className="jar">🍪</span>
+    <div className="app-frame">
+      <aside className="sidebar">
+        <div className="side-brand">
+          <span className="brand-mark" aria-hidden="true">🍪</span>
           <div>
-            <h1>Arisan</h1>
-            <p className="tagline">Rotating savings where nobody can run off with the pot</p>
+            <strong>Arisan</strong>
+            <span>shared savings</span>
           </div>
         </div>
-        <WalletMultiButton />
-      </header>
+
+        <div className="side-kicker">Workspace</div>
+        <nav className="side-nav" aria-label="Primary navigation">
+          <button className={`nav-item ${tab === "circles" ? "active" : ""}`} onClick={() => setTab("circles")}>
+            <span className="nav-glyph" aria-hidden="true">◉</span>
+            <span>Circles</span>
+          </button>
+          <button className={`nav-item ${tab === "faucet" ? "active" : ""}`} onClick={() => setTab("faucet")}>
+            <span className="nav-glyph" aria-hidden="true">✦</span>
+            <span>Get demo COOK</span>
+          </button>
+        </nav>
+
+        <div className="sidebar-bottom">
+          <div className="chain-card">
+            <span className="status-dot" aria-hidden="true" />
+            <div>
+              <strong>Cookie Chain</strong>
+              <span>mainnet · live</span>
+            </div>
+          </div>
+          <p>Transparent by default. Every contribution and turn stays visible to the group.</p>
+        </div>
+      </aside>
+
+      <main className="main-content">
+        <header className="topbar">
+          <div className="mobile-brand">
+            <span className="brand-mark" aria-hidden="true">🍪</span>
+            <strong>Arisan</strong>
+          </div>
+          <div className="topbar-actions">
+            <span className="network-label"><span className="status-dot" aria-hidden="true" /> Cookie Chain</span>
+            <WalletMultiButton />
+          </div>
+        </header>
 
       {relayerChecked && !sponsored && (
-        <div className="banner warn">
+        <div className="banner warn global-banner">
           The gas sponsor is offline right now, so transactions will use your own
           COOK. Everything else works the same.
         </div>
       )}
       {sponsored && gasLeft !== null && (
-        <div className="banner info">
+        <div className="banner info global-banner">
           Nobody pays gas here. Joining, paying a round and taking your turn are
           all covered, with {formatCook(gasLeft)} COOK left in the sponsor tank.
           Your contribution and collateral always come from your own wallet.
@@ -69,7 +103,7 @@ export default function App() {
       )}
 
       {cannotNameChain && (
-        <div className="banner warn">
+        <div className="banner warn global-banner">
           <strong>Your wallet may warn that a transaction will fail. It will not.</strong>{" "}
           {walletChains.walletName ?? "This wallet"} does not publish Cookie Chain
           through the Wallet Standard, so we cannot tell it which chain to preview
@@ -84,30 +118,37 @@ export default function App() {
         </div>
       )}
 
-      <>
-          <nav className="tabs">
-            <button className={`tab ${tab === "circles" ? "on" : ""}`} onClick={() => setTab("circles")}>
-              🍪 Circles
-            </button>
-            <button className={"tab " + (tab === "faucet" ? "on" : "")} onClick={() => setTab("faucet")}>
-              ⚡ Get demo COOK
-            </button>
-          </nav>
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">{tab === "circles" ? "Home" : "Get started"}</p>
+          <h1>{tab === "circles" ? "Your circles" : "Get demo COOK"}</h1>
+          <p className="page-subtitle">
+            {tab === "circles"
+              ? "See what is moving, what is owed, and who is next."
+              : "A small, real balance to help you join the live demo circle on Cookie Chain."}
+          </p>
+        </div>
+        <div className="page-meta">
+          <span className="meta-label">Network</span>
+          <span className="meta-value">Cookie Chain mainnet</span>
+        </div>
+      </div>
 
-          {tab === "circles" && (
-            <Circles
-              program={program}
-              owner={owner}
-              submit={submit}
-              onChanged={() => setNudge((n) => n + 1)}
-            />
-          )}
-          {tab === "faucet" && (
-            <Faucet owner={owner} onChanged={() => setNudge((n) => n + 1)} />
-          )}
-      </>
+      <section className="view-wrap">
+        {tab === "circles" && (
+          <Circles
+            program={program}
+            owner={owner}
+            submit={submit}
+            onChanged={() => setNudge((n) => n + 1)}
+          />
+        )}
+        {tab === "faucet" && (
+          <Faucet owner={owner} onChanged={() => setNudge((n) => n + 1)} />
+        )}
+      </section>
 
-      <footer className="muted" style={{ marginTop: 40, textAlign: "center", fontSize: 12 }}>
+      <footer className="app-footer">
         Running on Cookie Chain.{" "}
         <span className="mono">{program.programId.toBase58()}</span>
         {relayer && (
@@ -119,6 +160,7 @@ export default function App() {
       </footer>
 
       <TxToast progress={progress} />
+      </main>
     </div>
   );
 }

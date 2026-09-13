@@ -274,6 +274,102 @@ export type CookieJar = {
       "args": []
     },
     {
+      "name": "configureCircleRoom",
+      "discriminator": [
+        246,
+        161,
+        187,
+        9,
+        161,
+        251,
+        79,
+        241
+      ],
+      "accounts": [
+        {
+          "name": "creator",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "room",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "socialUrl",
+          "type": "string"
+        },
+        {
+          "name": "inviteCodeHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
       "name": "contribute",
       "discriminator": [
         82,
@@ -938,6 +1034,27 @@ export type CookieJar = {
           }
         },
         {
+          "name": "room",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "pot",
           "docs": [
             "Holds contributions. This is the pot that gets paid out."
@@ -998,6 +1115,23 @@ export type CookieJar = {
         {
           "name": "name",
           "type": "string"
+        },
+        {
+          "name": "description",
+          "type": "string"
+        },
+        {
+          "name": "socialUrl",
+          "type": "string"
+        },
+        {
+          "name": "inviteCodeHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
         },
         {
           "name": "contribution",
@@ -2120,11 +2254,41 @@ export type CookieJar = {
           }
         },
         {
+          "name": "room",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  111,
+                  109
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "inviteCodeHash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
     },
     {
       "name": "leaveCircle",
@@ -3552,6 +3716,19 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "circleRoom",
+      "discriminator": [
+        248,
+        14,
+        216,
+        139,
+        100,
+        155,
+        247,
+        90
+      ]
+    },
+    {
       "name": "config",
       "discriminator": [
         155,
@@ -3961,6 +4138,36 @@ export type CookieJar = {
       "code": 6060,
       "name": "startRequiresCreatorOrFull",
       "msg": "Only the creator can start a circle before all seats are filled"
+    },
+    {
+      "code": 6061,
+      "name": "roomDescriptionRequired",
+      "msg": "A campaign needs a description"
+    },
+    {
+      "code": 6062,
+      "name": "socialPostRequired",
+      "msg": "The social post link is required"
+    },
+    {
+      "code": 6063,
+      "name": "invalidSocialPost",
+      "msg": "The social post link is invalid"
+    },
+    {
+      "code": 6064,
+      "name": "inviteCodeRequired",
+      "msg": "This room needs an invite code"
+    },
+    {
+      "code": 6065,
+      "name": "inviteCodeMismatch",
+      "msg": "That invite code does not open this room"
+    },
+    {
+      "code": 6066,
+      "name": "roomRequired",
+      "msg": "This circle has no campaign room yet"
     }
   ],
   "types": [
@@ -4135,6 +4342,49 @@ export type CookieJar = {
           },
           {
             "name": "bondBump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "circleRoom",
+      "docs": [
+        "Public campaign details and the invite gate for a circle.",
+        "",
+        "Kept in its own PDA so adding room metadata does not invalidate Circle",
+        "accounts that were created before campaign rooms existed."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "creator",
+            "type": "pubkey"
+          },
+          {
+            "name": "description",
+            "type": "string"
+          },
+          {
+            "name": "socialUrl",
+            "type": "string"
+          },
+          {
+            "name": "inviteCodeHash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "bump",
             "type": "u8"
           }
         ]
@@ -4770,6 +5020,11 @@ export type CookieJar = {
       "name": "rewardVaultSeed",
       "type": "bytes",
       "value": "[114, 101, 119, 97, 114, 100, 95, 118, 97, 117, 108, 116]"
+    },
+    {
+      "name": "roomSeed",
+      "type": "bytes",
+      "value": "[114, 111, 111, 109]"
     },
     {
       "name": "sponsorSeed",

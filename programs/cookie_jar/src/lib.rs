@@ -122,18 +122,44 @@ pub mod cookie_jar {
         ctx: Context<CreateCircle>,
         circle_id: u64,
         name: String,
+        description: String,
+        social_url: String,
+        invite_code_hash: [u8; 32],
         contribution: u64,
         collateral: u64,
         max_members: u16,
         round_seconds: i64,
     ) -> Result<()> {
         instructions::arisan::handle_create_circle(
-            ctx, circle_id, name, contribution, collateral, max_members, round_seconds,
+            ctx,
+            circle_id,
+            name,
+            description,
+            social_url,
+            invite_code_hash,
+            contribution,
+            collateral,
+            max_members,
+            round_seconds,
         )
     }
 
-    pub fn join_circle(ctx: Context<JoinCircle>) -> Result<()> {
-        instructions::arisan::handle_join_circle(ctx)
+    pub fn join_circle(ctx: Context<JoinCircle>, invite_code_hash: [u8; 32]) -> Result<()> {
+        instructions::arisan::handle_join_circle(ctx, invite_code_hash)
+    }
+
+    pub fn configure_circle_room(
+        ctx: Context<ConfigureCircleRoom>,
+        description: String,
+        social_url: String,
+        invite_code_hash: [u8; 32],
+    ) -> Result<()> {
+        instructions::arisan::handle_configure_circle_room(
+            ctx,
+            description,
+            social_url,
+            invite_code_hash,
+        )
     }
 
     pub fn leave_circle(ctx: Context<LeaveCircle>) -> Result<()> {
@@ -187,7 +213,12 @@ pub mod cookie_jar {
         deadline_ts: i64,
     ) -> Result<()> {
         instructions::campaign::handle_create_campaign(
-            ctx, campaign_id, title, story, target, deadline_ts,
+            ctx,
+            campaign_id,
+            title,
+            story,
+            target,
+            deadline_ts,
         )
     }
 

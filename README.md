@@ -174,6 +174,30 @@ each. Joining also opens a 99-byte member record, 1,517,280 lamports of rent. So
 a new member costs 0.001527 COOK once, and every round they pay after that costs
 0.00001.
 
+### Seeded liquidity, said out loud
+
+Some of the circles on the live app are operator-seeded: one person funded the
+wallets, and `scripts/seed-circles.mjs` opened the circles and filled the seats.
+They are not strangers who found the app.
+
+Calling that organic demand would be a lie, so here is what it actually is. The
+COOK is real, locked in real program vaults under the same rules as anyone
+else's — the reserve cannot be pulled out while a circle is running, a missed
+round is slashed the same way, the draw is the same slot-hash draw, and
+[`/api/metrics`](https://arisan-cook.vercel.app/api/metrics) counts it with the
+same code it would count a stranger with. What it demonstrates is that the
+mechanism runs unattended and that money stays locked for the full cycle. What
+it does not demonstrate is that anybody wants it yet.
+
+The scripts are in the repository rather than hidden, because the point of
+publishing a number is that somebody can check how it was made:
+
+```bash
+node scripts/seed-circles.mjs --dry-run   # the plan and what it costs
+node scripts/crank-circles.mjs --status   # where every circle currently stands
+node scripts/unwind-circles.mjs --status  # what is still locked, and until when
+```
+
 ## Architecture
 
 ```

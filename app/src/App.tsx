@@ -8,6 +8,7 @@ import { Faucet } from "./components/Faucet";
 import { Icon, type View } from "./components/UI";
 import { TxToast } from "./components/TxToast";
 import { inspectWallet } from "./lib/chain";
+import { NetworkSetup } from "./components/NetworkSetup";
 
 const pages: Record<View, { title: string; description: string }> = {
   home: { title: "Arisan dimulai dari grupmu.", description: "Buat campaign untuk orang-orang yang kamu kenal, atau masuk lewat kode dari creator." },
@@ -75,7 +76,7 @@ export default function App() {
           {view === "create" && <CreateCampaign program={program} owner={owner} submit={submit} navigate={navigate} />}
           {view === "guide" && <Guide navigate={navigate} />}
           {view === "faucet" && <Faucet owner={owner} onChanged={() => {}} navigate={navigate} />}
-          {owner && !walletChains.knowsCookieChain && <details className="connection-note"><summary>Wallet menampilkan peringatan jaringan?</summary><p>Pastikan wallet memakai Cookie Chain. Beberapa wallet melakukan pratinjau di jaringan Solana lain. Periksa nominal dan tujuan sebelum menyetujui transaksi.</p></details>}
+          {owner && !walletChains.knowsCookieChain && <NetworkSetup walletName={walletChains.walletName} connected />}
           {relayerChecked && !sponsored && <p className="connection-note">Sponsor sedang tidak tersedia. Biaya transaksi akan memakai saldo COOK wallet kamu.</p>}
           <footer className="app-footer"><span className="network"><i />Cookie Chain mainnet</span><a href="#guide">Butuh bantuan?</a><span className="release-note">Campaign rooms · v2</span></footer>
         </div>

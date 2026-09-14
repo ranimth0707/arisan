@@ -41,12 +41,12 @@ a rule that executes itself.
 key to it. Contributions can only ever leave in one direction: to the member
 whose turn was drawn.
 
-**A missed round costs the person who missed it, not everybody else.** Every
-member posts collateral when they join. Skip a round and that round's amount
-comes out of your collateral and goes into the pot, so the pot is still full and
-the people who did pay are made whole by the person who did not. Drop below one
-contribution of collateral and you stop being eligible to take a turn until you
-put it back.
+**A missed round is visible and can be covered by the person who missed it.**
+Collateral is optional: a group can choose zero for a pure gotong-royong circle,
+or agree on a smaller reserve that members can afford. When collateral exists,
+skipping a round takes that round's amount from the reserve and puts it into the
+pot. A zero-collateral circle accepts that a missed round leaves the pot short;
+it never asks members to lock one full contribution just to enter.
 
 **The draw cannot be timed.** Requesting a round's draw commits it to the hash of
 a block three slots in the future. At the moment it is called, nobody, including
@@ -65,9 +65,11 @@ should be willing to join a stranger's circle.
 already had a turn, how much collateral each person still holds. In a real arisan
 that is a notebook one person keeps.
 
-And the gas is covered. Joining, paying a round and taking your turn cost nothing
-in fees. The contribution and the collateral always come from your own wallet,
-because a stake somebody else paid for guarantees nothing.
+And the gas is covered where sponsorship is available. Joining, paying a round
+and taking your turn can be fee-free; creating a campaign still needs the
+creator's wallet for account rent. The contribution and any collateral always
+come from the member's own wallet, because a stake somebody else paid for
+guarantees nothing.
 
 ## See it work
 
@@ -110,12 +112,13 @@ a month.
 Circles are invite-only rooms, not an open pool for unrelated wallets. A creator
 opens a campaign with a short description and a public social-post URL. The
 program stores those details in a `CircleRoom` PDA and stores only the SHA-256
-hash of the generated invite code. The creator shares the code with the people
-who saw the post.
+hash of the generated invite code. The creator is automatically the first
+member, then shares the code with the people who saw the post.
 
-Joining requires the room PDA and the matching code hash on-chain. A wallet that
-knows a circle address but does not have its invite code cannot join. Circle
-accounts created before rooms existed remain readable; their creator must run
+Joining requires the room PDA and the matching code hash on-chain. The code is
+the app's group gate, not a privacy boundary: the hash and room address are
+public on-chain, so a technical user can inspect or brute-force a weak code.
+Circle accounts created before rooms existed remain readable; their creator must run
 `scripts/seed-demo-circle.mjs` or configure a room before new members can enter.
 
 **One thing to know before you try it.** Wallet-adapter's `signTransaction` does
@@ -244,8 +247,9 @@ permissionless distribute crank. Others in the space include
 [Bakso Finance](https://baksofinance.medium.com/arisan-on-solana-blockchain-30906b2e8cfd)
 on Solana and [Njangi](https://njangionchain.com/learn/blockchain-rosca) on Sui.
 
-What is here that is not there: it runs on Cookie Chain, and every fee is
-sponsored, so a member with an empty wallet can join, pay and collect.
+What is here that is not there: it runs on Cookie Chain, and sponsored actions
+can let a member with an empty wallet join, pay and collect; the COOK being
+contributed still has to come from that member.
 
 ## Run it locally
 

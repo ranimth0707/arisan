@@ -10,12 +10,16 @@ test("a draft can advance before connecting a wallet or posting", () => {
   assert.equal(validateDraft({ ...valid, socialUrl: "" }, 2)?.field, "socialUrl");
   assert.equal(validateDraft(valid, 2), null);
 });
+test("zero collateral is a valid cooperative circle choice", () => {
+  assert.equal(validateDraft({ ...valid, collateral: "0" }, 2), null);
+  assert.equal(validateDraft({ ...valid, collateral: "0.0" }, 2), null);
+});
 for (const [field, value] of [
   ["name", " "], ["name", "a".repeat(49)], ["name", "漢".repeat(17)],
   ["description", ""], ["description", "a".repeat(281)],
   ["contribution", "0"], ["contribution", "-1"], ["contribution", "1e4"],
   ["contribution", "0.1234567891"], ["contribution", "NaN"], ["contribution", "999999999999999999999"],
-  ["collateral", "0.09"], ["collateral", "Infinity"], ["collateral", "999999999999999999"],
+  ["collateral", "-0.1"], ["collateral", "Infinity"], ["collateral", "999999999999999999"],
   ["seats", "1"], ["seats", "101"], ["seats", "2.5"], ["duration", "0"], ["duration", "toString"],
   ["socialUrl", "javascript:alert(1)"], ["socialUrl", "https://x.com/arisan"],
 ]) test("reject invalid " + field + ": " + value.slice(0, 24), () => {

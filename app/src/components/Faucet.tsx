@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { PublicKey } from "@solana/web3.js";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Icon, type Navigate } from "./UI";
+import { NetworkSetup } from "./NetworkSetup";
 
 import { connection, formatCook, readableError, txUrl } from "../lib/cookiejar";
 
@@ -82,6 +83,7 @@ export function Faucet({ owner, onChanged, navigate }: Props) {
       {!owner ? <WalletMultiButton>Hubungkan wallet untuk klaim</WalletMultiButton> : <button className="primary" disabled={busy || status === null} aria-busy={busy} onClick={() => void claim()}>{busy ? "Mengirim COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
       <p className="faucet-footnote">Satu klaim per wallet/IP per menit. {status ? "Sisa faucet: " + formatCook(status.balanceLamports) + " COOK. " : ""}Setiap tindakan di campaign tetap memerlukan persetujuanmu. Biaya membuat room memakai saldo wallet; tindakan lain mencoba sponsor jika tersedia.</p>
     </section>
-    <aside className="faucet-next"><h3>Setelah dapat COOK?</h3><ol><li>Buka Join with code.</li><li>Gunakan kode dari creator, atau kode demo yang tersedia.</li><li>Baca detail room, lalu Join dan setor jaminan.</li><li>Tunggu creator memulai, lalu bayar iuran.</li></ol><button className="primary" onClick={() => navigate("join")}>Masuk room<Icon name="arrow" /></button><p className="faucet-footnote">Hanya ingin belajar tanpa transaksi? <a href="#guide">Coba simulasi dulu.</a></p></aside>
+    <NetworkSetup />
+    <aside className="faucet-next"><h3>Setelah dapat COOK?</h3><ol><li>Buka Join with code.</li><li>Gunakan kode dari creator, atau kode demo yang tersedia.</li><li>Baca detail room, lalu Join dan setor nominal yang disepakati.</li><li>Tunggu creator memulai, lalu bayar iuran.</li></ol><button className="primary" onClick={() => navigate("join")}>Masuk room<Icon name="arrow" /></button><p className="faucet-footnote">Hanya ingin belajar tanpa transaksi? <a href="#guide">Coba simulasi dulu.</a></p></aside>
   </div>;
 }

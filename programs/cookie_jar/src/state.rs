@@ -95,7 +95,7 @@ pub enum CircleState {
 ///
 /// Every field below is written once at creation and never changed, which is the
 /// reason anybody should be willing to join one: the organiser cannot raise the
-/// contribution or weaken the collateral after money is committed.
+/// contribution or change the collateral policy after money is committed.
 #[account]
 #[derive(InitSpace)]
 pub struct Circle {
@@ -106,7 +106,8 @@ pub struct Circle {
 
     /// Owed by every member, every round.
     pub contribution: u64,
-    /// Posted on joining. Missing a round is taken out of this.
+    /// Optional amount posted on joining. Missing a round is taken out of this
+    /// when available; zero means the group accepts an uncovered miss.
     pub collateral: u64,
     pub max_members: u16,
     pub round_seconds: i64,
@@ -161,8 +162,8 @@ pub struct Member {
     pub rounds_paid: u16,
     pub rounds_missed: u16,
     pub has_won: bool,
-    /// False once collateral drops below one contribution. Cannot win until
-    /// topped back up.
+    /// False once collateral drops below one contribution. A zero-collateral
+    /// circle never sidelines members for collateral alone.
     pub active: bool,
     pub joined_ts: i64,
     pub bump: u8,

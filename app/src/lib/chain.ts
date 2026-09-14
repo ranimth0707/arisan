@@ -15,6 +15,8 @@ import type { PublicKey, VersionedTransaction } from "@solana/web3.js";
 
 /** Cookie Chain mainnet, from `getGenesisHash`. */
 export const GENESIS_HASH = "9wDaBRDgArEUpvhHxGguNkwozsZh4UpGZB9o2EoEcBB2";
+export const RPC_URL = "https://rpc.cookiescan.io";
+export const EXPLORER = "https://cookiescan.io";
 
 /** CAIP-2 form: `solana:` plus the first 32 characters of the genesis hash. */
 export const CHAIN_ID = `solana:${GENESIS_HASH.slice(0, 32)}`;

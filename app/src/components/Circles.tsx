@@ -230,12 +230,17 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   };
 
   const join = (c: CircleView) => {
-    if (!owner || !accessCodes[c.address.toBase58()]) return;
+    const key = c.address.toBase58();
+    const isCreator = owner?.equals(c.creator) ?? false;
+    const room = rooms[key];
+    if (!owner || !room || (!accessCodes[key] && !isCreator)) return;
     return run(
-      c.address.toBase58() + "join",
+      key + "join",
       async (payer) => {
-        await assertCanAfford(owner, c.collateral, "post the collateral for this circle");
-        const inviteCodeHash = await hashInviteCode(accessCodes[c.address.toBase58()]);
+        if (c.collateral > 0) await assertCanAfford(owner, c.collateral, "post the collateral for this circle");
+        const inviteCodeHash = accessCodes[key]
+          ? await hashInviteCode(accessCodes[key])
+          : room.inviteCodeHash;
         return [await program.methods.joinCircle(inviteCodeHash).accountsPartial({
           member: owner, payer, circle: c.address, bond: findBond(c.address),
           membership: findMember(c.address, owner), room: findRoom(c.address),
@@ -379,7 +384,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             const isCreator = owner?.equals(c.creator) ?? false;
             const expanded = open === key;
             const room = rooms[key];
-            const unlocked = Boolean(room && (accessCodes[key] || me));
+            const unlocked = Boolean(room && (accessCodes[key] || me || isCreator));
 
             return (
               <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
@@ -398,7 +403,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
                 <div className="circle-timing">
                   {c.state === "forming"
-                    ? `Jaminan saat join: ${formatCook(c.collateral)} COOK · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
+                    ? `${c.collateral === 0 ? "Tanpa jaminan" : "Jaminan saat join: " + formatCook(c.collateral) + " COOK"} · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
                     : c.state === "running"
                       ? roundOver
                         ? "Batas waktu putaran sudah lewat"
@@ -429,13 +434,13 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                   </div>
                 )}
 
-                {c.state === "forming" && <p className="next-action"><strong>Langkah berikutnya: </strong>{c.memberCount >= c.maxMembers ? "Room penuh. Tunggu creator memulai arisan." : me ? "Kamu sudah bergabung. Tunggu creator memulai arisan setelah minimal dua anggota masuk." : "Baca posting dan aturan. Join memindahkan jaminan dari wallet kamu."}</p>}
+                {c.state === "forming" && <p className="next-action"><strong>Langkah berikutnya: </strong>{c.memberCount >= c.maxMembers ? "Room penuh. Tunggu creator memulai arisan." : me ? "Kamu sudah bergabung. Tunggu creator memulai arisan setelah minimal dua anggota masuk." : isCreator ? "Campaign lama ini belum mencatat creator sebagai anggota. Gabung sekarang agar kursimu ikut dihitung." : "Baca posting dan aturan. Join memindahkan jaminan dari wallet kamu."}</p>}
                 {isCreator && accessCodes[key] && <details className="invite-details"><summary>Kode undangan grup</summary><code>{accessCodes[key]}</code><p>Simpan kode dan kirim ke anggota yang kamu undang.</p></details>}
                 <div className="actions">
                   {!owner && <WalletMultiButton>Hubungkan wallet untuk ikut</WalletMultiButton>}
                   {c.state === "forming" && owner && !me && unlocked && c.memberCount < c.maxMembers && (
                     <button className="primary" disabled={busy !== null} onClick={() => join(c)}>
-                      {busy === key + "join" ? "..." : `Join room · ${formatCook(c.collateral)} COOK`}
+                      {busy === key + "join" ? "…" : isCreator ? "Gabung sebagai creator" : `Join room · ${formatCook(c.collateral)} COOK`}
                     </button>
                   )}
                   {c.state === "forming" && owner && !me && !unlocked && room && (
@@ -550,7 +555,7 @@ function Books({
                       <span className="pill closed">diselesaikan; cek riwayat iuran</span>
                     )}
               <span className="mono">jaminan {formatCook(m.collateral)} COOK</span>
-              {owes && roundOver && (
+              {owes && roundOver && circle.collateral > 0 && (
                 <button
                   className="ghost"
                   disabled={busy !== null}
@@ -561,6 +566,7 @@ function Books({
                     : "Tagih dari jaminan"}
                 </button>
               )}
+              {owes && roundOver && circle.collateral === 0 && <span className="muted">Tidak ada jaminan untuk menutup iuran ini</span>}
             </span>
           </div>
         );

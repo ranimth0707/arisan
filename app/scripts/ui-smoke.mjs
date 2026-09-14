@@ -16,6 +16,7 @@ try {
   const { CreateCampaign } = await server.ssrLoadModule("/src/components/CreateCampaign.tsx");
   const { Circles } = await server.ssrLoadModule("/src/components/Circles.tsx");
   const { Faucet } = await server.ssrLoadModule("/src/components/Faucet.tsx");
+  const { NetworkSetup } = await server.ssrLoadModule("/src/components/NetworkSetup.tsx");
   const noop = () => {};
   const guide = render(createElement(Guide, { navigate: noop }));
   assert.match(guide, /Simulasi · bukan transaksi asli/);
@@ -37,5 +38,8 @@ try {
   assert.match(faucet, /Hubungkan wallet untuk klaim/);
   assert.match(faucet, /Masuk room/);
   assert.match(faucet, /Coba simulasi dulu/);
+  const network = render(createElement(NetworkSetup, {}));
+  assert.match(network, /Tambahkan Cookie Chain ke wallet/);
+  assert.match(network, /rpc\.cookiescan\.io/);
   console.log("PASS: guide, create without wallet, create during loading, join by code, and faucet next-step entry screens.");
 } finally { await server.close(); }

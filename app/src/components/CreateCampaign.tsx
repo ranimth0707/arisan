@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
-import { bn, connection, findBond, findCircle, findConfig, findPot, findRoom, formatCook, generateInviteCode, hashInviteCode, readableError, type CookieJarProgram } from "../lib/cookiejar";
+import { bn, connection, findBond, findCircle, findConfig, findMember, findPot, findRoom, formatCook, generateInviteCode, hashInviteCode, readableError, type CookieJarProgram } from "../lib/cookiejar";
 import { defaultDraft, durationLabels, parseCookInput, restoreDraft, validateDraft, type CampaignDraft } from "../lib/campaign-form";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
@@ -28,7 +28,7 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
   useEffect(() => { try { sessionStorage.setItem("arisan-campaign-draft", JSON.stringify(draft)); } catch { /* Form remains usable when storage is unavailable. */ } }, [draft]);
   useEffect(() => {
     let active = true;
-    Promise.all([165, 593, 0].map(size => connection.getMinimumBalanceForRentExemption(size))).then(([circle, room, vault]) => { if (active) setCost(circle + room + vault * 2 + 10000); }).catch(() => {});
+    Promise.all([165, 593, 99, 0].map(size => connection.getMinimumBalanceForRentExemption(size))).then(([circle, room, member, vault]) => { if (active) setCost(circle + room + member + vault * 2 + 10000); }).catch(() => {});
     return () => { active = false; };
   }, []);
   const change = (field: keyof CampaignDraft, value: string) => {
@@ -53,9 +53,17 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
         await submit(async payer => {
           const balance = await connection.getBalance(owner);
           if (cost !== null && balance < cost) throw new Error("Saldo belum cukup untuk membuat room. Ambil demo COOK dahulu, lalu kembali ke draft ini.");
-          return [await program.methods.createCircle(bn(attempt.id), draft.name.trim(), draft.description.trim(), draft.socialUrl.trim(), codeHash,
-            bn(parseCookInput(draft.contribution)!), bn(parseCookInput(draft.collateral)!), Number(draft.seats), bn(draft.duration))
-            .accountsPartial({ creator: owner, payer, config: findConfig(), circle, room: findRoom(circle), pot: findPot(circle), bond: findBond(circle), systemProgram: SystemProgram.programId }).instruction()];
+          const instructions = [];
+          if (!(await connection.getAccountInfo(circle))) {
+            instructions.push(await program.methods.createCircle(bn(attempt.id), draft.name.trim(), draft.description.trim(), draft.socialUrl.trim(), codeHash,
+              bn(parseCookInput(draft.contribution)!), bn(parseCookInput(draft.collateral) ?? 0), Number(draft.seats), bn(draft.duration))
+              .accountsPartial({ creator: owner, payer, config: findConfig(), circle, room: findRoom(circle), pot: findPot(circle), bond: findBond(circle), systemProgram: SystemProgram.programId }).instruction());
+          }
+          if (!(await connection.getAccountInfo(findMember(circle, owner)))) {
+            instructions.push(await program.methods.joinCircle(codeHash)
+              .accountsPartial({ member: owner, payer, circle, bond: findBond(circle), membership: findMember(circle, owner), room: findRoom(circle), systemProgram: SystemProgram.programId }).instruction());
+          }
+          return instructions;
         }, "none", "createCircle");
       }
       const made = { circle: circle.toBase58(), code: attempt.code };
@@ -74,9 +82,9 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
   </div>;
   const socialText = draft.name + "\n\n" + draft.description + "\n\nIuran: " + draft.contribution + " COOK per putaran\nJaminan: " + draft.collateral + " COOK\nAnggota: " + draft.seats + "\nPutaran: " + durationLabels[draft.duration] + "\n\nSetelah mendapat giliran, anggota tetap membayar sampai arisan selesai. Hubungi creator untuk kode room.\nhttps://arisan-cook.vercel.app";
   if (result) return <section className="success-page">
-    <span className="action-icon"><Icon name="check" /></span><h2>Campaign berhasil dibuat.</h2><p>Simpan kode ini dan bagikan ke grupmu. Kamu belum otomatis bergabung sebagai anggota.</p>
+    <span className="action-icon"><Icon name="check" /></span><h2>Campaign berhasil dibuat.</h2><p>Kamu otomatis masuk sebagai anggota pertama. Simpan kode ini dan bagikan ke grupmu.</p>
     <label htmlFor="new-code">Kode room</label><div className="code-copy"><input id="new-code" value={result.code} readOnly /><button className="ghost" onClick={() => void copy(result.code, "code")}>{copied === "code" ? "Tersalin" : "Salin kode"}</button></div>
-    <p className="muted">Buka campaign dari Campaign saya. Jika ingin ikut arisan, pilih Join room dan setor jaminan.</p>
+    <p className="muted">Buka campaign dari Campaign saya untuk melihat room dan membagikan kode ke grupmu.</p>
     {failure && <p role="alert" className="field-error">{failure}</p>}
     <button className="primary" onClick={() => navigate("campaigns")}>Buka campaign saya<Icon name="arrow" /></button>
   </section>;
@@ -91,9 +99,9 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
           <div className="field"><label htmlFor="description">Tentang campaign <span>*</span></label><textarea disabled={busy} id="description" value={draft.description} onChange={e => change("description", e.target.value)} rows={4} placeholder="Untuk teman-teman studio yang ingin menabung bersama. Grup berisi 5 anggota…" aria-invalid={error?.field === "description" || undefined} aria-describedby="description-hint" /><small id="description-hint" className={error?.field === "description" ? "field-error" : ""}>{error?.field === "description" ? error.message : "Jelaskan tujuan dan siapa yang boleh ikut. Maksimal 280 byte."}</small></div>
         </>}
         {step === 1 && <>
-          <div className="form-columns">{field("contribution", "Iuran per putaran (COOK)", "Dibayar setiap putaran, walau sudah mendapat giliran.", "0.1", "decimal")}{field("collateral", "Jaminan per anggota (COOK)", "Disetor saat join. Minimal satu kali iuran.", "0.1", "decimal")}</div>
+          <div className="form-columns">{field("contribution", "Iuran per putaran (COOK)", "Dibayar setiap putaran, walau sudah mendapat giliran.", "0.1", "decimal")}{field("collateral", "Jaminan per anggota (COOK)", "Opsional. Isi 0 untuk arisan gotong royong tanpa dana cadangan.", "0", "decimal")}</div>
           <div className="form-columns">{field("seats", "Jumlah anggota", "Termasuk creator jika ikut. Antara 2–100 orang.", "3", "numeric")}<div className="field"><label htmlFor="duration">Lama setiap putaran <span>*</span></label><select disabled={busy} id="duration" value={draft.duration} onChange={e => change("duration", e.target.value)}>{Object.entries(durationLabels).map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select><small>Pilih 1 menit untuk mencoba mekanisme demo.</small></div></div>
-          <p className="notice">Jaminan satu iuran hanya menutup satu tunggakan. Sepakati risikonya dengan grup sebelum membuat campaign.</p>
+          <p className="notice">Jaminan tidak wajib. Jika diisi 0, anggota tidak punya dana cadangan untuk menutup iuran yang terlewat—kas putaran bisa kurang. Jika ingin jaminan, pilih nominal kecil yang sanggup disetor bersama; tidak perlu sebesar kas putaran.</p>
         </>}
         {step === 2 && <>
           <details className="post-draft" open><summary>Draft posting untuk disalin</summary><pre>{socialText}</pre><button type="button" className="ghost" onClick={() => void copy(socialText, "post")}>{copied === "post" ? "Draft tersalin" : "Salin draft posting"}</button></details>
@@ -106,6 +114,6 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
         <div className="form-actions">{step > 0 && <button className="ghost" type="button" disabled={busy} onClick={() => { setError(null); setStep(step - 1); }}>Kembali</button>}<button className="primary" type="submit" aria-busy={busy} disabled={busy || (step === 2 && (!owner || !agreed))}>{busy ? "Menunggu konfirmasi…" : step === 2 ? "Create campaign" : "Lanjut"}<Icon name="arrow" /></button><small>Langkah {step + 1} dari 3</small></div>
       </form>
     </section>
-    <aside className="campaign-summary"><span className="step-count">RINGKASAN CAMPAIGN</span><h3>{draft.name || "Campaign barumu"}</h3><dl><div><dt>Iuran per putaran</dt><dd>{draft.contribution || "—"} COOK</dd></div><div><dt>Jaminan saat join</dt><dd>{draft.collateral || "—"} COOK</dd></div><div><dt>Jumlah anggota</dt><dd>{draft.seats || "—"} orang</dd></div><div><dt>Durasi putaran</dt><dd>{durationLabels[draft.duration]}</dd></div></dl><hr /><span className="muted">Kas per putaran jika semua kursi terisi</span><strong className="summary-pot">{Number.isFinite(Number(draft.seats) * Number(draft.contribution)) ? (Number(draft.seats) * Number(draft.contribution)).toLocaleString("en-US", { maximumFractionDigits: 9 }) : "—"} <small>COOK</small></strong><p className="muted">Biaya pembuatan dari wallet: {cost === null ? "menunggu estimasi…" : "sekitar " + formatCook(cost, 6) + " COOK"}. Jaminan baru disetor saat bergabung.</p><a href="#guide">Pelajari cara kerja arisan<Icon name="arrow" /></a></aside>
+    <aside className="campaign-summary"><span className="step-count">RINGKASAN CAMPAIGN</span><h3>{draft.name || "Campaign barumu"}</h3><dl><div><dt>Iuran per putaran</dt><dd>{draft.contribution || "—"} COOK</dd></div><div><dt>Jaminan saat join</dt><dd>{draft.collateral === "0" ? "Tidak ada" : (draft.collateral || "—") + " COOK"}</dd></div><div><dt>Jumlah anggota</dt><dd>{draft.seats || "—"} orang</dd></div><div><dt>Durasi putaran</dt><dd>{durationLabels[draft.duration]}</dd></div></dl><hr /><span className="muted">Kas per putaran jika semua kursi terisi</span><strong className="summary-pot">{Number.isFinite(Number(draft.seats) * Number(draft.contribution)) ? (Number(draft.seats) * Number(draft.contribution)).toLocaleString("en-US", { maximumFractionDigits: 9 }) : "—"} <small>COOK</small></strong><p className="muted">Biaya pembuatan dari wallet: {cost === null ? "menunggu estimasi…" : "sekitar " + formatCook(cost, 6) + " COOK"}. Jaminan creator otomatis masuk sebagai anggota pertama.</p><a href="#guide">Pelajari cara kerja arisan<Icon name="arrow" /></a></aside>
   </div>;
 }

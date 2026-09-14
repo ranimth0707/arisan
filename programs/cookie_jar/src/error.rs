@@ -96,6 +96,8 @@ pub enum CookieError {
     BadMemberCount,
     #[msg("Round length is outside the allowed range")]
     BadRoundLength,
+    /// Retained so upgrades do not renumber the public error table. New circles
+    /// may use zero collateral; this error is no longer emitted by creation.
     #[msg("Collateral must cover at least one contribution")]
     CollateralTooSmall,
     #[msg("This circle has already started")]

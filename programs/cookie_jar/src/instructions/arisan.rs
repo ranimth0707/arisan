@@ -9,9 +9,10 @@
 //! Offline this works because everyone knows each other. Online it collapses,
 //! for two reasons this module is built around:
 //!
-//! 1. Somebody stops paying once they have already won. Here every member posts
-//!    collateral, and missing a round slashes it into the pot, so the people who
-//!    did pay are made whole by the person who did not.
+//! 1. Somebody stops paying once they have already won. A circle may optionally
+//!    use collateral and missing a round can slash it into the pot. A zero-
+//!    collateral circle is still valid, but the group accepts that a missed
+//!    contribution leaves that round short.
 //! 2. Whoever holds the money disappears with it. Here nobody holds it. The pot
 //!    lives in a program account, the draw is random and permissionless, and the
 //!    organiser has no key to it and cannot change the rules after people join.
@@ -28,7 +29,7 @@ use crate::{
 /// Opens a circle. Every parameter here is frozen the moment it is written.
 ///
 /// That immutability is the whole basis for joining one: an organiser cannot
-/// raise the contribution, shorten the collateral, or extend the rounds after
+/// raise the contribution, change the collateral, or extend the rounds after
 /// members have committed money to it.
 #[derive(Accounts)]
 #[instruction(circle_id: u64)]
@@ -122,10 +123,6 @@ pub fn handle_create_circle(
         (MIN_ROUND_SECONDS..=MAX_ROUND_SECONDS).contains(&round_seconds),
         CookieError::BadRoundLength
     );
-    // Collateral below one contribution cannot absorb even a single missed
-    // round, which would make the guarantee decorative.
-    require!(collateral >= contribution, CookieError::CollateralTooSmall);
-
     let floor = vault_rent_floor()?;
     fund_vault(
         &ctx.accounts.system_program,

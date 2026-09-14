@@ -35,20 +35,20 @@ export function Guide({ navigate }: { navigate: Navigate }) {
         {(role === "member" ? [
           ["Minta kode ke creator", "Kode membuka campaign yang dituju. Baca tujuan grup, posting creator, iuran, dan durasi sebelum ikut."],
           ["Hubungkan wallet & siapkan COOK", "Untuk mencoba, buka Get demo COOK. Saldo dipakai untuk jaminan dan iuran, bukan hanya gas."],
-          ["Join room, lalu tunggu creator", "Saat Join, jaminan dipindahkan dari wallet. Creator memulai arisan setelah minimal dua anggota bergabung."],
+          ["Join room, lalu tunggu creator", "Saat Join, jaminan dipindahkan dari wallet jika campaign memakainya. Creator memulai arisan setelah minimal dua anggota bergabung."],
           ["Bayar setiap putaran", "Setor iuran sampai semua mendapat giliran, termasuk setelah kamu menerima kas. Pantau batas waktu dan pembukuan di room."],
         ] : [
           ["Isi detail campaign", "Beri nama dan jelaskan siapa yang boleh ikut serta tujuan arisannya."],
           ["Sepakati aturan", "Tentukan iuran, jaminan, jumlah anggota, dan lama putaran. Aturan tidak dapat diubah setelah dibuat."],
           ["Posting ke sosial media", "Gunakan draft yang disiapkan, publikasikan sendiri, lalu tempel URL posting publik. Link disimpan, isi posting belum diverifikasi otomatis."],
-          ["Buat room & undang grupmu", "Hubungkan wallet, review aturan, lalu Create campaign. Simpan kode yang muncul dan bagikan ke anggota. Creator tidak otomatis menjadi anggota."],
+          ["Buat room & undang grupmu", "Hubungkan wallet, review aturan, lalu Create campaign. Creator otomatis menjadi anggota pertama; simpan kode yang muncul dan bagikan ke anggota."],
         ]).map(([title, detail], i) => <li key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{detail}</p></div></li>)}
       </ol>
       <button className="primary" onClick={() => navigate(role === "member" ? "join" : "create")}>{role === "member" ? "Saya punya kode" : "Create campaign"}<Icon name="arrow" /></button>
     </section>
     <section className="faq"><h2>Yang perlu kamu tahu</h2>
-      <details><summary>Apa bedanya jaminan dan iuran?</summary><p>Jaminan disetor saat bergabung dan disimpan terpisah. Iuran dibayar setiap putaran untuk membentuk kas yang diterima satu anggota. Sisa jaminan bisa ditarik setelah arisan selesai.</p></details>
-      <details><summary>Kalau ada yang tidak bayar?</summary><p>Setelah tenggat, iuran yang tertunggak bisa ditagih dari jaminannya selama saldo masih cukup. Jaminan yang habis tidak bisa menutup tunggakan berikutnya; anggota perlu mengisi ulang. Satu putaran jaminan tidak menjamin seluruh sisa putaran.</p></details>
+      <details><summary>Apa bedanya jaminan dan iuran?</summary><p>Jaminan adalah dana cadangan opsional yang disetor saat bergabung dan disimpan terpisah. Iuran dibayar setiap putaran untuk membentuk kas yang diterima satu anggota. Sisa jaminan bisa ditarik setelah arisan selesai.</p></details>
+      <details><summary>Kalau ada yang tidak bayar?</summary><p>Setelah tenggat, iuran yang tertunggak bisa ditagih dari jaminannya selama saldo masih cukup. Jika campaign memakai jaminan 0, tidak ada dana cadangan dan kas putaran bisa kurang—ini risiko gotong royong yang harus disepakati grup.</p></details>
       <details><summary>Apakah demo memakai uang sungguhan?</summary><p>Simulasi di atas hanya contoh. Get demo COOK dan campaign di aplikasi memakai transaksi nyata di Cookie Chain mainnet. Periksa nominal sebelum menyetujui transaksi di wallet.</p></details>
       <details><summary>Apakah kode membatasi siapa yang bisa ikut?</summary><p>Belum sepenuhnya. Aplikasi meminta kode untuk membuka room, tetapi program blockchain saat ini belum memiliki otorisasi anggota yang kuat. Pengguna teknis bisa melewati pembatasan kode aplikasi. Detail dan pembukuan juga bersifat publik. Jangan menganggap kode sebagai jaminan privasi atau identitas anggota.</p></details>
     </section>

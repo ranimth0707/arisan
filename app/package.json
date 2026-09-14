@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --test scripts/campaign-form.test.mjs && node scripts/ui-smoke.mjs",
+    "test": "node --test scripts/campaign-form.test.mjs scripts/transactions.test.mjs && node scripts/ui-smoke.mjs",
     "preview": "vite preview",
     "prebuild": "node scripts/gen-relayer-constants.mjs"
   },

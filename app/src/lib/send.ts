@@ -12,8 +12,9 @@ import {
   PublicKey, TransactionMessage, VersionedTransaction,
   type Connection, type TransactionInstruction,
 } from "@solana/web3.js";
-import { RELAYER_API, connection, readableError } from "./cookiejar";
+import { RELAYER_API, PROGRAM_ID, connection, readableError } from "./cookiejar";
 import { signForCookieChain } from "./chain";
+import { assertWalletSigner, withRequesterSigner } from "./transaction-signers";
 
 export type SendStage =
   | "building"
@@ -51,6 +52,7 @@ async function signIt(
   tx: VersionedTransaction,
 ): Promise<VersionedTransaction> {
   if (wallet.publicKey) {
+    assertWalletSigner(tx, wallet.publicKey);
     const signed = await signForCookieChain(
       wallet.wallet,
       wallet.publicKey,
@@ -112,31 +114,30 @@ export async function send(
 
   const canSponsor = Boolean(opts.reimbursement && opts.relayerPubkey);
 
+  let sponsoredTx: Awaited<ReturnType<typeof prepareSponsored>> | undefined;
   if (canSponsor) {
     try {
-      return await sendSponsored(wallet, opts, conn, report);
+      sponsoredTx = await prepareSponsored(wallet, opts, conn);
     } catch (e) {
-      // A wallet that refuses to sign for someone else's fee, or a relayer that
-      // is down, should degrade rather than dead-end. Only a deliberate user
-      // cancellation stops here.
+      // Only choose another funding path BEFORE asking for a signature.
+      // After a POST/confirmation timeout the original transaction may have
+      // landed, so automatically rebuilding it could perform the action twice.
       const message = readableError(e);
-      if (message.startsWith("You cancelled")) throw e;
       report({ stage: "building", detail: `Sponsored path unavailable (${message}). Paying your own fee.` });
     }
   }
+  if (sponsoredTx) return sendSponsored(wallet, conn, report, sponsoredTx);
 
   return await sendSelfPaid(wallet, opts, conn, report);
 }
 
-async function sendSponsored(
+async function prepareSponsored(
   wallet: WalletLike,
   opts: SendOptions,
   conn: Connection,
-  report: (p: SendProgress) => void,
 ) {
+  const instructions = withRequesterSigner(await opts.build(opts.relayerPubkey!), wallet.publicKey!, PROGRAM_ID);
   const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
-
-  const instructions = await opts.build(opts.relayerPubkey!);
 
   const message = new TransactionMessage({
     payerKey: opts.relayerPubkey!, // relayer pays every lamport of fee
@@ -145,6 +146,25 @@ async function sendSponsored(
   }).compileToV0Message();
 
   const tx = new VersionedTransaction(message);
+  await simulateBeforeSigning(conn, tx);
+  return { tx, blockhash, lastValidBlockHeight };
+}
+
+async function simulateBeforeSigning(conn: Connection, tx: VersionedTransaction) {
+  const { value } = await conn.simulateTransaction(tx, { sigVerify: false, commitment: "confirmed" });
+  if (value.err) {
+    const detail = value.logs?.find(line => line.includes("Error Message:"));
+    throw new Error(detail ?? "Transaksi belum dapat dijalankan: " + JSON.stringify(value.err));
+  }
+}
+
+async function sendSponsored(
+  wallet: WalletLike,
+  conn: Connection,
+  report: (p: SendProgress) => void,
+  prepared: Awaited<ReturnType<typeof prepareSponsored>>,
+) {
+  const { tx, blockhash, lastValidBlockHeight } = prepared;
 
   report({ stage: "awaiting-signature", sponsored: true });
   const signed = await signIt(wallet, tx);
@@ -180,9 +200,8 @@ async function sendSelfPaid(
   conn: Connection,
   report: (p: SendProgress) => void,
 ) {
-  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
-
   const instructions = await opts.build(wallet.publicKey!);
+  const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
 
   const message = new TransactionMessage({
     payerKey: wallet.publicKey!,
@@ -191,6 +210,7 @@ async function sendSelfPaid(
   }).compileToV0Message();
 
   const tx = new VersionedTransaction(message);
+  await simulateBeforeSigning(conn, tx);
 
   report({ stage: "awaiting-signature", sponsored: false });
   const signed = await signIt(wallet, tx);

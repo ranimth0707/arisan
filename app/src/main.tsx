@@ -24,8 +24,9 @@ function Root() {
 
   return (
     <ConnectionProvider endpoint={endpoint} config={{ commitment: "confirmed" }}>
-      {/* Explicit connection keeps locked-wallet popups out of onboarding. */}
-      <WalletProvider wallets={wallets} autoConnect={false}>
+      {/* Restore the saved wallet using Wallet Standard's silent autoConnect.
+          Explicit disconnect clears the saved selection in WalletProvider. */}
+      <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
           <App />
         </WalletModalProvider>

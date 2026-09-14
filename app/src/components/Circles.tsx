@@ -4,13 +4,14 @@ import { Icon, type Navigate } from "./UI";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 import {
-  assertCanAfford, bn, countdown, findBond, findRoom,
+  assertCanAfford, bn, connection, countdown, findBond, findRoom,
   findMember, findPot, formatCook, hashInviteCode,
   readableError, SLOT_HASHES,
   type CookieJarProgram,
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
+import { claimBlocker, drawPhase, TURN_CLAIM_WINDOW } from "../lib/circle-progress";
 
 type State = "forming" | "running" | "finished";
 
@@ -163,16 +164,18 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   });
 
   const [syncError, setSyncError] = useState(false);
+  const [slot, setSlot] = useState<number | null>(null);
   const refresh = useCallback(async (silent = false) => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const [list, roomList, boards] = await Promise.race([
-        Promise.all([loadCircles(program), loadRooms(program), loadMembers(program)]),
+      const [list, roomList, boards, currentSlot] = await Promise.race([
+        Promise.all([loadCircles(program), loadRooms(program), loadMembers(program), connection.getSlot("confirmed")]),
         new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Jaringan sedang lambat. Coba muat ulang campaign.")), 12000); }),
       ]);
       setRooms(Object.fromEntries(roomList.map((room) => [room.circle.toBase58(), room])));
       setMembers(boards);
       setCircles(list);
+      setSlot(currentSlot);
       setSyncError(false);
       if (!silent) setErr(null);
     } catch (e) {
@@ -280,24 +283,36 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
   // Anyone can run these. That is what stops a circle stalling on an absent
   // organiser, so the buttons are shown to everybody, member or not.
-  const draw = (c: CircleView) =>
-    run(
+  const draw = (c: CircleView) => {
+    let requested = false;
+    return run(
       c.address.toBase58() + "draw",
-      async () => [
-        c.drawTargetSlot === 0
-          ? await program.methods.requestTurn()
-              .accountsPartial({ circle: c.address }).instruction()
-          : await program.methods.finalizeTurn()
-              .accountsPartial({ circle: c.address, slotHashes: SLOT_HASHES })
-              .instruction(),
-      ],
+      async () => {
+        // Another member may have advanced the room, or the 300-slot window
+        // may have expired while this tab or a wallet approval stayed open.
+        const [latest, currentSlot] = await Promise.all([program.account.circle.fetch(c.address), connection.getSlot("confirmed")]);
+        if (latest.winnerDrawn) throw new Error("Undian sudah selesai. Muat ulang campaign untuk melihat penerimanya.");
+        const phase = drawPhase(latest.drawTargetSlot.toNumber(), currentSlot);
+        if (phase === "waiting") throw new Error("Undian sedang menunggu blok berikutnya. Coba lagi beberapa detik lagi.");
+        requested = phase === "request" || phase === "expired";
+        return [requested
+          ? await program.methods.requestTurn().accountsPartial({ circle: c.address }).instruction()
+          : await program.methods.finalizeTurn().accountsPartial({ circle: c.address, slotHashes: SLOT_HASHES }).instruction()];
+      },
       "none",
       c.drawTargetSlot === 0 ? "requestTurn" : "finalizeTurn",
     ).then(success => {
-      if (success && c.drawTargetSlot === 0) {
-        setNote("Undian sedang disiapkan. Tunggu beberapa detik, lalu pilih Selesaikan undian.");
+      if (success && requested) {
+        setNote("Undian dimulai. Tunggu beberapa detik, lalu pilih Selesaikan undian. Selesaikan segera agar tidak kedaluwarsa.");
       }
     });
+  };
+
+  const redraw = (c: CircleView) => run(
+    c.address.toBase58() + "redraw",
+    async () => [await program.methods.redrawTurn().accountsPartial({ circle: c.address }).instruction()],
+    "none", "redrawTurn",
+  ).then(success => { if (success) setNote("Undian direset. Pilih Mulai undian untuk menentukan kursi lagi."); });
 
   const collect = (c: CircleView) =>
     owner && run(
@@ -385,6 +400,10 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             const expanded = open === key;
             const room = rooms[key];
             const unlocked = Boolean(room && (accessCodes[key] || me || isCreator));
+            const phase = drawPhase(c.drawTargetSlot, slot);
+            const winner = board.find(member => member.seat === c.winnerIndex);
+            const blockedClaim = claimBlocker(winner, c.round);
+            const redrawAt = c.nextPayoutTs + TURN_CLAIM_WINDOW;
 
             return (
               <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
@@ -435,6 +454,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                 )}
 
                 {c.state === "forming" && <p className="next-action"><strong>Langkah berikutnya: </strong>{c.memberCount >= c.maxMembers ? "Room penuh. Tunggu creator memulai arisan." : me ? "Kamu sudah bergabung. Tunggu creator memulai arisan setelah minimal dua anggota masuk." : isCreator ? "Campaign lama ini belum mencatat creator sebagai anggota. Gabung sekarang agar kursimu ikut dihitung." : "Baca posting dan aturan. Join memindahkan jaminan dari wallet kamu."}</p>}
+                {c.state === "running" && !c.winnerDrawn && <p className="next-action"><strong>Langkah berikutnya: </strong>{!roundOver ? "Bayar iuran, lalu tunggu batas waktu putaran untuk memulai undian." : phase === "expired" ? "Undian sebelumnya kedaluwarsa. Mulai ulang undian untuk melanjutkan." : c.drawTargetSlot ? "Undian sudah dimulai. Selesaikan undian untuk melihat kursi penerima." : `Iuran terkumpul dari ${c.paidThisRound}/${c.memberCount} anggota. Mulai undian, selesaikan, lalu penerima mengambil kas.`}</p>}
                 {isCreator && accessCodes[key] && <details className="invite-details"><summary>Kode undangan grup</summary><code>{accessCodes[key]}</code><p>Simpan kode dan kirim ke anggota yang kamu undang.</p></details>}
                 <div className="actions">
                   {!owner && <WalletMultiButton>Hubungkan wallet untuk ikut</WalletMultiButton>}
@@ -456,18 +476,19 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                       {busy === key + "pay" ? "..." : "Bayar iuran"}
                     </button>
                   )}
-                  {c.state === "running" && roundOver && !c.winnerDrawn && (
-                    <button className="primary" disabled={busy !== null} onClick={() => draw(c)}>
+                  {owner && c.state === "running" && roundOver && !c.winnerDrawn && (
+                    <button className="primary" disabled={busy !== null || phase === "waiting" || phase === "loading"} onClick={() => draw(c)}>
                       {busy === key + "draw"
                         ? "..."
-                        : c.drawTargetSlot === 0 ? "Mulai undian" : "Selesaikan undian"}
+                        : phase === "request" ? "Mulai undian" : phase === "expired" ? "Mulai ulang undian" : phase === "waiting" || phase === "loading" ? "Menunggu blok…" : "Selesaikan undian"}
                     </button>
                   )}
-                  {c.state === "running" && c.winnerDrawn && me?.seat === c.winnerIndex && (
+                  {c.state === "running" && c.winnerDrawn && me?.seat === c.winnerIndex && !blockedClaim && c.pot > 0 && (
                     <button className="primary" disabled={busy !== null} onClick={() => collect(c)}>
                       {busy === key + "collect" ? "..." : `Ambil giliran · ${formatCook(c.pot)} COOK`}
                     </button>
                   )}
+                  {owner && c.state === "running" && c.winnerDrawn && now / 1000 >= redrawAt && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c)}>{busy === key + "redraw" ? "…" : "Undi ulang"}</button>}
                   {me && !me.active && (
                     <button className="ghost" disabled={busy !== null} onClick={() => topUp(c)}>
                       {busy === key + "topup" ? "..." : "Isi ulang jaminan"}
@@ -485,7 +506,9 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
                 {c.state === "running" && c.winnerDrawn && (
                   <div className="banner info" style={{ marginTop: 10 }}>
-                    Kursi {c.winnerIndex + 1} mendapat giliran putaran ini.
+                    <strong>Kursi {c.winnerIndex + 1} terpilih.</strong> {blockedClaim ?? (me?.seat === c.winnerIndex ? "Kamu bisa mengambil kas melalui tombol Ambil giliran." : `Menunggu ${winner?.wallet.toBase58().slice(0, 4)}…${winner?.wallet.toBase58().slice(-4)} mengambil kas.`)}
+                    {blockedClaim && <p>{now / 1000 >= redrawAt ? "Batas klaim sudah lewat. Gunakan Undi ulang untuk mencoba kursi lagi." : `Undi ulang tersedia dalam ${countdown(redrawAt)} jika kas belum diambil.`}</p>}
+                    {c.pot === 0 && <p>Kas masih kosong. Anggota perlu menyetor iuran.</p>}
                   </div>
                 )}
 

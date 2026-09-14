@@ -41,12 +41,13 @@ a rule that executes itself.
 key to it. Contributions can only ever leave in one direction: to the member
 whose turn was drawn.
 
-**A missed round is visible and can be covered by the person who missed it.**
-Collateral is optional: a group can choose zero for a pure gotong-royong circle,
-or agree on a smaller reserve that members can afford. When collateral exists,
-skipping a round takes that round's amount from the reserve and puts it into the
-pot. A zero-collateral circle accepts that a missed round leaves the pot short;
-it never asks members to lock one full contribution just to enter.
+**A missed round cannot make another member's payout smaller.** Every new circle
+locks a reserve per member equal to `contribution × member count` before it can
+start. When someone skips, the program takes that round's amount from their own
+reserve and puts it into the pot. The reserve is not a fee: whatever remains is
+withdrawable after the circle finishes. If the reserve is not complete, the
+program locks the draw and payout instead of making the other members insure the
+shortfall.
 
 **The draw cannot be timed.** Requesting a round's draw commits it to the hash of
 a block three slots in the future. At the moment it is called, nobody, including
@@ -74,7 +75,7 @@ guarantees nothing.
 ## See it work
 
 A full cycle on mainnet, including a member going quiet halfway through. Three
-members, 10 COOK a round, 10 COOK collateral each.
+members, 10 COOK a round, 30 COOK reserve each.
 
 | | Round 1 | Round 2 |
 |---|---|---|
@@ -82,15 +83,15 @@ members, 10 COOK a round, 10 COOK collateral each.
 | Pot paid out | **30 COOK** | **30 COOK** |
 
 The pot was full both times. In round 2 the shortfall came out of the absent
-member's collateral:
+member's reserve:
 
 | | Before | After |
 |---|---|---|
-| Defaulter's collateral | 10 COOK | **0 COOK** |
+| Defaulter's reserve | 30 COOK | **20 COOK** |
 | Pot | 20 COOK | **30 COOK** |
 
-Their collateral hit zero, so they were sidelined, and they could not collect a
-turn while carrying a missed round. The draw that settled it:
+The missed round was settled from their reserve and recorded as a miss, while
+the reserve still covered their future obligations. The draw that settled it:
 [`4aX6u5FB…`](https://cookiescan.io/tx/4aX6u5FBG1wndtHtbT8dYcS3GfNGL1xSEPdnjsG6HYAp9ifrWSFZJAkpPxbRMB3RtfgBv886Zdydn6BjWmJ91eUL)
 
 Also verified on mainnet, all as refusals: a fourth member cannot squeeze into
@@ -102,10 +103,10 @@ charged twice, and a member cannot collect two turns.
 
 The live app has an invite-only 3-seat room named **Demo · Join by code**. Its
 invite code is **ARISAN-DEMO-9002**. Connect a wallet, open **Get demo COOK**,
-claim 0.5 COOK, then return to **Circles**, paste the code, and join with 0.1
-COOK collateral. Once the room has at least two members, the creator can start
-it. The round lasts one minute, so you can pay, draw and collect without waiting
-a month.
+claim enough demo COOK for the reserve shown in the room, then return to
+**Circles**, paste the code, and join. Once the room has at least two members and
+every member's reserve is complete, the creator can start it. The round lasts one
+minute, so you can pay, draw and collect without waiting a month.
 
 ### Campaign rooms
 
@@ -129,9 +130,10 @@ covers the transaction bytes and says nothing about which chain it runs on.
 
 ## How this produces Volume and TVL
 
-**TVL is locked by the design, not by hoping people stay.** Collateral sits for
-the whole cycle. Contributions sit for a round. A 10-seat circle at 10 COOK a
-round holds 100 COOK of collateral continuously plus up to 100 COOK of pot.
+**TVL is locked by the design, not by hoping people stay.** Each member's reserve
+sits for the whole cycle and contributions sit for a round. A 10-seat circle at
+10 COOK a round holds 1,000 COOK of reserve continuously plus up to 100 COOK of
+pot; unused reserve returns to its member when the circle finishes.
 
 **Volume is scheduled rather than hoped for.** A 10-seat circle over 10 rounds is
 100 contributions, 10 draws and 10 payouts. Roughly 120 transactions per circle,
@@ -185,6 +187,12 @@ member for a specific missed round, capped at one contribution.
 **A missed round can only be charged once.** Slashing marks the round settled for
 that member, so the same absence cannot be billed repeatedly to drain them.
 
+**A default cannot make the group absorb a loss.** New circles must lock a
+reserve of `contribution × seats` per member before starting. If that reserve is
+not available, the program refuses to draw and refuses to pay out until the
+shortfall is repaired. The reserve is reduced only when it actually covers a
+missed contribution; unused COOK remains the member's to withdraw at the end.
+
 **Eligibility is checked when the pot is collected, not when it is drawn.** The
 claimer must hold the drawn seat, not have had a turn, be active, and have
 settled this round. Drawing a seat proves nothing on its own.
@@ -196,6 +204,12 @@ else's money.
 **A stolen relayer key cannot drain anything.** The relayer is a fee payer with no
 authority anywhere in the program, and reclaims at most 0.005 COOK per
 transaction, enforced on chain.
+
+**Governance keys must be multisig.** The program upgrade authority and config
+authority should be moved to a 2-of-3 governance wallet before material TVL;
+the creator has no withdrawal instruction for the pot or bond vault. A 3-of-3
+threshold is intentionally not recommended because one unavailable signer would
+freeze recovery. See [`docs/MULTISIG-RUNBOOK.md`](docs/MULTISIG-RUNBOOK.md).
 
 Honest limitation: the draw is a slot-hash commitment, not a VRF. A block
 producer controlling the target slot could bias it. Acceptable at these amounts,
@@ -216,7 +230,7 @@ node scripts/test-flows.mjs     # the savings-jar instructions the program also 
 node scripts/e2e.mjs            # a zero-balance wallet taking part
 ```
 
-Current results: **19/19** arisan, **9/9** relayer, **17/17** jars, **6/6**
+Current results: **22/22** arisan, **9/9** relayer, **17/17** jars, **6/6**
 gasless.
 
 Bugs found by running against a live chain rather than a local validator, all

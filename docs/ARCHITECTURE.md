@@ -109,7 +109,7 @@ is the proof of a prior claim.
 
 **Config**
 - `initialize(relayer)`
-- `set_paused(bool)`, `set_relayer(pubkey)`
+- `set_paused(bool)`, `set_relayer(pubkey)`, `transfer_authority(pubkey)`
 
 **Gas sponsorship**
 - `deposit_gas(amount)` - anyone funds the shared gas vault
@@ -256,6 +256,7 @@ balances held in protocol vault accounts.
 |---|---|
 | Rewards paid from depositors' principal | Principal and rewards live in separate PDAs. No instruction moves lamports from `JarVault` to anyone but that position's owner. |
 | Admin drains funds | `authority` can only pause and rotate the relayer. No instruction grants it vault authority. |
+| Single admin key is compromised | `transfer_authority` provides an explicit handoff to a governance PDA; production deployment should use a 2-of-3 multisig for both admin and program upgrade authority. |
 | Relayer key compromised | Worst case is fee-paying for junk transactions, capped per transaction and bounded by `GasVault`. No user funds reachable. |
 | Free-relay abuse | Instruction allowlist plus rate limits in the relayer service. |
 | Double claiming an envelope | `EnvelopeClaim` PDA per claimer. Creating it twice fails at the runtime level. |
@@ -272,7 +273,7 @@ atomic crack-into-jar, two-phase draw, relayer service, web app with Nightly.
 
 **Deliberately not in v1**
 VRF randomness, SPL token support (native COOK only), multi-asset jars,
-governance, a sponsor dashboard, DefiLlama adapter submission.
+multisig deployment, a sponsor dashboard, DefiLlama adapter submission.
 
 ## Verified before building
 

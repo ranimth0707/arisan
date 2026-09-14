@@ -44,7 +44,7 @@ git commit -m "Add Arisan"
 git push -u origin add-arisan
 gh pr create --repo cookiechain/superteam-hackathon-submissions \
   --title "Add Arisan" \
-  --body "Rotating savings circles on Cookie Chain, backed by collateral instead of trust.
+  --body "Rotating savings circles on Cookie Chain, protected by a full reserve instead of trust.
 
 Live: https://arisan-cook.vercel.app
 Source: https://github.com/ranimth0707/arisan
@@ -53,20 +53,22 @@ Program: Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg
 An arisan works offline because everyone in the group knows each other. Online it
 breaks two ways, and both are handled in the program rather than in a promise.
 
-Somebody stops paying after they have had their turn, so every member posts
-collateral on joining and a missed round comes out of it and goes into the pot.
+Somebody stops paying after they have had their turn, so every member posts a
+reserve equal to the full commitment on joining. A missed round comes out of
+that member's reserve and goes into the pot.
 Verified on mainnet with a three-member circle: in round two only two members
-paid, the defaulter's collateral went from 10 COOK to 0, the pot still paid out
-the full 30, and the defaulter could not collect a turn while carrying the miss.
+paid, the defaulter's reserve went from 0.6 COOK to 0.4 COOK, and the pot still
+paid out the full 0.6 COOK.
 
 The organiser runs off with the money, so nobody holds it. The pot is a program
 account, the draw commits to a block three slots ahead so even the organiser
 cannot time their own turn, running the draw and charging a defaulter are both
 permissionless, and every group parameter is frozen at creation.
 
-19/19 checks on mainnet, including the refusals: a fourth member cannot squeeze
+22/22 checks on mainnet, including the refusals: a fourth member cannot squeeze
 into three seats, nobody joins once it is running, paying twice in a round is
-rejected, and the same absence cannot be charged twice.
+rejected, the same absence cannot be charged twice, and the reserve-covered
+default leaves the full pot intact.
 
 Prior art is credited in the README. The design follows Akyba Protocol's ROSCA
 spec on Cardano. What is different here is that it runs on Cookie Chain and every
@@ -90,20 +92,21 @@ last tweet.
 > **2/**
 > masalah pertama: yang udah dapet arisan terus berhenti bayar.
 >
-> di sini tiap anggota naruh jaminan pas gabung. bulan ini gak bayar? jaminannya
-> yang dipotong, dan potongannya masuk ke kas.
+> di sini tiap anggota ngunci cadangan sebesar total komitmen pas gabung. bulan
+> ini gak bayar? cadangannya yang dipotong, dan potongannya masuk ke kas.
 >
 > jadi yang rajin bayar tetep dapet utuh. yang nunggak yang nanggung sendiri.
 
 > **3/**
-> aku tes beneran di mainnet, 3 orang, iuran 10 per putaran.
+> aku tes beneran di mainnet, 3 orang, iuran 0.2 per putaran.
 >
 > putaran 2 cuma 2 orang yang bayar. hasilnya:
 >
-> jaminan si penunggak: 10 → 0
-> kas: 20 → 30
+> cadangan si penunggak: 0.6 → 0.4
+> kas: 0.4 → 0.6
 >
-> kasnya tetep penuh. dan dia gak bisa ambil arisan walaupun nomornya keluar.
+> kasnya tetep penuh. kalau cadangan kurang, program mengunci undian supaya
+> anggota lain gak pernah nombok.
 
 > **4/**
 > masalah kedua: yang megang uang kabur.
@@ -124,7 +127,7 @@ last tweet.
 > **6/**
 > dan ini yang aku suka:
 >
-> siapa pun boleh menjalankan undian, dan siapa pun boleh nagih jaminan si
+> siapa pun boleh menjalankan undian, dan siapa pun boleh nagih cadangan si
 > penunggak. gak harus ketua.
 >
 > di test kemarin, yang nagih malah dompet yang bukan anggota sama sekali. jadi
@@ -143,7 +146,7 @@ last tweet.
 > oh iya, biaya transaksinya ditanggung. gabung, bayar, ambil giliran, semua
 > gratis ongkos.
 >
-> tapi iuran sama jaminan tetep dari duit kalian sendiri ya. jaminan yang
+> tapi iuran sama cadangan tetep dari duit kalian sendiri ya. cadangan yang
 > dibayarin orang lain gak menjamin apa-apa wkwkwk
 
 > **9/**
@@ -163,25 +166,25 @@ last tweet.
 ## 3. English, for the Cookie Chain Telegram and as a quote-tweet
 
 > Built **Arisan** for the Superteam bounty: rotating savings circles on Cookie
-> Chain, backed by collateral instead of trust.
+> Chain, protected by a full reserve instead of trust.
 >
 > A group agrees an amount and a period, everyone pays in each round, and one
 > member who has not had a turn takes the pot. It works offline because everyone
 > knows each other. Online it breaks two ways, and both are handled in the
 > program rather than in a promise.
 >
-> Somebody stops paying after their turn: every member posts collateral, and a
-> missed round comes out of it and goes into the pot. Tested on mainnet with
-> three members. Round two, only two paid. The defaulter's collateral went from
-> 10 COOK to 0, the pot still paid out the full 30, and they could not collect a
-> turn while carrying the miss.
+> Somebody stops paying after their turn: every member posts a reserve equal to
+> the full commitment, and a missed round comes out of it and goes into the pot.
+> Tested on mainnet with three members. Round two, only two paid. The
+> defaulter's reserve went from 0.6 COOK to 0.4 COOK, and the pot still paid out
+> the full 0.6 COOK.
 >
 > The organiser runs off: nobody holds the money. The pot is a program account,
 > the draw commits to a block three slots ahead so even the organiser cannot time
 > their own turn, running the draw and charging a defaulter are both
 > permissionless, and every parameter is frozen at creation.
 >
-> 19/19 on mainnet including the refusals.
+> 22/22 on mainnet including the refusals and reserve coverage.
 >
 > Live: https://arisan-cook.vercel.app
 > Code: https://github.com/ranimth0707/arisan

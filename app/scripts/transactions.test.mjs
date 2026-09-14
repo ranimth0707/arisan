@@ -13,7 +13,9 @@ const { validate } = await import("../api/_relayer.js");
 const program = getReadOnlyProgram();
 const owner = Keypair.generate(), relayer = Keypair.generate();
 const circle = Keypair.generate().publicKey;
-const request = await program.methods.requestTurn().accountsPartial({ circle }).instruction();
+const safety = Keypair.generate().publicKey;
+const bond = Keypair.generate().publicKey;
+const request = await program.methods.requestTurn().accountsPartial({ circle, safety, bond }).instruction();
 const reimbursement = await program.methods.reimburseRelayer(bn(10000)).accountsPartial({
   relayer: relayer.publicKey,
   config: Keypair.generate().publicKey,
@@ -32,7 +34,7 @@ test("reproduces missing user signer in the old sponsored draw", () => {
 for (const method of ["requestTurn", "finalizeTurn", "redrawTurn"]) test(`${method}: wallet can sign and relayer accepts fixed message`, async () => {
   const accounts = method === "redrawTurn"
     ? { circle, membership: Keypair.generate().publicKey }
-    : { circle };
+    : { circle, safety, bond };
   const ix = await program.methods[method]().accountsPartial(accounts).instruction();
   const fixed = withRequesterSigner([ix], owner.publicKey, PROGRAM_ID);
   const tx = compile([reimbursement, ...fixed]);
@@ -53,10 +55,14 @@ test("existing user signer and writable privileges are preserved", () => {
 test("legacy roster setup and draw fit one sponsored transaction", async () => {
   const roster = Keypair.generate().publicKey;
   const membership = Keypair.generate().publicKey;
+  const circleSafety = Keypair.generate().publicKey;
   const initialize = await program.methods.initializeCircleRoster().accountsPartial({
-    payer: relayer.publicKey, circle, roster, systemProgram: SystemProgram.programId,
+    payer: relayer.publicKey, circle, roster, safety: circleSafety, bond,
+    systemProgram: SystemProgram.programId,
   }).instruction();
-  const sync = await program.methods.syncCircleMembers().accountsPartial({ circle, roster })
+  const sync = await program.methods.syncCircleMembers().accountsPartial({
+    payer: relayer.publicKey, circle, roster, safety: circleSafety, bond,
+  })
     .remainingAccounts([{ pubkey: membership, isSigner: false, isWritable: false }]).instruction();
   const fixed = withRequesterSigner([initialize, sync, request], owner.publicKey, PROGRAM_ID);
   const tx = compile([reimbursement, ...fixed]);
@@ -127,11 +133,11 @@ test("draw finalization respects exact expiry boundary and can restart", () => {
   assert.equal(drawPhase(1000, null), "loading");
 });
 
-test("only an active, paid member who has never received a pot can claim", () => {
+test("only an active, settled member who has never received a pot can claim", () => {
   const member = { active: true, paidRound: 2, roundsPaid: 2, hasWon: false };
   assert.equal(claimBlocker(member, 2), null);
   assert.match(claimBlocker({ ...member, hasWon: true }, 2), /sudah menerima/);
   assert.match(claimBlocker({ ...member, active: false }, 2), /jaminan/);
   assert.match(claimBlocker({ ...member, paidRound: 1 }, 2), /iuran/);
-  assert.match(claimBlocker({ ...member, roundsPaid: 0 }, 2), /iuran/);
+  assert.equal(claimBlocker({ ...member, roundsPaid: 0 }, 2), null, "a reserve-covered miss is settled without being labelled paid");
 });

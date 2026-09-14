@@ -52,3 +52,16 @@ pub fn handle_set_relayer(ctx: Context<AdminOnly>, relayer: Pubkey) -> Result<()
     ctx.accounts.config.relayer = relayer;
     Ok(())
 }
+
+/// Moves operational control to a governance address such as a Squads PDA.
+/// The current authority must explicitly approve this one-way handoff; after
+/// it lands, future pause and relayer changes must be executed by the new
+/// authority.
+pub fn handle_transfer_authority(ctx: Context<AdminOnly>, new_authority: Pubkey) -> Result<()> {
+    require!(
+        new_authority != Pubkey::default(),
+        CookieError::InvalidAuthority
+    );
+    ctx.accounts.config.authority = new_authority;
+    Ok(())
+}

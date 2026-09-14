@@ -5,7 +5,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 import {
   assertCanAfford, bn, connection, countdown, findBond, findRoom,
-  findMember, findPot, findRoster, formatCook, hashInviteCode,
+  findMember, findPot, findRoster, findSafety, formatCook, hashInviteCode,
   readableError, SLOT_HASHES,
   type CookieJarProgram,
 } from "../lib/cookiejar";
@@ -53,6 +53,11 @@ export interface CircleRoomView {
   description: string;
   socialUrl: string;
   inviteCodeHash: number[];
+}
+
+interface CircleSafetyView {
+  protected: boolean;
+  requiredReserve: number;
 }
 
 export async function loadCircles(program: CookieJarProgram): Promise<CircleView[]> {
@@ -122,6 +127,14 @@ async function loadRooms(program: CookieJarProgram): Promise<CircleRoomView[]> {
   }));
 }
 
+async function loadSafeties(program: CookieJarProgram): Promise<Record<string, CircleSafetyView>> {
+  const raw = await program.account.circleSafety.all();
+  return Object.fromEntries(raw.map((s) => [s.account.circle.toBase58(), {
+    protected: s.account.protected,
+    requiredReserve: s.account.requiredReserve.toNumber(),
+  }]));
+}
+
 interface Props {
   program: CookieJarProgram;
   owner: PublicKey | null;
@@ -139,6 +152,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   const [circles, setCircles] = useState<CircleView[] | null>(null);
   const [rooms, setRooms] = useState<Record<string, CircleRoomView>>({});
   const [members, setMembers] = useState<Record<string, MemberView[]>>({});
+  const [safeties, setSafeties] = useState<Record<string, CircleSafetyView>>({});
   const [open, setOpen] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -168,12 +182,13 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   const refresh = useCallback(async (silent = false) => {
     let timeout: ReturnType<typeof setTimeout> | undefined;
     try {
-      const [list, roomList, boards, currentSlot] = await Promise.race([
-        Promise.all([loadCircles(program), loadRooms(program), loadMembers(program), connection.getSlot("confirmed")]),
+      const [list, roomList, boards, currentSlot, safetyList] = await Promise.race([
+        Promise.all([loadCircles(program), loadRooms(program), loadMembers(program), connection.getSlot("confirmed"), loadSafeties(program)]),
         new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Jaringan sedang lambat. Coba muat ulang campaign.")), 12000); }),
       ]);
       setRooms(Object.fromEntries(roomList.map((room) => [room.circle.toBase58(), room])));
       setMembers(boards);
+      setSafeties(safetyList);
       setCircles(list);
       setSlot(currentSlot);
       setSyncError(false);
@@ -278,31 +293,50 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
       async (payer) => [await program.methods.startCircle()
         .accountsPartial({
           starter: owner, payer, circle: c.address, roster: findRoster(c.address),
+          safety: findSafety(c.address), bond: findBond(c.address),
           systemProgram: SystemProgram.programId,
         }).instruction()],
       "circleRoster",
       "startCircle",
     );
 
-  const ensureRoster = async (c: CircleView, payer: PublicKey, winnersSoFar: number) => {
+  const ensureRoster = async (c: CircleView, payer: PublicKey) => {
     const roster = findRoster(c.address);
-    const existing = await program.account.circleRoster.fetchNullable(roster);
-    if (existing?.ready) return [];
+    const safety = findSafety(c.address);
+    const [existing, existingSafety] = await Promise.all([
+      program.account.circleRoster.fetchNullable(roster),
+      program.account.circleSafety.fetchNullable(safety),
+    ]);
+    if (existing?.ready && existingSafety?.protected) return [];
 
     const board = members[c.address.toBase58()] ?? [];
-    if (winnersSoFar > 0 && board.length !== c.memberCount) {
+    if (board.length !== c.memberCount) {
       throw new Error("Pembukuan anggota belum lengkap. Muat ulang campaign lalu coba lagi.");
     }
 
     const setup = [];
     if (!existing) {
       setup.push(await program.methods.initializeCircleRoster().accountsPartial({
-        payer, circle: c.address, roster, systemProgram: SystemProgram.programId,
+        payer, circle: c.address, roster, safety, bond: findBond(c.address),
+        systemProgram: SystemProgram.programId,
       }).instruction());
     }
-    if (winnersSoFar > 0) {
+    if (!existingSafety && existing) {
+      setup.push(await program.methods.initializeCircleSafety().accountsPartial({
+        payer, circle: c.address, bond: findBond(c.address), safety,
+        systemProgram: SystemProgram.programId,
+      }).remainingAccounts(board.map(member => ({
+        pubkey: findMember(c.address, member.wallet),
+        isSigner: false,
+        isWritable: false,
+      }))).instruction());
+    }
+    // A newly-created roster still needs the winner bitmap imported. An
+    // existing unprotected roster is also allowed through this same path so
+    // members can top up before the first post-upgrade draw.
+    if (!existing || !existing.ready || Boolean(existingSafety && !existingSafety.protected)) {
       setup.push(await program.methods.syncCircleMembers().accountsPartial({
-        circle: c.address, roster,
+        payer, circle: c.address, roster, safety, bond: findBond(c.address),
       }).remainingAccounts(board.map(member => ({
         pubkey: findMember(c.address, member.wallet),
         isSigner: false,
@@ -316,7 +350,12 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   // organiser, so the buttons are shown to everybody, member or not.
   const draw = async (c: CircleView) => {
     let requested = false;
-    const rosterExists = Boolean(await program.account.circleRoster.fetchNullable(findRoster(c.address)));
+    const [rosterAccount, safetyAccount] = await Promise.all([
+      program.account.circleRoster.fetchNullable(findRoster(c.address)),
+      program.account.circleSafety.fetchNullable(findSafety(c.address)),
+    ]);
+    const protectedCircle = Boolean(rosterAccount?.ready && safetyAccount?.protected);
+    const setupRent: RentKind = rosterAccount ? safetyAccount ? "none" : "circleSafety" : "circleRoster";
     return run(
       c.address.toBase58() + "draw",
       async (payer) => {
@@ -327,15 +366,18 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
         const phase = drawPhase(latest.drawTargetSlot.toNumber(), currentSlot);
         if (phase === "waiting") throw new Error("Undian sedang menunggu blok berikutnya. Coba lagi beberapa detik lagi.");
         requested = phase === "request" || phase === "expired";
-        const setup = await ensureRoster(c, payer, latest.winnersSoFar);
+        const setup = await ensureRoster(c, payer);
         const turn = requested
-          ? await program.methods.requestTurn().accountsPartial({ circle: c.address }).instruction()
+          ? await program.methods.requestTurn().accountsPartial({
+              circle: c.address, safety: findSafety(c.address), bond: findBond(c.address),
+            }).instruction()
           : await program.methods.finalizeTurn().accountsPartial({
-              circle: c.address, roster: findRoster(c.address), slotHashes: SLOT_HASHES,
+              circle: c.address, roster: findRoster(c.address), safety: findSafety(c.address),
+              bond: findBond(c.address), slotHashes: SLOT_HASHES,
             }).instruction();
         return [...setup, turn];
       },
-      rosterExists ? "none" : "circleRoster",
+      protectedCircle ? "none" : setupRent,
       c.drawTargetSlot === 0 ? "requestTurn" : "finalizeTurn",
     ).then(success => {
       if (success && requested) {
@@ -355,21 +397,26 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
   const collect = async (c: CircleView) => {
     if (!owner) return;
-    const rosterExists = Boolean(await program.account.circleRoster.fetchNullable(findRoster(c.address)));
+    const [rosterAccount, safetyAccount] = await Promise.all([
+      program.account.circleRoster.fetchNullable(findRoster(c.address)),
+      program.account.circleSafety.fetchNullable(findSafety(c.address)),
+    ]);
+    const protectedCircle = Boolean(rosterAccount?.ready && safetyAccount?.protected);
+    const setupRent: RentKind = rosterAccount ? safetyAccount ? "none" : "circleSafety" : "circleRoster";
     return run(
       c.address.toBase58() + "collect",
       async (payer) => {
-        const latest = await program.account.circle.fetch(c.address);
-        const setup = await ensureRoster(c, payer, latest.winnersSoFar);
+        const setup = await ensureRoster(c, payer);
         const claim = await program.methods.claimTurn().accountsPartial({
           winner: owner, circle: c.address, pot: findPot(c.address),
           roster: findRoster(c.address),
+          safety: findSafety(c.address),
           membership: findMember(c.address, owner),
           systemProgram: SystemProgram.programId,
         }).instruction();
         return [...setup, claim];
       },
-      rosterExists ? "none" : "circleRoster",
+      protectedCircle ? "none" : setupRent,
       "claimTurn",
     );
   };
@@ -390,8 +437,12 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
     owner && run(
       c.address.toBase58() + "topup",
       async () => {
-        await assertCanAfford(owner, c.collateral, "top your collateral back up");
-        return [await program.methods.topUpBond(bn(c.collateral)).accountsPartial({
+        const me = (members[c.address.toBase58()] ?? []).find(member => member.wallet.equals(owner));
+        const required = c.contribution * Math.max(0, c.memberCount - c.winnersSoFar);
+        const amount = Math.max(0, required - (me?.collateral ?? 0));
+        if (amount <= 0) throw new Error("Cadanganmu sudah mencukupi untuk kewajiban tersisa.");
+        await assertCanAfford(owner, amount, "complete your remaining reserve");
+        return [await program.methods.topUpBond(bn(amount)).accountsPartial({
           member: owner, circle: c.address, bond: findBond(c.address),
           membership: findMember(c.address, owner),
           systemProgram: SystemProgram.programId,
@@ -452,6 +503,10 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             const winner = board.find(member => member.seat === c.winnerIndex);
             const blockedClaim = claimBlocker(winner, c.round);
             const redrawAt = c.nextPayoutTs + TURN_CLAIM_WINDOW;
+            const remainingTurns = Math.max(0, c.memberCount - c.winnersSoFar);
+            const requiredReservePerMember = c.contribution * remainingTurns;
+            const reserveShortfall = me ? Math.max(0, requiredReservePerMember - me.collateral) : 0;
+            const safety = safeties[key];
 
             return (
               <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
@@ -470,7 +525,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
                 <div className="circle-timing">
                   {c.state === "forming"
-                    ? `${c.collateral === 0 ? "Tanpa jaminan" : "Jaminan saat join: " + formatCook(c.collateral) + " COOK"} · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
+                    ? `Cadangan keamanan saat join: ${formatCook(c.collateral)} COOK per anggota · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
                     : c.state === "running"
                       ? roundOver
                         ? "Batas waktu putaran sudah lewat"
@@ -481,10 +536,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                 <p className="circle-commitment">
                   <strong>{c.state === "forming" ? "Jika dimulai sekarang" : "Komitmen setiap anggota"}:</strong>{" "}
                   {c.memberCount} putaran × {formatCook(c.contribution)} COOK = {formatCook(c.memberCount * c.contribution)} COOK total.
-                  Penerima lama otomatis keluar dari undian berikutnya. Creator tidak dapat menarik kas.{" "}
-                  {c.collateral === 0
-                    ? "Tanpa jaminan, tunggakan membuat kas putaran berkurang."
-                    : `Jaminan hanya menutup ${Math.floor(c.collateral / c.contribution)} tunggakan.`}
+                  Penerima lama otomatis keluar dari undian berikutnya. Creator tidak dapat menarik kas. Cadangan keamanan bukan biaya: jika semua patuh, sisanya kembali setelah selesai. Putaran baru terkunci sampai cadangan semua anggota cukup untuk menutup kewajiban tersisa.
                 </p>
 
                 {room ? (
@@ -507,6 +559,11 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                 {me && !me.active && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
                     Jaminanmu tidak cukup. Isi ulang agar bisa mengambil giliran.
+                  </div>
+                )}
+                {c.state === "running" && (!safety || !safety.protected) && (
+                  <div className="banner warn" style={{ marginBottom: 10 }}>
+                    Campaign terkunci sementara: cadangan keamanan belum mencukupi untuk melindungi anggota lain. Lengkapi cadangan yang kurang, lalu siapa pun bisa melanjutkan pembukuan.
                   </div>
                 )}
 
@@ -546,9 +603,9 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                     </button>
                   )}
                   {owner && winner && c.state === "running" && c.winnerDrawn && (Boolean(blockedClaim) || now / 1000 >= redrawAt) && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c, winner)}>{busy === key + "redraw" ? "…" : blockedClaim ? "Keluarkan kursi & undi ulang" : "Undi ulang"}</button>}
-                  {me && !me.active && (
+                  {me && reserveShortfall > 0 && (
                     <button className="ghost" disabled={busy !== null} onClick={() => topUp(c)}>
-                      {busy === key + "topup" ? "..." : "Isi ulang jaminan"}
+                      {busy === key + "topup" ? "..." : `Lengkapi cadangan · ${formatCook(reserveShortfall)} COOK`}
                     </button>
                   )}
                   {c.state === "finished" && me && me.collateral > 0 && (
@@ -631,11 +688,13 @@ function Books({
                 ? <span className="pill lucky">belum setor putaran {circle.round}</span>
                 : circle.state === "running" && m.roundsPaid >= circle.round
                   ? <span className="pill prop">setor {m.roundsPaid} kali</span>
-                  : circle.state === "running" && (
-                      <span className="pill closed">diselesaikan; cek riwayat iuran</span>
-                    )}
+                  : circle.state === "running" && m.paidRound >= circle.round
+                    ? <span className="pill lucky">ditutup dari cadangan</span>
+                    : circle.state === "running" && (
+                        <span className="pill closed">riwayat iuran belum lengkap</span>
+                      )}
               <span className="mono">jaminan {formatCook(m.collateral)} COOK</span>
-              {owes && roundOver && circle.collateral > 0 && (
+              {owes && roundOver && (
                 <button
                   className="ghost"
                   disabled={busy !== null}
@@ -643,10 +702,9 @@ function Books({
                 >
                   {busy === circle.address.toBase58() + "slash" + m.seat
                     ? "..."
-                    : "Tagih dari jaminan"}
+                    : m.collateral > 0 ? "Tutup dari cadangan" : "Tandai tunggakan"}
                 </button>
               )}
-              {owes && roundOver && circle.collateral === 0 && <span className="muted">Tidak ada jaminan untuk menutup iuran ini</span>}
             </span>
           </div>
         );

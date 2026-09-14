@@ -106,8 +106,9 @@ pub struct Circle {
 
     /// Owed by every member, every round.
     pub contribution: u64,
-    /// Optional amount posted on joining. Missing a round is taken out of this
-    /// when available; zero means the group accepts an uncovered miss.
+    /// Fixed reserve posted on joining. New circles require this to cover every
+    /// planned contribution; legacy circles may contain a smaller value but are
+    /// blocked by CircleSafety until the remaining reserve is repaired.
     pub collateral: u64,
     pub max_members: u16,
     pub round_seconds: i64,
@@ -162,8 +163,8 @@ pub struct Member {
     pub rounds_paid: u16,
     pub rounds_missed: u16,
     pub has_won: bool,
-    /// False once collateral drops below one contribution. A zero-collateral
-    /// circle never sidelines members for collateral alone.
+    /// False once collateral no longer covers this member's remaining
+    /// obligations. Protected circles will not advance until this is restored.
     pub active: bool,
     pub joined_ts: i64,
     pub bump: u8,
@@ -184,6 +185,32 @@ pub struct CircleRoster {
     pub synced_mask: [u64; 2],
     pub ready: bool,
     pub bump: u8,
+}
+
+/// Solvency guard for a circle.
+///
+/// A protected circle has enough per-member reserve to cover every remaining
+/// contribution. It is deliberately separate from CircleRoster so this safety
+/// upgrade can be added without changing either of the already-live accounts.
+#[account]
+#[derive(InitSpace)]
+pub struct CircleSafety {
+    pub circle: Pubkey,
+    pub required_reserve: u64,
+    pub secured_mask: [u64; 2],
+    pub protected: bool,
+    pub bump: u8,
+}
+
+impl CircleSafety {
+    pub fn is_fully_secured(&self, member_count: u16) -> bool {
+        self.secured_mask == CircleRoster::full_mask(member_count)
+    }
+
+    pub fn mark_secured(&mut self, seat: u16) {
+        let word = usize::from(seat / 64);
+        self.secured_mask[word] |= 1u64 << u32::from(seat % 64);
+    }
 }
 
 impl CircleRoster {

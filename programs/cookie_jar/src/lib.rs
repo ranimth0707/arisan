@@ -43,6 +43,10 @@ pub mod cookie_jar {
         instructions::admin::handle_set_relayer(ctx, relayer)
     }
 
+    pub fn transfer_authority(ctx: Context<AdminOnly>, new_authority: Pubkey) -> Result<()> {
+        instructions::admin::handle_transfer_authority(ctx, new_authority)
+    }
+
     // --- gas sponsorship ---
 
     pub fn deposit_gas(ctx: Context<DepositGas>, amount: u64) -> Result<()> {
@@ -172,6 +176,12 @@ pub mod cookie_jar {
 
     pub fn initialize_circle_roster(ctx: Context<InitializeCircleRoster>) -> Result<()> {
         instructions::arisan::handle_initialize_circle_roster(ctx)
+    }
+
+    pub fn initialize_circle_safety<'info>(
+        ctx: Context<'info, InitializeCircleSafety<'info>>,
+    ) -> Result<()> {
+        instructions::arisan::handle_initialize_circle_safety(ctx)
     }
 
     pub fn sync_circle_members<'info>(ctx: Context<'info, SyncCircleMembers<'info>>) -> Result<()> {

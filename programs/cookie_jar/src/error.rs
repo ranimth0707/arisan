@@ -97,7 +97,8 @@ pub enum CookieError {
     #[msg("Round length is outside the allowed range")]
     BadRoundLength,
     /// Retained so upgrades do not renumber the public error table. New circles
-    /// may use zero collateral; this error is no longer emitted by creation.
+    /// use CircleNotProtected for an underfunded reserve; this legacy error is
+    /// kept for compatibility with older clients.
     #[msg("Collateral must cover at least one contribution")]
     CollateralTooSmall,
     #[msg("This circle has already started")]
@@ -152,4 +153,10 @@ pub enum CookieError {
     BadRosterMember,
     #[msg("No member remains eligible for a turn")]
     NoEligibleMembers,
+    #[msg("This circle must fully fund its remaining reserve before continuing")]
+    CircleNotProtected,
+    #[msg("The round has an unsettled member")]
+    RoundNotSettled,
+    #[msg("The new authority cannot be the default address")]
+    InvalidAuthority,
 }

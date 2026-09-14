@@ -9,10 +9,11 @@
 //! Offline this works because everyone knows each other. Online it collapses,
 //! for two reasons this module is built around:
 //!
-//! 1. Somebody stops paying once they have already won. A circle may optionally
-//!    use collateral and missing a round can slash it into the pot. A zero-
-//!    collateral circle is still valid, but the group accepts that a missed
-//!    contribution leaves that round short.
+//! 1. Somebody stops paying once they have already won. Every new circle locks
+//!    a reserve for all remaining obligations. Missing a round can slash that
+//!    reserve into the pot, so a default cannot make another member's payout
+//!    smaller. A circle that cannot prove this reserve is locked cannot draw or
+//!    pay out.
 //! 2. Whoever holds the money disappears with it. Here nobody holds it. The pot
 //!    lives in a program account, the draw is random and permissionless, and the
 //!    organiser has no key to it and cannot change the rules after people join.
@@ -22,9 +23,54 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::*,
     error::CookieError,
-    state::{Circle, CircleRoom, CircleRoster, CircleState, Config, Member},
+    state::{Circle, CircleRoom, CircleRoster, CircleSafety, CircleState, Config, Member},
     utils::{derive_seed, fund_vault, slot_hash_for, vault_rent_floor, vault_transfer},
 };
+
+fn remaining_turns(circle: &Circle) -> Result<u64> {
+    Ok(u64::from(
+        circle
+            .member_count
+            .checked_sub(circle.winners_so_far)
+            .ok_or(CookieError::MathOverflow)?,
+    ))
+}
+
+fn reserve_per_member(circle: &Circle) -> Result<u64> {
+    circle
+        .contribution
+        .checked_mul(remaining_turns(circle)?)
+        .ok_or(CookieError::MathOverflow.into())
+}
+
+fn reserve_total(circle: &Circle) -> Result<u64> {
+    reserve_per_member(circle)?
+        .checked_mul(u64::from(circle.member_count))
+        .ok_or(CookieError::MathOverflow.into())
+}
+
+/// Once every member has settled the current round, that round's obligation
+/// has already been funded by either a wallet payment or a collateral slash.
+/// The reserve check for the draw therefore covers only the turns after the
+/// current payout. This is what lets a fully collateral-funded default advance
+/// instead of failing because the bond was just moved into the pot.
+fn reserve_after_current_round(circle: &Circle) -> Result<u64> {
+    let future_turns = remaining_turns(circle)?
+        .checked_sub(1)
+        .ok_or(CookieError::MathOverflow)?;
+    circle
+        .contribution
+        .checked_mul(future_turns)
+        .ok_or(CookieError::MathOverflow)?
+        .checked_mul(u64::from(circle.member_count))
+        .ok_or(CookieError::MathOverflow.into())
+}
+
+fn bond_balance(bond: &SystemAccount<'_>) -> Result<u64> {
+    bond.lamports()
+        .checked_sub(vault_rent_floor()?)
+        .ok_or(CookieError::MathOverflow.into())
+}
 
 /// Opens a circle. Every parameter here is frozen the moment it is written.
 ///
@@ -122,6 +168,13 @@ pub fn handle_create_circle(
     require!(
         (MIN_ROUND_SECONDS..=MAX_ROUND_SECONDS).contains(&round_seconds),
         CookieError::BadRoundLength
+    );
+    let required_collateral = contribution
+        .checked_mul(u64::from(max_members))
+        .ok_or(CookieError::MathOverflow)?;
+    require!(
+        collateral >= required_collateral,
+        CookieError::CircleNotProtected
     );
     let floor = vault_rent_floor()?;
     fund_vault(
@@ -402,6 +455,18 @@ pub struct StartCircle<'info> {
     )]
     pub roster: Account<'info, CircleRoster>,
 
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + CircleSafety::INIT_SPACE,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -421,6 +486,13 @@ pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
         c.creator == ctx.accounts.starter.key() || c.member_count == c.max_members,
         CookieError::StartRequiresCreatorOrFull
     );
+    let per_member = reserve_per_member(c)?;
+    require!(c.collateral >= per_member, CookieError::CircleNotProtected);
+    let total_reserve = reserve_total(c)?;
+    require!(
+        bond_balance(&ctx.accounts.bond)? >= total_reserve,
+        CookieError::CircleNotProtected
+    );
 
     let roster = &mut ctx.accounts.roster;
     roster.circle = c.key();
@@ -428,6 +500,13 @@ pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
     roster.synced_mask = CircleRoster::full_mask(c.member_count);
     roster.ready = true;
     roster.bump = ctx.bumps.roster;
+
+    let safety = &mut ctx.accounts.safety;
+    safety.circle = c.key();
+    safety.required_reserve = total_reserve;
+    safety.secured_mask = CircleRoster::full_mask(c.member_count);
+    safety.protected = true;
+    safety.bump = ctx.bumps.safety;
 
     c.state = CircleState::Running;
     c.round = 1;
@@ -459,6 +538,18 @@ pub struct InitializeCircleRoster<'info> {
     )]
     pub roster: Account<'info, CircleRoster>,
 
+    #[account(
+        init_if_needed,
+        payer = payer,
+        space = 8 + CircleSafety::INIT_SPACE,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -472,13 +563,103 @@ pub fn handle_initialize_circle_roster(ctx: Context<InitializeCircleRoster>) -> 
     let roster = &mut ctx.accounts.roster;
     roster.circle = c.key();
     roster.winner_mask = [0; 2];
-    roster.ready = c.winners_so_far == 0;
-    roster.synced_mask = if roster.ready {
-        CircleRoster::full_mask(c.member_count)
-    } else {
-        [0; 2]
-    };
+    roster.ready = false;
+    roster.synced_mask = [0; 2];
     roster.bump = ctx.bumps.roster;
+
+    let safety = &mut ctx.accounts.safety;
+    if safety.circle == Pubkey::default() {
+        safety.circle = c.key();
+        safety.required_reserve = reserve_total(c)?;
+        safety.secured_mask = [0; 2];
+        safety.protected = false;
+        safety.bump = ctx.bumps.safety;
+    } else {
+        require!(safety.circle == c.key(), CookieError::RosterMismatch);
+    }
+    Ok(())
+}
+
+/// Adds the solvency guard to a legacy roster that was created by the previous
+/// upgrade. The full member list is checked here because a ready roster cannot
+/// be re-synced just to establish reserve coverage.
+#[derive(Accounts)]
+pub struct InitializeCircleSafety<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(
+        seeds = [CIRCLE_SEED, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
+        bump = circle.bump
+    )]
+    pub circle: Account<'info, Circle>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + CircleSafety::INIT_SPACE,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handle_initialize_circle_safety<'info>(
+    ctx: Context<'info, InitializeCircleSafety<'info>>,
+) -> Result<()> {
+    let c = &ctx.accounts.circle;
+    require!(
+        c.state == CircleState::Running,
+        CookieError::CircleNotRunning
+    );
+    require!(
+        !ctx.remaining_accounts.is_empty(),
+        CookieError::BadRosterMember
+    );
+
+    let per_member = reserve_per_member(c)?;
+    let mut seen = [false; MAX_CIRCLE_MEMBERS as usize];
+    let mut winners = 0u16;
+    let safety = &mut ctx.accounts.safety;
+    safety.circle = c.key();
+    safety.required_reserve = reserve_total(c)?;
+    safety.secured_mask = [0; 2];
+    safety.bump = ctx.bumps.safety;
+
+    for account_info in ctx.remaining_accounts.iter() {
+        let member = Account::<Member>::try_from(account_info)
+            .map_err(|_| error!(CookieError::BadRosterMember))?;
+        require!(member.circle == c.key(), CookieError::BadRosterMember);
+        require!(member.seat < c.member_count, CookieError::BadRosterMember);
+        let seat = usize::from(member.seat);
+        require!(!seen[seat], CookieError::BadRosterMember);
+        seen[seat] = true;
+        if member.has_won {
+            winners = winners.checked_add(1).ok_or(CookieError::MathOverflow)?;
+        }
+        if member.collateral >= per_member {
+            safety.mark_secured(member.seat);
+        }
+    }
+
+    require!(
+        seen[..usize::from(c.member_count)]
+            .iter()
+            .all(|present| *present),
+        CookieError::RosterMismatch
+    );
+    require!(winners == c.winners_so_far, CookieError::RosterMismatch);
+    require!(
+        safety.is_fully_secured(c.member_count)
+            && bond_balance(&ctx.accounts.bond)? >= safety.required_reserve,
+        CookieError::CircleNotProtected
+    );
+    safety.protected = true;
     Ok(())
 }
 
@@ -487,6 +668,9 @@ pub fn handle_initialize_circle_roster(ctx: Context<InitializeCircleRoster>) -> 
 /// circle checked by Anchor before it can influence the roster.
 #[derive(Accounts)]
 pub struct SyncCircleMembers<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
     #[account(
         seeds = [CIRCLE_SEED, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
         bump = circle.bump
@@ -500,6 +684,17 @@ pub struct SyncCircleMembers<'info> {
         constraint = roster.circle == circle.key() @ CookieError::RosterMismatch
     )]
     pub roster: Account<'info, CircleRoster>,
+
+    #[account(
+        mut,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump = safety.bump,
+        constraint = safety.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
 }
 
 pub fn handle_sync_circle_members<'info>(
@@ -510,13 +705,25 @@ pub fn handle_sync_circle_members<'info>(
         c.state == CircleState::Running,
         CookieError::CircleNotRunning
     );
-    require!(!ctx.accounts.roster.ready, CookieError::RosterNotReady);
+    // A ready roster may be refreshed exactly once while safety is still
+    // unprotected. This recovers circles that got the prior winner roster
+    // upgrade but never had their reserve guard initialized.
+    let refreshing = ctx.accounts.roster.ready;
+    require!(
+        !refreshing || !ctx.accounts.safety.protected,
+        CookieError::RosterNotReady
+    );
     require!(
         !ctx.remaining_accounts.is_empty(),
         CookieError::BadRosterMember
     );
 
     let roster = &mut ctx.accounts.roster;
+    let safety = &mut ctx.accounts.safety;
+    let per_member = reserve_per_member(c)?;
+    if refreshing {
+        safety.secured_mask = [0; 2];
+    }
     for account_info in ctx.remaining_accounts.iter() {
         let member = Account::<Member>::try_from(account_info)
             .map_err(|_| error!(CookieError::BadRosterMember))?;
@@ -526,6 +733,9 @@ pub fn handle_sync_circle_members<'info>(
         if member.has_won {
             roster.mark_winner(member.seat);
         }
+        if member.collateral >= per_member {
+            safety.mark_secured(member.seat);
+        }
     }
 
     if roster.is_fully_synced(c.member_count) {
@@ -533,6 +743,15 @@ pub fn handle_sync_circle_members<'info>(
             roster.winner_count() == c.winners_so_far,
             CookieError::RosterMismatch
         );
+        require!(
+            safety.is_fully_secured(c.member_count),
+            CookieError::CircleNotProtected
+        );
+        require!(
+            bond_balance(&ctx.accounts.bond)? >= reserve_total(c)?,
+            CookieError::CircleNotProtected
+        );
+        safety.protected = true;
         roster.ready = true;
     }
     Ok(())
@@ -606,9 +825,10 @@ pub fn handle_contribute(ctx: Context<Contribute>) -> Result<()> {
 ///
 /// Anyone may call this once the round is over. The point is that a member who
 /// skips a round does not make the round smaller for everybody else; they pay
-/// it out of the stake they posted when they joined. If their collateral runs
-/// below one contribution they stop being eligible to win until they top it up,
-/// so the incentive to disappear right after winning is removed.
+/// it out of the reserve they posted when they joined. If their reserve no
+/// longer covers their remaining obligations they stop being eligible to win
+/// until they top it up, so disappearing after winning cannot make a later pot
+/// smaller for everybody else.
 #[derive(Accounts)]
 pub struct SlashAbsent<'info> {
     #[account(
@@ -651,7 +871,6 @@ pub fn handle_slash_absent(ctx: Context<SlashAbsent>) -> Result<()> {
     let due = c.contribution;
     let available = ctx.accounts.membership.collateral;
     let taken = due.min(available);
-    require!(taken > 0, CookieError::NothingToSlash);
 
     let circle_key = c.key();
     vault_transfer(
@@ -668,6 +887,12 @@ pub fn handle_slash_absent(ctx: Context<SlashAbsent>) -> Result<()> {
 
     let round = ctx.accounts.circle.round;
     let contribution = ctx.accounts.circle.contribution;
+    let future_obligation = contribution
+        .checked_mul(u64::from(
+            c.member_count
+                .saturating_sub(c.winners_so_far.saturating_add(1)),
+        ))
+        .ok_or(CookieError::MathOverflow)?;
 
     let m = &mut ctx.accounts.membership;
     m.collateral = m.collateral.saturating_sub(taken);
@@ -675,14 +900,16 @@ pub fn handle_slash_absent(ctx: Context<SlashAbsent>) -> Result<()> {
     // Counts as settled for this round so the same absence cannot be charged
     // twice, but not as a payment, which is what `rounds_paid` tracks.
     m.paid_round = round;
-    if m.collateral < contribution {
-        m.active = false;
-    }
+    m.active = m.collateral >= future_obligation;
 
     let c = &mut ctx.accounts.circle;
     c.pot_amount = c
         .pot_amount
         .checked_add(taken)
+        .ok_or(CookieError::MathOverflow)?;
+    c.paid_this_round = c
+        .paid_this_round
+        .checked_add(1)
         .ok_or(CookieError::MathOverflow)?;
     Ok(())
 }
@@ -723,7 +950,7 @@ pub fn handle_top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    let required = ctx.accounts.circle.collateral;
+    let required = reserve_per_member(&ctx.accounts.circle)?;
     let m = &mut ctx.accounts.membership;
     m.collateral = m
         .collateral
@@ -750,6 +977,17 @@ pub struct RequestTurn<'info> {
         bump = circle.bump
     )]
     pub circle: Account<'info, Circle>,
+
+    #[account(
+        mut,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump = safety.bump,
+        constraint = safety.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
 }
 
 pub fn handle_request_turn(ctx: Context<RequestTurn>) -> Result<()> {
@@ -764,6 +1002,19 @@ pub fn handle_request_turn(ctx: Context<RequestTurn>) -> Result<()> {
         clock.unix_timestamp >= c.next_payout_ts,
         CookieError::RoundNotOver
     );
+    require!(
+        c.paid_this_round == c.member_count,
+        CookieError::RoundNotSettled
+    );
+    require!(
+        ctx.accounts.safety.protected,
+        CookieError::CircleNotProtected
+    );
+    let next_reserve = reserve_after_current_round(c)?;
+    require!(
+        bond_balance(&ctx.accounts.bond)? >= next_reserve,
+        CookieError::CircleNotProtected
+    );
     require!(!c.winner_drawn, CookieError::TurnAlreadyDrawn);
 
     // A request that nobody finalised in time is stale and may be replaced,
@@ -774,6 +1025,8 @@ pub fn handle_request_turn(ctx: Context<RequestTurn>) -> Result<()> {
         c.draw_target_slot == 0 || stale,
         CookieError::DrawInProgress
     );
+
+    ctx.accounts.safety.required_reserve = next_reserve;
 
     c.draw_target_slot = clock
         .slot
@@ -798,6 +1051,16 @@ pub struct FinalizeTurn<'info> {
     )]
     pub roster: Account<'info, CircleRoster>,
 
+    #[account(
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump = safety.bump,
+        constraint = safety.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub safety: Account<'info, CircleSafety>,
+
+    #[account(seeds = [BOND_SEED, circle.key().as_ref()], bump = circle.bond_bump)]
+    pub bond: SystemAccount<'info>,
+
     /// CHECK: address-checked against the SlotHashes sysvar.
     #[account(address = solana_sdk_ids::sysvar::slot_hashes::ID)]
     pub slot_hashes: UncheckedAccount<'info>,
@@ -819,6 +1082,14 @@ pub fn handle_finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
         CookieError::DrawExpired
     );
     require!(ctx.accounts.roster.ready, CookieError::RosterNotReady);
+    require!(
+        ctx.accounts.safety.protected,
+        CookieError::CircleNotProtected
+    );
+    require!(
+        bond_balance(&ctx.accounts.bond)? >= ctx.accounts.safety.required_reserve,
+        CookieError::CircleNotProtected
+    );
     require!(
         ctx.accounts.roster.winner_count() == c.winners_so_far,
         CookieError::RosterMismatch
@@ -855,9 +1126,9 @@ pub fn handle_finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
 /// The drawn member takes the pot, and the circle moves to the next round.
 ///
 /// Eligibility is checked here rather than at draw time: the winner must hold
-/// this seat, must not have won already, must be active, and must have paid
-/// this round. A member who skipped cannot collect, which is the rule that
-/// makes the whole arrangement hold together.
+/// this seat, must not have won already, must be reserve-solvent, and must have
+/// settled this round. Settlement may be a direct payment or a full collateral
+/// slash; the latter keeps the pot whole without pretending the member paid.
 #[derive(Accounts)]
 pub struct ClaimTurn<'info> {
     #[account(mut)]
@@ -877,6 +1148,14 @@ pub struct ClaimTurn<'info> {
         constraint = roster.circle == circle.key() @ CookieError::RosterMismatch
     )]
     pub roster: Account<'info, CircleRoster>,
+
+    #[account(
+        mut,
+        seeds = [SAFETY_SEED, circle.key().as_ref()],
+        bump = safety.bump,
+        constraint = safety.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub safety: Account<'info, CircleSafety>,
 
     #[account(mut, seeds = [POT_SEED, circle.key().as_ref()], bump = circle.pot_bump)]
     pub pot: SystemAccount<'info>,
@@ -915,7 +1194,6 @@ pub fn handle_claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
     );
     require!(m.active, CookieError::MemberSidelined);
     require!(m.paid_round >= c.round, CookieError::PayFirst);
-    require!(m.rounds_paid > 0, CookieError::PayFirst);
 
     let amount = c.pot_amount;
     require!(amount > 0, CookieError::PotEmpty);
@@ -953,6 +1231,7 @@ pub fn handle_claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
             .checked_add(c.round_seconds)
             .ok_or(CookieError::MathOverflow)?;
     }
+    ctx.accounts.safety.required_reserve = reserve_total(c)?;
     Ok(())
 }
 
@@ -988,10 +1267,7 @@ pub fn handle_redraw_turn(ctx: Context<RedrawTurn>) -> Result<()> {
     );
     require!(c.winner_drawn, CookieError::DrawNotFinalized);
     let selected = &ctx.accounts.membership;
-    let cannot_claim = selected.has_won
-        || !selected.active
-        || selected.paid_round < c.round
-        || selected.rounds_paid == 0;
+    let cannot_claim = selected.has_won || !selected.active || selected.paid_round < c.round;
     require!(
         cannot_claim || now >= c.next_payout_ts.saturating_add(TURN_CLAIM_WINDOW),
         CookieError::ClaimWindowOpen

@@ -10,9 +10,10 @@ test("a draft can advance before connecting a wallet or posting", () => {
   assert.equal(validateDraft({ ...valid, socialUrl: "" }, 2)?.field, "socialUrl");
   assert.equal(validateDraft(valid, 2), null);
 });
-test("zero collateral is a valid cooperative circle choice", () => {
-  assert.equal(validateDraft({ ...valid, collateral: "0" }, 2), null);
-  assert.equal(validateDraft({ ...valid, collateral: "0.0" }, 2), null);
+test("underfunded collateral is rejected by the safe circle policy", () => {
+  assert.equal(validateDraft({ ...valid, collateral: "0" }, 2)?.field, "collateral");
+  assert.equal(validateDraft({ ...valid, collateral: "0.2" }, 2)?.field, "collateral");
+  assert.equal(validateDraft({ ...valid, collateral: "0.3" }, 2), null);
 });
 for (const [field, value] of [
   ["name", " "], ["name", "a".repeat(49)], ["name", "漢".repeat(17)],

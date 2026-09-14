@@ -1,10 +1,10 @@
 // A full arisan cycle on Cookie Chain mainnet, including the case the whole
 // design exists for: a member who stops paying.
 //
-// Three members, 1 COOK a round, 1 COOK collateral each. Member C pays the
+// Three members, 0.2 COOK a round, 0.6 COOK reserve each. Member C pays the
 // first round and then goes quiet, so the suite can check that the round still
-// pays out in full, that C funds the shortfall out of their own collateral, and
-// that C cannot collect a turn while sitting on a missed round.
+// pays out in full, that C funds the shortfall out of their own reserve, and
+// that the default remains visible without reducing anybody else's payout.
 
 import anchor from "@coral-xyz/anchor";
 import { createHash } from "node:crypto";
@@ -13,7 +13,7 @@ import {
 } from "@solana/web3.js";
 import {
   KEYS, SLOT_HASHES, connection, cook, explorer, findBond, findCircle,
-  findConfig, findMember, findPot, findRoom, findRoster, loadKeypair, loadProgram, toLamports,
+  findConfig, findMember, findPot, findRoom, findRoster, findSafety, loadKeypair, loadProgram, toLamports,
 } from "./lib.mjs";
 
 const bn = (n) => new anchor.BN(n.toString());
@@ -32,14 +32,14 @@ const check = (label, pass, note = "") => {
   line(`${pass ? "PASS" : "FAIL"}  ${label}${note ? `  (${note})` : ""}`);
 };
 
-const CONTRIBUTION = 1;
-const COLLATERAL = 1;
+const CONTRIBUTION = 0.2;
+const COLLATERAL = 0.6;
 const ROUND_SECONDS = 60;
 const INVITE_CODE = "ARISAN-TEST-2026";
 const inviteCodeHash = Array.from(createHash("sha256").update(INVITE_CODE).digest());
 
 // ------------------------------------------------------------ three wallets
-step("Give three members enough COOK to take part");
+step("Give three members enough demo COOK to take part");
 
 const members = [Keypair.generate(), Keypair.generate(), Keypair.generate()];
 const names = ["A", "B", "C"];
@@ -50,7 +50,7 @@ const seed = new TransactionMessage({
   instructions: members.map((m) => SystemProgram.transfer({
     fromPubkey: funder.publicKey,
     toPubkey: m.publicKey,
-    lamports: toLamports(6),
+      lamports: toLamports(2),
   })),
 }).compileToV0Message();
 const seedTx = new VersionedTransaction(seed);
@@ -61,7 +61,7 @@ for (const [i, m] of members.entries()) {
 }
 
 // --------------------------------------------------------------- the circle
-step("Open a circle: 3 seats, 1 COOK a round, 1 COOK collateral");
+step("Open a circle: 3 seats, 0.2 COOK a round, 0.6 COOK reserve each");
 
 const circleId = Math.floor(Date.now() / 1000);
 const circle = findCircle(funder.publicKey, circleId);
@@ -138,6 +138,7 @@ step("Start the circle");
 await program.methods.startCircle()
   .accountsPartial({
     starter: funder.publicKey, payer: funder.publicKey, circle, roster,
+    safety: findSafety(circle), bond,
     systemProgram: SystemProgram.programId,
   }).rpc();
 
@@ -191,7 +192,7 @@ step("Round 1 closes and the turn is drawn");
 
 let earlyDraw = false;
 try {
-  await program.methods.requestTurn().accountsPartial({ circle }).rpc();
+  await program.methods.requestTurn().accountsPartial({ circle, safety: findSafety(circle), bond }).rpc();
 } catch { earlyDraw = true; }
 check("the draw is refused before the round is over", earlyDraw);
 
@@ -209,7 +210,7 @@ const winnerBefore = await conn.getBalance(winnerKp.publicKey);
 await program.methods.claimTurn()
   .accountsPartial({
     winner: winnerKp.publicKey, circle, pot,
-    roster,
+    roster, safety: findSafety(circle),
     membership: findMember(circle, winnerKp.publicKey),
     systemProgram: SystemProgram.programId,
   })
@@ -229,7 +230,7 @@ try {
   await program.methods.claimTurn()
     .accountsPartial({
       winner: winnerKp.publicKey, circle, pot,
-      roster,
+      roster, safety: findSafety(circle),
       membership: findMember(circle, winnerKp.publicKey),
       systemProgram: SystemProgram.programId,
     }).signers([winnerKp]).rpc();
@@ -283,7 +284,7 @@ check("and it landed in the pot, so the round is still whole",
   potAfterSlash - potBeforeSlash === toLamports(CONTRIBUTION));
 check("the pot is the full three contributions either way",
   potAfterSlash === toLamports(CONTRIBUTION * 3), `${cook(potAfterSlash)} COOK`);
-check("out of collateral, so sidelined from winning", quietAfter.active === false);
+check("remaining obligations are still reserve-covered", quietAfter.active === true);
 check("the miss is on their public record", quietAfter.roundsMissed === 1);
 
 let slashTwice = false;
@@ -305,30 +306,31 @@ line(`seat ${winner2} drawn for round 2`);
 check("the previous winner is eliminated from later draws", winner2 !== winnerIdx);
 
 if (winner2 === quiet) {
-  let blocked = false;
+  let reserveCoveredClaim = false;
   try {
     await program.methods.claimTurn()
       .accountsPartial({
         winner: members[quiet].publicKey, circle, pot,
-        roster,
+        roster, safety: findSafety(circle),
         membership: findMember(circle, members[quiet].publicKey),
         systemProgram: SystemProgram.programId,
       }).signers([members[quiet]]).rpc();
-  } catch { blocked = true; }
-  check("the member who skipped cannot take the pot", blocked);
+    reserveCoveredClaim = true;
+  } catch { /* the explicit assertion below records the result */ }
+  check("a reserve-covered miss can still settle its own turn", reserveCoveredClaim);
 } else {
-  // Prove it directly: the sidelined member claims a turn that is not theirs.
+  // Prove it directly: a member cannot claim a turn that is not theirs.
   let blocked = false;
   try {
     await program.methods.claimTurn()
       .accountsPartial({
         winner: members[quiet].publicKey, circle, pot,
-        roster,
+        roster, safety: findSafety(circle),
         membership: findMember(circle, members[quiet].publicKey),
         systemProgram: SystemProgram.programId,
       }).signers([members[quiet]]).rpc();
   } catch { blocked = true; }
-  check("the member who skipped cannot take the pot", blocked);
+  check("a member cannot claim a different seat's pot", blocked);
 }
 
 // --------------------------------------------------------------- summary
@@ -345,7 +347,7 @@ async function drawTurn() {
     if (state.winnerDrawn) return state.winnerIndex;
 
     if (state.drawTargetSlot.toNumber() === 0) {
-      await program.methods.requestTurn().accountsPartial({ circle }).rpc();
+      await program.methods.requestTurn().accountsPartial({ circle, safety: findSafety(circle), bond }).rpc();
     }
     const target = (await program.account.circle.fetch(circle)).drawTargetSlot.toNumber();
     let slot = await conn.getSlot();
@@ -353,13 +355,13 @@ async function drawTurn() {
 
     try {
       const sig = await program.methods.finalizeTurn()
-        .accountsPartial({ circle, roster, slotHashes: SLOT_HASHES }).rpc();
+        .accountsPartial({ circle, roster, safety: findSafety(circle), bond, slotHashes: SLOT_HASHES }).rpc();
       line(`draw tx  : ${explorer(sig)}`);
       return (await program.account.circle.fetch(circle)).winnerIndex;
     } catch (e) {
       if (attempt === 3) throw e;
       line(`draw attempt ${attempt} went stale, requesting again`);
-      await program.methods.requestTurn().accountsPartial({ circle }).rpc();
+      await program.methods.requestTurn().accountsPartial({ circle, safety: findSafety(circle), bond }).rpc();
     }
   }
   throw new Error("could not finalize the draw");

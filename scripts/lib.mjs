@@ -74,6 +74,7 @@ export const findBond = (circle) => pda([enc("bond"), circle.toBuffer()]);
 export const findMember = (circle, wallet) =>
   pda([enc("member"), circle.toBuffer(), wallet.toBuffer()]);
 export const findRoster = (circle) => pda([enc("roster"), circle.toBuffer()]);
+export const findSafety = (circle) => pda([enc("safety"), circle.toBuffer()]);
 
 export const SLOT_HASHES = new PublicKey("SysvarS1otHashes111111111111111111111111111");
 

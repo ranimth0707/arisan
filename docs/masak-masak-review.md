@@ -30,15 +30,15 @@ The UI distinguishes waiting, finalization and expiration at the program's 300-s
 
 ## Mechanism findings and limits
 
-The observed joins, contributions, and separated funds are consistent with the program. This legacy campaign retains its agreed 0.5 COOK collateral even though new campaigns default to zero.
+The observed joins, contributions, and separated funds are consistent with the program. This legacy campaign retains its agreed 0.5 COOK reserve per member. The safety migration now verifies the current remaining reserve before allowing another draw.
 
-The draw chooses a seat from all members, not only members who have yet to receive a pot. Claiming twice is prohibited, but drawing a previous recipient can delay the round. The existing redraw condition is 24 hours after the round payment deadline (not 24 hours after finalization). The UI now exposes this recovery path; it does not change that protocol rule or guarantee that a redraw cannot choose the same seat. A future change to select only eligible recipients requires a program design change and dedicated protocol tests.
+The draw chooses only a seat absent from the winner bitmap, so a previous recipient cannot win again. A drawn seat that is already invalid can be removed immediately; an otherwise valid seat has the normal claim window before redraw. This prevents a previous winner or an absent member from freezing the circle indefinitely.
 
-A one-minute demo round still uses that same 24-hour redraw rule. Missing contributions may leave a smaller pot in zero-collateral groups; the contract does not guarantee full collection. Those are protocol limitations, not proof that this campaign has paid out incorrectly.
+The new protected-by-default rule requires each member's reserve to cover `contribution × remaining turns` and the bond vault to cover the group total. A missed contribution is settled from that member's reserve and recorded as a miss. If the reserve is insufficient, the program refuses to request/finalize a draw or pay a pot; other members are not asked to cover the gap.
 
 ## Verification
 
 - 48 automated tests plus existing UI smoke checks passed; production frontend build passed.
-- New regressions cover missing signers, signing request/finalize/redraw, relayer acceptance, cancellation, ambiguous send/confirmation timeouts, preflight failure, draw expiry boundaries, and claim eligibility.
+- New regressions cover missing signers, signing request/finalize/redraw, relayer acceptance, cancellation, ambiguous send/confirmation timeouts, preflight failure, draw expiry boundaries, claim eligibility, and underfunded-circle rejection.
 - Live simulation used the existing Cookie Chain program and real circle state without broadcasting.
 - Direct Brave verification could not be completed because the computer-use connection timed out. Actual Nightly approval and payout remain user actions.

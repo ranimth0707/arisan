@@ -1,5 +1,5 @@
 export interface CampaignDraft { name: string; description: string; contribution: string; collateral: string; seats: string; duration: string; socialUrl: string }
-export const defaultDraft: CampaignDraft = { name: "", description: "", contribution: "0.1", collateral: "0", seats: "3", duration: "60", socialUrl: "" };
+export const defaultDraft: CampaignDraft = { name: "", description: "", contribution: "0.1", collateral: "0.3", seats: "3", duration: "60", socialUrl: "" };
 export const durationLabels: Record<string, string> = { "60": "1 menit (demo)", "86400": "1 hari", "604800": "1 minggu", "2592000": "30 hari" };
 export function parseCookInput(value: string): number | null {
   if (!/^\d+(\.\d{1,9})?$/.test(value)) return null;
@@ -39,12 +39,18 @@ export function validateDraft(draft: CampaignDraft, step: number): { field: keyo
   const bond = parsedBond ?? (/^0(?:\.0+)?$/.test(collateralInput) ? 0 : null);
   const seats = Number(draft.seats);
   if (amount === null) return { field: "contribution", message: "Isi iuran di atas 0 COOK, maksimal 9 desimal dan dalam batas nominal aplikasi." };
-  if (bond === null) return { field: "collateral", message: "Isi jaminan 0 atau nominal positif, maksimal 9 desimal." };
+  if (bond === null) return { field: "collateral", message: "Isi cadangan positif, maksimal 9 desimal." };
   if (bond !== null && bond < 0) return { field: "collateral", message: "Jaminan tidak boleh negatif." };
   if (!Number.isInteger(seats) || seats < 2 || seats > 100) return { field: "seats", message: "Isi jumlah anggota antara 2 dan 100." };
-  if (!Number.isSafeInteger(amount * seats) || !Number.isSafeInteger(bond * seats)) return { field: "contribution", message: "Total nominal grup terlalu besar. Kurangi iuran atau jaminan." };
+  const requiredBond = amount * seats;
+  if (!Number.isSafeInteger(requiredBond) || !Number.isSafeInteger(requiredBond * seats) || !Number.isSafeInteger(bond * seats)) return { field: "contribution", message: "Total nominal grup terlalu besar. Kurangi iuran atau cadangan." };
+  if (bond < requiredBond) return { field: "collateral", message: `Cadangan minimal ${formatLamports(requiredBond)} COOK per anggota agar tunggakan tidak merugikan anggota lain.` };
   if (!Object.hasOwn(durationLabels, draft.duration)) return { field: "duration", message: "Pilih durasi putaran." };
   if (step < 2) return null;
   if (bytes(draft.socialUrl) > 200 || !isSocialPost(draft.socialUrl.trim())) return { field: "socialUrl", message: "Tempel link posting publik X, Instagram, Threads, Facebook, atau Telegram. Bukan link profil." };
   return null;
+}
+
+function formatLamports(lamports: number) {
+  return (lamports / 1_000_000_000).toLocaleString("en-US", { maximumFractionDigits: 9 });
 }

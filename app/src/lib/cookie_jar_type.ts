@@ -192,6 +192,29 @@ export type CookieJar = {
           }
         },
         {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "pot",
           "writable": true,
           "pda": {
@@ -1949,6 +1972,48 @@ export type CookieJar = {
           }
         },
         {
+          "name": "safety",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "slotHashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
@@ -2258,6 +2323,145 @@ export type CookieJar = {
                   116,
                   101,
                   114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "initializeCircleSafety",
+      "discriminator": [
+        247,
+        95,
+        148,
+        76,
+        77,
+        62,
+        251,
+        20
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
                 ]
               },
               {
@@ -2814,6 +3018,49 @@ export type CookieJar = {
               }
             ]
           }
+        },
+        {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -3102,6 +3349,49 @@ export type CookieJar = {
           }
         },
         {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -3209,6 +3499,11 @@ export type CookieJar = {
       ],
       "accounts": [
         {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
           "name": "circle",
           "pda": {
             "seeds": [
@@ -3250,6 +3545,49 @@ export type CookieJar = {
                   116,
                   101,
                   114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "safety",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  115,
+                  97,
+                  102,
+                  101,
+                  116,
+                  121
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "bond",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  98,
+                  111,
+                  110,
+                  100
                 ]
               },
               {
@@ -3365,6 +3703,50 @@ export type CookieJar = {
         {
           "name": "amount",
           "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "transferAuthority",
+      "discriminator": [
+        48,
+        169,
+        76,
+        72,
+        229,
+        180,
+        55,
+        161
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "newAuthority",
+          "type": "pubkey"
         }
       ]
     },
@@ -3992,6 +4374,19 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "circleSafety",
+      "discriminator": [
+        151,
+        119,
+        167,
+        149,
+        147,
+        168,
+        159,
+        236
+      ]
+    },
+    {
       "name": "config",
       "discriminator": [
         155,
@@ -4451,6 +4846,21 @@ export type CookieJar = {
       "code": 6070,
       "name": "noEligibleMembers",
       "msg": "No member remains eligible for a turn"
+    },
+    {
+      "code": 6071,
+      "name": "circleNotProtected",
+      "msg": "This circle must fully fund its remaining reserve before continuing"
+    },
+    {
+      "code": 6072,
+      "name": "roundNotSettled",
+      "msg": "The round has an unsettled member"
+    },
+    {
+      "code": 6073,
+      "name": "invalidAuthority",
+      "msg": "The new authority cannot be the default address"
     }
   ],
   "types": [
@@ -4556,8 +4966,9 @@ export type CookieJar = {
           {
             "name": "collateral",
             "docs": [
-              "Optional amount posted on joining. Missing a round is taken out of this",
-              "when available; zero means the group accepts an uncovered miss."
+              "Fixed reserve posted on joining. New circles require this to cover every",
+              "planned contribution; legacy circles may contain a smaller value but are",
+              "blocked by CircleSafety until the remaining reserve is repaired."
             ],
             "type": "u64"
           },
@@ -4712,6 +5123,46 @@ export type CookieJar = {
           },
           {
             "name": "ready",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "circleSafety",
+      "docs": [
+        "Solvency guard for a circle.",
+        "",
+        "A protected circle has enough per-member reserve to cover every remaining",
+        "contribution. It is deliberately separate from CircleRoster so this safety",
+        "upgrade can be added without changing either of the already-live accounts."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "requiredReserve",
+            "type": "u64"
+          },
+          {
+            "name": "securedMask",
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "protected",
             "type": "bool"
           },
           {
@@ -5138,8 +5589,8 @@ export type CookieJar = {
           {
             "name": "active",
             "docs": [
-              "False once collateral drops below one contribution. A zero-collateral",
-              "circle never sidelines members for collateral alone."
+              "False once collateral no longer covers this member's remaining",
+              "obligations. Protected circles will not advance until this is restored."
             ],
             "type": "bool"
           },
@@ -5361,6 +5812,11 @@ export type CookieJar = {
       "name": "rosterSeed",
       "type": "bytes",
       "value": "[114, 111, 115, 116, 101, 114]"
+    },
+    {
+      "name": "safetySeed",
+      "type": "bytes",
+      "value": "[115, 97, 102, 101, 116, 121]"
     },
     {
       "name": "sponsorSeed",

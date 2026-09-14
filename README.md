@@ -15,8 +15,10 @@ access to a lump sum they could not have saved alone.
 | Wallet | Nightly |
 
 This repository is open source under the [MIT License](./LICENSE). The live
-application is an invite-only demo for private groups, not an open marketplace
-for strangers.
+application is a demo built around private groups, not an open marketplace for
+strangers. Rooms are addressed by an invite code rather than listed publicly;
+see [Campaign rooms](#campaign-rooms) for exactly how much that does and does
+not enforce.
 
 ---
 
@@ -105,8 +107,8 @@ charged twice, and a member cannot collect two turns.
 
 ### Try the live demo
 
-The live app has an invite-only 3-seat room named **Demo · Join by code**. Its
-invite code is **ARISAN-DEMO-9002**. Connect a wallet, open **Get demo COOK**,
+The live app has a 3-seat room named **Demo · Join by code**. Its invite code is
+published on purpose: **ARISAN-DEMO-9002**. Connect a wallet, open **Get demo COOK**,
 claim enough demo COOK for the reserve shown in the room, then return to
 **Circles**, paste the code, and join. Once the room has at least two members and
 every member's reserve is complete, the creator can start it. The round lasts one
@@ -123,15 +125,26 @@ the faucet and relayer balances; volume is derived from confirmed `contribute`,
 
 ### Campaign rooms
 
-Circles are invite-only rooms, not an open pool for unrelated wallets. A creator
-opens a campaign with a short description and a public social-post URL. The
-program stores those details in a `CircleRoom` PDA and stores only the SHA-256
-hash of the generated invite code. The creator is automatically the first
-member, then shares the code with the people who saw the post.
+Circles are addressed by invite code rather than listed as an open pool. A
+creator opens a campaign with a short description and a public social-post URL.
+The program stores those details in a `CircleRoom` PDA alongside the SHA-256 hash
+of the generated invite code. The creator is automatically the first member, then
+shares the code with the people who saw the post.
 
-Joining requires the room PDA and the matching code hash on-chain. The code is
-the app's group gate, not a privacy boundary: the hash and room address are
-public on-chain, so a technical user can inspect or brute-force a weak code.
+**What the code actually is.** It is a discovery key, not an access-control
+boundary, and the demo is deliberately built so you can see that for yourself.
+`join_circle` takes the code *hash* as its argument and compares it to the hash
+stored in the room, and that stored hash is a public account anyone can read. So
+the honest statement is: anyone who can construct a transaction can join any
+room, without ever knowing the code. The gate is in the interface, which asks for
+a code before it will show you a room, not in the program.
+
+That is a deliberate choice for a demo — a reviewer should be able to inspect a
+room and join one without hunting for a secret. Enforcing it properly would mean
+a creator-signed approval or a Merkle root of invited wallets, which is the right
+shape for real money and the wrong shape for something people are meant to try in
+one sitting.
+
 Circle accounts created before rooms existed remain readable; their creator must run
 `scripts/seed-demo-circle.mjs` or configure a room before new members can enter.
 
@@ -298,6 +311,7 @@ cd arisan
 npm --prefix app install
 
 RELAYER_SECRET_KEY="$(cat ~/.config/solana/cookiejar-relayer.json)" \
+FAUCET_SECRET_KEY="$(cat ~/.config/solana/cookiejar-faucet.json)" \
   node relayer/dev-server.js
 
 npm --prefix app run dev      # http://localhost:5174
@@ -305,9 +319,22 @@ npm --prefix app run dev      # http://localhost:5174
 
 Deployment is `app/` as the Vercel root directory. `app/api/*.js` become the
 serverless relayer and demo faucet, and `app/dist` is the site.
-`RELAYER_SECRET_KEY` is required; `FAUCET_SECRET_KEY` is recommended for a
-separate faucet wallet and falls back to the relayer wallet until it is
-configured. `FAUCET_AMOUNT_COOK` defaults to 0.5 and is capped at 1.
+`RELAYER_SECRET_KEY` is required. `FAUCET_AMOUNT_COOK` defaults to 0.5 and is
+capped at 1.
+
+**`FAUCET_SECRET_KEY` should point at a different wallet from the relayer.**
+Wallet addresses cost nothing to generate, so no per-request limit can stop
+someone from draining a faucet; what a separate wallet decides is whether the
+drain also takes the sponsor down with it. Keep the faucet wallet small and top
+it up. If the variable is unset the faucet falls back to the relayer's wallet
+and holds back a 20 COOK reserve, which keeps the gasless buttons working but is
+a fallback, not the arrangement to ship.
+
+On top of that the faucet keys its rate limits on the connection and the
+recipient *separately* — never on the pair, which would hand every fresh address
+its own quota — and refuses any wallet already holding 2 COOK, since swept funds
+have to land somewhere. `scripts/test-faucet.mjs` asserts all of it against a
+running relayer.
 
 Two things that will bite on a fresh Vercel project. `@solana/web3.js` pulls in
 `rpc-websockets`, which `require()`s a version of `uuid` that is ESM only, so the

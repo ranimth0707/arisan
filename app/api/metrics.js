@@ -225,7 +225,14 @@ async function buildMetrics() {
     tvl: {
       activeCook: cook(tvl), protectedCook: cook(protectedTvl), bondCook: cook(bond), potCook: cook(pot),
     },
-    rooms: { active: active.filter((entry) => stateName(entry.account.state) === "running").length, forming: active.filter((entry) => stateName(entry.account.state) === "forming").length, protected: protectedRooms },
+    rooms: {
+      active: active.filter((entry) => stateName(entry.account.state) === "running").length,
+      // A forming circle nobody is in is not a room looking for members, it is
+      // an abandoned or test account. Counting it overstates the lobby.
+      forming: active.filter((entry) =>
+        stateName(entry.account.state) === "forming" && entry.account.member_count > 0).length,
+      protected: protectedRooms,
+    },
     members: active.reduce((total, entry) => total + entry.account.member_count, 0),
     volume,
   };

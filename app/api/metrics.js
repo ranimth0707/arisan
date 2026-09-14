@@ -14,7 +14,40 @@ const instructionNames = new Map(
 const relevantVolumeInstructions = new Set(["contribute", "slash_absent", "claim_turn"]);
 const CACHE_MS = 60_000;
 const MAX_SIGNATURES = 5_000;
+
+/**
+ * How long a single invocation may spend walking history before it gives up and
+ * reports what it has. A serverless function that runs out of wall clock returns
+ * nothing at all, which is strictly worse than returning a number honestly
+ * labelled `complete: false`.
+ */
+const SCAN_BUDGET_MS = 8_000;
+
+const DAY_SECONDS = 86_400;
+
 let cached;
+
+/**
+ * Totals carried between invocations on a warm instance, so a busy program is
+ * not re-indexed from genesis every minute. `newest` is the high-water mark:
+ * later runs ask the RPC only for signatures after it.
+ *
+ * It advances only when a scan finished, because a partial scan leaves a hole
+ * between what was read and the old mark, and a high-water mark that skips a
+ * hole loses those transactions permanently. A partial run therefore reports its
+ * numbers and throws its own work away rather than corrupting the ledger.
+ */
+let ledger = { newest: null, allTime: totals(), recent: [] };
+
+function totals() {
+  return { contribution: 0n, payout: 0n, transactions: 0 };
+}
+
+function addTo(target, event) {
+  target.contribution += event.contribution;
+  target.payout += event.payout;
+  target.transactions += 1;
+}
 
 const seed = (name) => Buffer.from(name);
 const pda = (name, circle) => PublicKey.findProgramAddressSync([seed(name), circle.toBuffer()], PROGRAM_ID)[0];
@@ -31,13 +64,19 @@ function decodeInstruction(data) {
   return instructionNames.get(Buffer.from(data).subarray(0, 8).toString("hex"));
 }
 
-async function loadSignatures() {
+/**
+ * Signatures newer than `until`, newest first. Omitting `until` walks the whole
+ * history, which is what a cold instance has to do once.
+ */
+async function loadSignatures(until, deadline) {
   const signatures = [];
   let before;
   while (signatures.length < MAX_SIGNATURES) {
+    if (Date.now() > deadline) return { signatures, complete: false };
     const page = await connection.getSignaturesForAddress(PROGRAM_ID, {
       limit: Math.min(1_000, MAX_SIGNATURES - signatures.length),
       ...(before ? { before } : {}),
+      ...(until ? { until } : {}),
     });
     signatures.push(...page);
     if (page.length < 1_000) return { signatures, complete: true };
@@ -51,8 +90,10 @@ function transactionKeys(message) {
   return message.accountKeys.map((key) => key.pubkey ?? key);
 }
 
-function addVolume(volume, tx, signatureInfo, circleByAddress, potByAddress) {
-  if (!tx?.meta || signatureInfo?.err) return;
+/** Every pot movement a single transaction made, as plain countable events. */
+function volumeEvents(tx, signatureInfo, potByAddress) {
+  const events = [];
+  if (!tx?.meta || signatureInfo?.err) return events;
   const message = tx.transaction.message;
   const keys = transactionKeys(message);
   const instructions = message.compiledInstructions ?? [];
@@ -64,40 +105,58 @@ function addVolume(volume, tx, signatureInfo, circleByAddress, potByAddress) {
 
     const circleKey = instruction.accountKeyIndexes
       .map((index) => keys[index])
-      .find((key) => key && circleByAddress.has(key.toBase58()));
+      .find((key) => key && potByAddress.has(key.toBase58()));
     if (!circleKey) continue;
     const potKey = potByAddress.get(circleKey.toBase58());
-    const potIndex = potKey ? keys.findIndex((key) => key.equals(potKey)) : -1;
+    const potIndex = keys.findIndex((key) => key.equals(potKey));
     if (potIndex < 0) continue;
 
     const delta = BigInt(tx.meta.postBalances[potIndex]) - BigInt(tx.meta.preBalances[potIndex]);
-    const inflow = delta > 0n ? delta : 0n;
-    const outflow = delta < 0n ? -delta : 0n;
-    const bucket = signatureInfo.blockTime && signatureInfo.blockTime >= volume.cutoff ? volume.recent : volume.all;
-    if (name === "claim_turn") bucket.payout += outflow;
-    else bucket.contribution += inflow;
-    bucket.transactions += 1;
+    events.push({
+      blockTime: signatureInfo.blockTime ?? 0,
+      contribution: name === "claim_turn" || delta <= 0n ? 0n : delta,
+      payout: name === "claim_turn" && delta < 0n ? -delta : 0n,
+    });
   }
+  return events;
 }
 
-async function loadVolume(circleEntries, asOf) {
-  const circleByAddress = new Map(circleEntries.map((entry) => [entry.address.toBase58(), entry]));
-  const potByAddress = new Map(circleEntries.map((entry) => [entry.address.toBase58(), pda("pot", entry.address)]));
-  const { signatures, complete } = await loadSignatures();
-  const volume = {
-    cutoff: Math.floor(asOf / 1000) - 86_400,
-    all: { contribution: 0n, payout: 0n, transactions: 0 },
-    recent: { contribution: 0n, payout: 0n, transactions: 0 },
-  };
+async function loadVolume(potByAddress, asOf, deadline) {
+  // Only signatures the ledger has not already counted. A cold instance has no
+  // mark and walks everything once.
+  const { signatures, complete: walked } = await loadSignatures(ledger.newest, deadline);
 
+  const fresh = [];
+  let scanned = true;
   for (let offset = 0; offset < signatures.length; offset += 100) {
+    if (Date.now() > deadline) { scanned = false; break; }
     const batch = signatures.slice(offset, offset + 100);
     const transactions = await connection.getTransactions(
       batch.map((entry) => entry.signature),
       { commitment: "confirmed", maxSupportedTransactionVersion: 0 },
     );
-    transactions.forEach((tx, index) => addVolume(volume, tx, batch[index], circleByAddress, potByAddress));
+    transactions.forEach((tx, index) => fresh.push(...volumeEvents(tx, batch[index], potByAddress)));
   }
+
+  const complete = walked && scanned;
+  const cutoff = Math.floor(asOf / 1000) - DAY_SECONDS;
+
+  // A partial pass is reported but not kept, so the high-water mark never jumps
+  // over transactions that were never read.
+  const allTime = { ...ledger.allTime };
+  const recent = [...ledger.recent, ...fresh].filter((event) => event.blockTime >= cutoff);
+  for (const event of fresh) addTo(allTime, event);
+
+  if (complete) {
+    ledger = {
+      newest: signatures[0]?.signature ?? ledger.newest,
+      allTime,
+      recent,
+    };
+  }
+
+  const recentTotals = totals();
+  for (const event of recent) addTo(recentTotals, event);
 
   const serialize = (bucket) => ({
     contributionCook: cook(bucket.contribution),
@@ -105,11 +164,17 @@ async function loadVolume(circleEntries, asOf) {
     grossCook: cook(bucket.contribution + bucket.payout),
     transactions: bucket.transactions,
   });
-  return { allTime: serialize(volume.all), last24h: serialize(volume.recent), indexedSignatures: signatures.length, complete };
+  return {
+    allTime: serialize(allTime),
+    last24h: serialize(recentTotals),
+    newSignatures: signatures.length,
+    complete,
+  };
 }
 
 async function buildMetrics() {
   const asOf = Date.now();
+  const deadline = asOf + SCAN_BUDGET_MS;
   const circleFilter = coder.accountDiscriminator("Circle");
   const circleAccounts = await connection.getProgramAccounts(PROGRAM_ID, {
     commitment: "confirmed",
@@ -148,8 +213,11 @@ async function buildMetrics() {
       protectedRooms += 1;
     }
   }
-  const circleEntries = active.map((entry) => ({ address: entry.address }));
-  const volume = await loadVolume(circleEntries, asOf);
+  // Volume is measured against EVERY circle, not just the active ones. A circle
+  // that finishes does not un-happen, and scoping this to active circles made
+  // all-time volume fall as rounds completed.
+  const potByAddress = new Map(circles.map((entry) => [entry.address.toBase58(), pda("pot", entry.address)]));
+  const volume = await loadVolume(potByAddress, asOf, deadline);
   return {
     ok: true,
     asOf: new Date(asOf).toISOString(),

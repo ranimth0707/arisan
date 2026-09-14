@@ -14,7 +14,7 @@ interface NetworkMetrics {
   tvl: { activeCook: number; protectedCook: number; bondCook: number; potCook: number };
   rooms: { active: number; forming: number; protected: number };
   members: number;
-  volume: { allTime: MetricsBucket; last24h: MetricsBucket; indexedSignatures: number; complete: boolean };
+  volume: { allTime: MetricsBucket; last24h: MetricsBucket; newSignatures: number; complete: boolean };
 }
 
 function cook(value: number) {

@@ -15,7 +15,12 @@ interface Props {
 interface FaucetStatus {
   amountCook: number;
   balanceLamports: number;
+  /** What the faucet may actually hand out, after any reserve it holds back. */
+  spendableLamports?: number;
 }
+
+/** Mirrors ALREADY_FUNDED in app/api/_faucet.js. */
+const ALREADY_FUNDED = 2_000_000_000;
 
 /** A small, rate-limited COOK tap for trying the live app with a new wallet. */
 export function Faucet({ owner, onChanged, navigate }: Props) {
@@ -44,6 +49,8 @@ export function Faucet({ owner, onChanged, navigate }: Props) {
   }, [owner]);
 
   useEffect(() => { void refresh(); }, [refresh]);
+
+  const alreadyFunded = balance !== null && balance >= ALREADY_FUNDED;
 
   const claim = async () => {
     if (!owner) return;
@@ -80,8 +87,9 @@ export function Faucet({ owner, onChanged, navigate }: Props) {
       </div>
       {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Try again</button></div>}
       {lastTx && <div className="banner info" role="status">COOK sent. <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
-      {!owner ? <WalletMultiButton>Connect wallet to claim</WalletMultiButton> : <button className="primary" disabled={busy || status === null} aria-busy={busy} onClick={() => void claim()}>{busy ? "Sending COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
-      <p className="faucet-footnote">One claim per wallet/IP per minute. {status ? "Faucet balance: " + formatCook(status.balanceLamports) + " COOK. " : ""}Every campaign action still requires your approval. Room creation uses your wallet balance; other actions try sponsorship when available.</p>
+      {alreadyFunded && <div className="banner info" role="status">You already have enough COOK to try the demo, so the faucet will politely refuse. Head straight to a room.</div>}
+      {!owner ? <WalletMultiButton>Connect wallet to claim</WalletMultiButton> : <button className="primary" disabled={busy || status === null || alreadyFunded} aria-busy={busy} onClick={() => void claim()}>{busy ? "Sending COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
+      <p className="faucet-footnote">One claim per wallet per hour, and the faucet skips wallets that already hold {formatCook(ALREADY_FUNDED)} COOK. {status ? "Faucet balance: " + formatCook(status.spendableLamports ?? status.balanceLamports) + " COOK. " : ""}Every campaign action still requires your approval. Room creation uses your wallet balance; other actions try sponsorship when available.</p>
     </section>
     <NetworkSetup />
     <aside className="faucet-next"><h3>What next?</h3><ol><li>Open Join with code.</li><li>Use the creator's code or the available demo code.</li><li>Read the room details, then join and contribute the agreed amount.</li><li>Wait for the creator to start, then pay each round.</li></ol><button className="primary" onClick={() => navigate("join")}>Open a room<Icon name="arrow" /></button><p className="faucet-footnote">Just want to learn without a transaction? <a href="#guide">Try the simulation first.</a></p></aside>

@@ -78,15 +78,21 @@ export function loadRelayer() {
 }
 
 /**
- * Loads the wallet that dispenses demo COOK. A separate secret is preferred so
- * faucet spend cannot eat into the relayer's fee budget; falling back to the
- * relayer keeps the existing deployment usable until FAUCET_SECRET_KEY is set.
+ * Loads the wallet that dispenses demo COOK.
+ *
+ * A separate, deliberately small wallet is what actually bounds faucet abuse:
+ * anyone can generate wallet addresses for free, so no request-shaped limit can
+ * stop a determined drainer. What can be stopped is the drain taking the relayer
+ * down with it, which would break every gasless button in the app.
+ *
+ * Falling back to the relayer keeps an existing deployment working, but the
+ * caller is told it is shared so it can hold back a reserve.
  */
 export function loadFaucet() {
   if (cachedFaucet) return cachedFaucet;
 
   const raw = process.env.FAUCET_SECRET_KEY?.trim();
-  if (!raw) return loadRelayer();
+  if (!raw) return { ...loadRelayer(), sharedWithRelayer: true };
 
   const bytes = raw.startsWith("[")
     ? Uint8Array.from(JSON.parse(raw))
@@ -95,6 +101,7 @@ export function loadFaucet() {
   cachedFaucet = {
     keypair: Keypair.fromSecretKey(bytes),
     connection: new Connection(RPC_URL, "confirmed"),
+    sharedWithRelayer: false,
   };
   return cachedFaucet;
 }
@@ -192,10 +199,10 @@ const WINDOW_MS = 60_000;
 const MAX_PER_WINDOW = 10;
 const hits = new Map();
 
-export function rateLimited(key) {
+export function rateLimited(key, max = MAX_PER_WINDOW, windowMs = WINDOW_MS) {
   const now = Date.now();
-  const recent = (hits.get(key) ?? []).filter((t) => now - t < WINDOW_MS);
-  if (recent.length >= MAX_PER_WINDOW) return true;
+  const recent = (hits.get(key) ?? []).filter((t) => now - t < windowMs);
+  if (recent.length >= max) return true;
   recent.push(now);
   hits.set(key, recent);
   if (hits.size > 5000) hits.clear();

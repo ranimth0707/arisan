@@ -7,6 +7,7 @@
 import http from "node:http";
 import { health, rateLimited, sponsor } from "../app/api/_relayer.js";
 import { dispense, faucetAmount, faucetStatus } from "../app/api/_faucet.js";
+import { clientAddress } from "../app/api/faucet.js";
 
 const PORT = Number(process.env.PORT ?? 8787);
 
@@ -35,7 +36,7 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (path === "/faucet" && req.method === "POST") {
-    const client = req.headers["x-forwarded-for"] ?? req.socket.remoteAddress ?? "unknown";
+    const client = clientAddress(req.headers, req.socket);
     let body = "";
     for await (const chunk of req) {
       body += chunk;
@@ -46,7 +47,7 @@ const server = http.createServer(async (req, res) => {
       if (typeof wallet !== "string") {
         return json(res, 400, { error: "expected a wallet address" });
       }
-      return json(res, 200, await dispense(wallet, String(client).split(",")[0].trim()));
+      return json(res, 200, await dispense(wallet, client));
     } catch (e) {
       return json(res, e.status ?? 500, { error: e.message, amountCook: faucetAmount() });
     }

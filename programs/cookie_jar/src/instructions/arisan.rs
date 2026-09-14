@@ -401,6 +401,23 @@ pub struct LeaveCircle<'info> {
     )]
     pub membership: Account<'info, Member>,
 
+    /// The member holding the highest seat, moved down into the seat being
+    /// vacated. Omitted only when the leaver already holds that seat.
+    ///
+    /// Seats are handed out as `seat = member_count`, so decrementing the count
+    /// on the way out without closing the gap would hand the next joiner a seat
+    /// number somebody else already holds, and leave the vacated number owned by
+    /// nobody. Both are fatal: draws address members by seat, so a duplicate
+    /// means one of the two can never receive a pot while still paying into it,
+    /// and an orphaned seat stalls the round until the claim window expires.
+    #[account(
+        mut,
+        seeds = [MEMBER_SEED, circle.key().as_ref(), tail.wallet.as_ref()],
+        bump = tail.bump,
+        constraint = tail.circle == circle.key() @ CookieError::BadRosterMember
+    )]
+    pub tail: Option<Account<'info, Member>>,
+
     pub system_program: Program<'info, System>,
 }
 
@@ -409,6 +426,27 @@ pub fn handle_leave_circle(ctx: Context<LeaveCircle>) -> Result<()> {
         ctx.accounts.circle.state == CircleState::Forming,
         CookieError::CircleAlreadyStarted
     );
+
+    let last_seat = ctx
+        .accounts
+        .circle
+        .member_count
+        .checked_sub(1)
+        .ok_or(CookieError::MathOverflow)?;
+    let leaving_seat = ctx.accounts.membership.seat;
+
+    match ctx.accounts.tail.as_mut() {
+        None => require!(leaving_seat == last_seat, CookieError::TailMemberRequired),
+        Some(tail) => {
+            require!(leaving_seat != last_seat, CookieError::TailMemberRequired);
+            require!(tail.seat == last_seat, CookieError::BadRosterMember);
+            require!(
+                tail.wallet != ctx.accounts.membership.wallet,
+                CookieError::BadRosterMember
+            );
+            tail.seat = leaving_seat;
+        }
+    }
 
     let circle_key = ctx.accounts.circle.key();
     let refund = ctx.accounts.membership.collateral;
@@ -426,7 +464,7 @@ pub fn handle_leave_circle(ctx: Context<LeaveCircle>) -> Result<()> {
     )?;
 
     let c = &mut ctx.accounts.circle;
-    c.member_count = c.member_count.saturating_sub(1);
+    c.member_count = last_seat;
     Ok(())
 }
 

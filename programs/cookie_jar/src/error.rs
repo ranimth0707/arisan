@@ -159,4 +159,6 @@ pub enum CookieError {
     RoundNotSettled,
     #[msg("The new authority cannot be the default address")]
     InvalidAuthority,
+    #[msg("Leaving a seat that is not the last one requires the last seat's member account")]
+    TailMemberRequired,
 }

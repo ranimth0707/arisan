@@ -34,6 +34,43 @@ If any one of those checks fails, the round stops. Other members are never
 asked to top up somebody else's missing reserve, and the pot is never paid
 partially.
 
+## The seat invariant
+
+Seats are the program's only name for a member. A draw produces a seat number,
+`claim_turn` matches it against the caller's `Member.seat`, and the roster
+bitmaps address winners by seat. All of that assumes one property:
+
+```text
+the seats of a circle are exactly 0 .. member_count - 1, each held once
+```
+
+Joining preserves it by taking `seat = member_count`. Leaving is where it can
+break, and did: an earlier version decremented `member_count` and closed the
+member account, which left a hole. The next joiner then took a seat number that
+was already occupied, and the vacated number belonged to nobody.
+
+Both halves of that are fatal, and neither announces itself:
+
+- **A duplicated seat.** Two members answer to one number. The first to claim
+  marks the seat as a winner, and the second can never receive a pot while still
+  being required to pay into every round. Their money is gone with no error
+  anywhere.
+- **An orphaned seat.** The draw can select a number no member holds. Nobody can
+  claim it, so the round stalls until the 24-hour claim window lets somebody call
+  `redraw_turn` — repeatedly, for as long as the hole exists.
+
+`leave_circle` therefore takes the member holding the highest seat as an extra
+account and moves them into the vacated one, closing the gap in the same
+transaction. A leaver who already holds the highest seat passes nothing. Any
+other combination is refused with `TailMemberRequired` rather than being
+silently repaired, because a caller that supplies the wrong tail is a caller
+whose view of the circle is stale.
+
+`scripts/test-seat-integrity.mjs` proves this against mainnet: it builds a
+circle, tries the gap-creating leave and watches it fail, performs the repaired
+leave, and confirms the next joiner receives a fresh seat rather than a
+duplicate.
+
 ## What a defaulting member loses
 
 The defaulting member loses the reserve used to cover their missed contribution

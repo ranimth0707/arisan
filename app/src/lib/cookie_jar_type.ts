@@ -2711,6 +2711,46 @@ export type CookieJar = {
           }
         },
         {
+          "name": "tail",
+          "docs": [
+            "The member holding the highest seat, moved down into the seat being",
+            "vacated. Omitted only when the leaver already holds that seat.",
+            "",
+            "Seats are handed out as `seat = member_count`, so decrementing the count",
+            "on the way out without closing the gap would hand the next joiner a seat",
+            "number somebody else already holds, and leave the vacated number owned by",
+            "nobody. Both are fatal: draws address members by seat, so a duplicate",
+            "means one of the two can never receive a pot while still paying into it,",
+            "and an orphaned seat stalls the round until the claim window expires."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "tail.wallet",
+                "account": "member"
+              }
+            ]
+          }
+        },
+        {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
@@ -4861,6 +4901,11 @@ export type CookieJar = {
       "code": 6073,
       "name": "invalidAuthority",
       "msg": "The new authority cannot be the default address"
+    },
+    {
+      "code": 6074,
+      "name": "tailMemberRequired",
+      "msg": "Leaving a seat that is not the last one requires the last seat's member account"
     }
   ],
   "types": [

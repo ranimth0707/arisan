@@ -14,6 +14,10 @@ access to a lump sum they could not have saved alone.
 | Network | Cookie Chain mainnet |
 | Wallet | Nightly |
 
+This repository is open source under the [MIT License](./LICENSE). The live
+application is an invite-only demo for private groups, not an open marketplace
+for strangers.
+
 ---
 
 ## The problem
@@ -174,6 +178,18 @@ pot.
 Cookie Chain's gas token is native COOK, so there are no SPL token accounts and
 no ATAs. Vaults are zero-data PDAs holding lamports.
 
+### Cookie Chain integrations
+
+The program is built for Cookie Chain's SVM runtime with Anchor and the Solana
+web3 SDK. The app reads and submits transactions through Cookie Chain's native
+RPC at [`rpc.cookiescan.io`](https://rpc.cookiescan.io), and links every live
+transaction and program account to [CookieScan](https://cookiescan.io).
+
+Cookiebox and Cookieswap are not required by this product: Arisan moves native
+COOK into program vaults and does not swap tokens or provide liquidity.
+`cookie-mcp` is useful for local agent/developer workflows, but it is not a
+runtime dependency of the public app and no private key is sent to it.
+
 ## Security
 
 **The organiser has no privileged access to money.** They can create a circle and
@@ -268,7 +284,8 @@ contributed still has to come from that member.
 ## Run it locally
 
 ```bash
-git clone <this repo> && cd arisan
+git clone https://github.com/ranimth0707/arisan.git
+cd arisan
 npm --prefix app install
 
 RELAYER_SECRET_KEY="$(cat ~/.config/solana/cookiejar-relayer.json)" \

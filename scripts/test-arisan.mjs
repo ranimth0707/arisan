@@ -13,7 +13,7 @@ import {
 } from "@solana/web3.js";
 import {
   KEYS, SLOT_HASHES, connection, cook, explorer, findBond, findCircle,
-  findConfig, findMember, findPot, findRoom, loadKeypair, loadProgram, toLamports,
+  findConfig, findMember, findPot, findRoom, findRoster, loadKeypair, loadProgram, toLamports,
 } from "./lib.mjs";
 
 const bn = (n) => new anchor.BN(n.toString());
@@ -67,6 +67,7 @@ const circleId = Math.floor(Date.now() / 1000);
 const circle = findCircle(funder.publicKey, circleId);
 const pot = findPot(circle);
 const bond = findBond(circle);
+const roster = findRoster(circle);
 
 await program.methods
   .createCircle(bn(circleId), "Arisan Warga", "A test campaign for the public ledger.",
@@ -135,7 +136,10 @@ check("a fourth member cannot squeeze in", fourthBlocked);
 step("Start the circle");
 
 await program.methods.startCircle()
-  .accountsPartial({ creator: funder.publicKey, circle }).rpc();
+  .accountsPartial({
+    starter: funder.publicKey, payer: funder.publicKey, circle, roster,
+    systemProgram: SystemProgram.programId,
+  }).rpc();
 
 const c2 = await program.account.circle.fetch(circle);
 check("running, on round 1", c2.state.running !== undefined && c2.round === 1);
@@ -205,6 +209,7 @@ const winnerBefore = await conn.getBalance(winnerKp.publicKey);
 await program.methods.claimTurn()
   .accountsPartial({
     winner: winnerKp.publicKey, circle, pot,
+    roster,
     membership: findMember(circle, winnerKp.publicKey),
     systemProgram: SystemProgram.programId,
   })
@@ -224,6 +229,7 @@ try {
   await program.methods.claimTurn()
     .accountsPartial({
       winner: winnerKp.publicKey, circle, pot,
+      roster,
       membership: findMember(circle, winnerKp.publicKey),
       systemProgram: SystemProgram.programId,
     }).signers([winnerKp]).rpc();
@@ -296,6 +302,7 @@ step("Round 2 draw: a sidelined member cannot collect");
 
 const winner2 = await drawTurn();
 line(`seat ${winner2} drawn for round 2`);
+check("the previous winner is eliminated from later draws", winner2 !== winnerIdx);
 
 if (winner2 === quiet) {
   let blocked = false;
@@ -303,6 +310,7 @@ if (winner2 === quiet) {
     await program.methods.claimTurn()
       .accountsPartial({
         winner: members[quiet].publicKey, circle, pot,
+        roster,
         membership: findMember(circle, members[quiet].publicKey),
         systemProgram: SystemProgram.programId,
       }).signers([members[quiet]]).rpc();
@@ -315,6 +323,7 @@ if (winner2 === quiet) {
     await program.methods.claimTurn()
       .accountsPartial({
         winner: members[quiet].publicKey, circle, pot,
+        roster,
         membership: findMember(circle, members[quiet].publicKey),
         systemProgram: SystemProgram.programId,
       }).signers([members[quiet]]).rpc();
@@ -344,7 +353,7 @@ async function drawTurn() {
 
     try {
       const sig = await program.methods.finalizeTurn()
-        .accountsPartial({ circle, slotHashes: SLOT_HASHES }).rpc();
+        .accountsPartial({ circle, roster, slotHashes: SLOT_HASHES }).rpc();
       line(`draw tx  : ${explorer(sig)}`);
       return (await program.account.circle.fetch(circle)).winnerIndex;
     } catch (e) {

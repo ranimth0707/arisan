@@ -49,7 +49,7 @@ const SPONSORABLE = new Set([
   // wallet, because a stake somebody else paid for guarantees nothing.
   "create_circle", "join_circle", "leave_circle", "start_circle", "contribute",
   "slash_absent", "top_up_bond", "request_turn", "finalize_turn", "claim_turn",
-  "redraw_turn", "withdraw_bond",
+  "redraw_turn", "withdraw_bond", "initialize_circle_roster", "sync_circle_members",
 ]);
 
 let cached = null;

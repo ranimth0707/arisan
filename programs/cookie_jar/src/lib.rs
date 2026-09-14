@@ -170,6 +170,14 @@ pub mod cookie_jar {
         instructions::arisan::handle_start_circle(ctx)
     }
 
+    pub fn initialize_circle_roster(ctx: Context<InitializeCircleRoster>) -> Result<()> {
+        instructions::arisan::handle_initialize_circle_roster(ctx)
+    }
+
+    pub fn sync_circle_members<'info>(ctx: Context<'info, SyncCircleMembers<'info>>) -> Result<()> {
+        instructions::arisan::handle_sync_circle_members(ctx)
+    }
+
     pub fn contribute(ctx: Context<Contribute>) -> Result<()> {
         instructions::arisan::handle_contribute(ctx)
     }

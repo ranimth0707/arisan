@@ -24,7 +24,7 @@ export const SPONSOR_AUTHORITY = new PublicKey(
  */
 const SIZES = {
   claim: 90, position: 130, donation: 90, campaign: 464, circle: 165,
-  circleRoom: 593, member: 99,
+  circleRoom: 593, member: 99, circleRoster: 74,
 };
 
 /**
@@ -37,6 +37,7 @@ const FEE_HEADROOM = 10_000;
 let rentCache: Promise<{
   claim: number; position: number; donation: number; campaign: number;
   circle: number; circleRoom: number; member: number;
+  circleRoster: number;
 }> | null = null;
 function rents() {
   rentCache ??= (async () => ({
@@ -47,6 +48,7 @@ function rents() {
     circle: await connection.getMinimumBalanceForRentExemption(SIZES.circle),
     circleRoom: await connection.getMinimumBalanceForRentExemption(SIZES.circleRoom),
     member: await connection.getMinimumBalanceForRentExemption(SIZES.member),
+    circleRoster: await connection.getMinimumBalanceForRentExemption(SIZES.circleRoster),
   }))();
   return rentCache;
 }
@@ -54,7 +56,7 @@ function rents() {
 export type RentKind =
   | "claim" | "position" | "claim+position"
   | "donation" | "campaign"
-  | "circle" | "circle+room" | "circleRoom" | "member" | "none";
+  | "circle" | "circle+room" | "circleRoom" | "member" | "circleRoster" | "none";
 
 /**
  * Mirrors SPONSORABLE in app/api/_relayer.js.
@@ -74,7 +76,7 @@ const SPONSORABLE = new Set([
   // creator's wallet instead of prompting for a guaranteed-to-fail signature.
   "joinCircle", "leaveCircle", "startCircle", "contribute",
   "slashAbsent", "topUpBond", "requestTurn", "finalizeTurn", "claimTurn",
-  "redrawTurn", "withdrawBond",
+  "redrawTurn", "withdrawBond", "initializeCircleRoster", "syncCircleMembers",
 ]);
 
 export function useCookieJar() {
@@ -113,6 +115,7 @@ export function useCookieJar() {
         : kind === "circle+room" ? r.circle + r.circleRoom
         : kind === "circleRoom" ? r.circleRoom
         : kind === "member" ? r.member
+        : kind === "circleRoster" ? r.circleRoster
         : 0;
 
       return await program.methods

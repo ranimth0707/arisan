@@ -37,6 +37,8 @@ pub const POT_SEED: &[u8] = b"pot";
 pub const BOND_SEED: &[u8] = b"bond";
 #[constant]
 pub const MEMBER_SEED: &[u8] = b"member";
+#[constant]
+pub const ROSTER_SEED: &[u8] = b"roster";
 
 /// Fixed-point scale for the reward-per-share accumulator.
 pub const ACC_PRECISION: u128 = 1_000_000_000_000;

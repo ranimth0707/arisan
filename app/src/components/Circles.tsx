@@ -5,7 +5,7 @@ import { PublicKey, SystemProgram } from "@solana/web3.js";
 
 import {
   assertCanAfford, bn, connection, countdown, findBond, findRoom,
-  findMember, findPot, formatCook, hashInviteCode,
+  findMember, findPot, findRoster, formatCook, hashInviteCode,
   readableError, SLOT_HASHES,
   type CookieJarProgram,
 } from "../lib/cookiejar";
@@ -275,19 +275,51 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   const start = (c: CircleView) =>
     owner && run(
       c.address.toBase58() + "start",
-      async () => [await program.methods.startCircle()
-        .accountsPartial({ creator: owner, circle: c.address }).instruction()],
-      "none",
+      async (payer) => [await program.methods.startCircle()
+        .accountsPartial({
+          starter: owner, payer, circle: c.address, roster: findRoster(c.address),
+          systemProgram: SystemProgram.programId,
+        }).instruction()],
+      "circleRoster",
       "startCircle",
     );
 
+  const ensureRoster = async (c: CircleView, payer: PublicKey, winnersSoFar: number) => {
+    const roster = findRoster(c.address);
+    const existing = await program.account.circleRoster.fetchNullable(roster);
+    if (existing?.ready) return [];
+
+    const board = members[c.address.toBase58()] ?? [];
+    if (winnersSoFar > 0 && board.length !== c.memberCount) {
+      throw new Error("Pembukuan anggota belum lengkap. Muat ulang campaign lalu coba lagi.");
+    }
+
+    const setup = [];
+    if (!existing) {
+      setup.push(await program.methods.initializeCircleRoster().accountsPartial({
+        payer, circle: c.address, roster, systemProgram: SystemProgram.programId,
+      }).instruction());
+    }
+    if (winnersSoFar > 0) {
+      setup.push(await program.methods.syncCircleMembers().accountsPartial({
+        circle: c.address, roster,
+      }).remainingAccounts(board.map(member => ({
+        pubkey: findMember(c.address, member.wallet),
+        isSigner: false,
+        isWritable: false,
+      }))).instruction());
+    }
+    return setup;
+  };
+
   // Anyone can run these. That is what stops a circle stalling on an absent
   // organiser, so the buttons are shown to everybody, member or not.
-  const draw = (c: CircleView) => {
+  const draw = async (c: CircleView) => {
     let requested = false;
+    const rosterExists = Boolean(await program.account.circleRoster.fetchNullable(findRoster(c.address)));
     return run(
       c.address.toBase58() + "draw",
-      async () => {
+      async (payer) => {
         // Another member may have advanced the room, or the 300-slot window
         // may have expired while this tab or a wallet approval stayed open.
         const [latest, currentSlot] = await Promise.all([program.account.circle.fetch(c.address), connection.getSlot("confirmed")]);
@@ -295,11 +327,15 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
         const phase = drawPhase(latest.drawTargetSlot.toNumber(), currentSlot);
         if (phase === "waiting") throw new Error("Undian sedang menunggu blok berikutnya. Coba lagi beberapa detik lagi.");
         requested = phase === "request" || phase === "expired";
-        return [requested
+        const setup = await ensureRoster(c, payer, latest.winnersSoFar);
+        const turn = requested
           ? await program.methods.requestTurn().accountsPartial({ circle: c.address }).instruction()
-          : await program.methods.finalizeTurn().accountsPartial({ circle: c.address, slotHashes: SLOT_HASHES }).instruction()];
+          : await program.methods.finalizeTurn().accountsPartial({
+              circle: c.address, roster: findRoster(c.address), slotHashes: SLOT_HASHES,
+            }).instruction();
+        return [...setup, turn];
       },
-      "none",
+      rosterExists ? "none" : "circleRoster",
       c.drawTargetSlot === 0 ? "requestTurn" : "finalizeTurn",
     ).then(success => {
       if (success && requested) {
@@ -308,23 +344,35 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
     });
   };
 
-  const redraw = (c: CircleView) => run(
+  const redraw = (c: CircleView, winner: MemberView) => run(
     c.address.toBase58() + "redraw",
-    async () => [await program.methods.redrawTurn().accountsPartial({ circle: c.address }).instruction()],
+    async () => [await program.methods.redrawTurn().accountsPartial({
+      circle: c.address,
+      membership: findMember(c.address, winner.wallet),
+    }).instruction()],
     "none", "redrawTurn",
   ).then(success => { if (success) setNote("Undian direset. Pilih Mulai undian untuk menentukan kursi lagi."); });
 
-  const collect = (c: CircleView) =>
-    owner && run(
+  const collect = async (c: CircleView) => {
+    if (!owner) return;
+    const rosterExists = Boolean(await program.account.circleRoster.fetchNullable(findRoster(c.address)));
+    return run(
       c.address.toBase58() + "collect",
-      async () => [await program.methods.claimTurn().accountsPartial({
-        winner: owner, circle: c.address, pot: findPot(c.address),
-        membership: findMember(c.address, owner),
-        systemProgram: SystemProgram.programId,
-      }).instruction()],
-      "none",
+      async (payer) => {
+        const latest = await program.account.circle.fetch(c.address);
+        const setup = await ensureRoster(c, payer, latest.winnersSoFar);
+        const claim = await program.methods.claimTurn().accountsPartial({
+          winner: owner, circle: c.address, pot: findPot(c.address),
+          roster: findRoster(c.address),
+          membership: findMember(c.address, owner),
+          systemProgram: SystemProgram.programId,
+        }).instruction();
+        return [...setup, claim];
+      },
+      rosterExists ? "none" : "circleRoster",
       "claimTurn",
     );
+  };
 
   const chase = (c: CircleView, m: MemberView) =>
     run(
@@ -430,6 +478,15 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                       : `Semua ${c.winnersSoFar} giliran selesai`}
                 </div>
 
+                <p className="circle-commitment">
+                  <strong>{c.state === "forming" ? "Jika dimulai sekarang" : "Komitmen setiap anggota"}:</strong>{" "}
+                  {c.memberCount} putaran × {formatCook(c.contribution)} COOK = {formatCook(c.memberCount * c.contribution)} COOK total.
+                  Penerima lama otomatis keluar dari undian berikutnya. Creator tidak dapat menarik kas.{" "}
+                  {c.collateral === 0
+                    ? "Tanpa jaminan, tunggakan membuat kas putaran berkurang."
+                    : `Jaminan hanya menutup ${Math.floor(c.collateral / c.contribution)} tunggakan.`}
+                </p>
+
                 {room ? (
                   <div className="room-details">
                     <span className="room-author">Creator {room.creator.toBase58().slice(0, 4)}…{room.creator.toBase58().slice(-4)}</span>
@@ -466,7 +523,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                   {c.state === "forming" && owner && !me && !unlocked && room && (
                     <span className="room-lock">Masukkan kode dari creator untuk bergabung</span>
                   )}
-                  {c.state === "forming" && isCreator && c.memberCount >= 2 && (
+                  {c.state === "forming" && owner && c.memberCount >= 2 && (isCreator || c.memberCount >= c.maxMembers) && (
                     <button className="primary" disabled={busy !== null} onClick={() => start(c)}>
                       {busy === key + "start" ? "..." : "Mulai arisan"}
                     </button>
@@ -488,7 +545,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                       {busy === key + "collect" ? "..." : `Ambil giliran · ${formatCook(c.pot)} COOK`}
                     </button>
                   )}
-                  {owner && c.state === "running" && c.winnerDrawn && now / 1000 >= redrawAt && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c)}>{busy === key + "redraw" ? "…" : "Undi ulang"}</button>}
+                  {owner && winner && c.state === "running" && c.winnerDrawn && (Boolean(blockedClaim) || now / 1000 >= redrawAt) && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c, winner)}>{busy === key + "redraw" ? "…" : blockedClaim ? "Keluarkan kursi & undi ulang" : "Undi ulang"}</button>}
                   {me && !me.active && (
                     <button className="ghost" disabled={busy !== null} onClick={() => topUp(c)}>
                       {busy === key + "topup" ? "..." : "Isi ulang jaminan"}
@@ -507,7 +564,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
                 {c.state === "running" && c.winnerDrawn && (
                   <div className="banner info" style={{ marginTop: 10 }}>
                     <strong>Kursi {c.winnerIndex + 1} terpilih.</strong> {blockedClaim ?? (me?.seat === c.winnerIndex ? "Kamu bisa mengambil kas melalui tombol Ambil giliran." : `Menunggu ${winner?.wallet.toBase58().slice(0, 4)}…${winner?.wallet.toBase58().slice(-4)} mengambil kas.`)}
-                    {blockedClaim && <p>{now / 1000 >= redrawAt ? "Batas klaim sudah lewat. Gunakan Undi ulang untuk mencoba kursi lagi." : `Undi ulang tersedia dalam ${countdown(redrawAt)} jika kas belum diambil.`}</p>}
+                    {blockedClaim && <p>{winner?.hasWon ? "Kursi ini tidak akan masuk undian berikutnya. Keluarkan sekarang lalu mulai undian baru." : now / 1000 >= redrawAt ? "Batas klaim sudah lewat. Gunakan Undi ulang untuk mencoba kursi lagi." : "Kursi ini tidak memenuhi syarat dan dapat langsung dikeluarkan dari hasil undian."}</p>}
                     {c.pot === 0 && <p>Kas masih kosong. Anggota perlu menyetor iuran.</p>}
                   </div>
                 )}

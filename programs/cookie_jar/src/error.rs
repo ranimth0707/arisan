@@ -144,4 +144,12 @@ pub enum CookieError {
     InviteCodeMismatch,
     #[msg("This circle has no campaign room yet")]
     RoomRequired,
+    #[msg("The circle winner roster is not ready yet")]
+    RosterNotReady,
+    #[msg("The winner roster does not belong to this circle")]
+    RosterMismatch,
+    #[msg("A supplied roster member is invalid")]
+    BadRosterMember,
+    #[msg("No member remains eligible for a turn")]
+    NoEligibleMembers,
 }

@@ -169,6 +169,29 @@ export type CookieJar = {
           }
         },
         {
+          "name": "roster",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "pot",
           "writable": true,
           "pda": {
@@ -1904,6 +1927,28 @@ export type CookieJar = {
           }
         },
         {
+          "name": "roster",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
           "name": "slotHashes",
           "address": "SysvarS1otHashes111111111111111111111111111"
         }
@@ -2152,6 +2197,82 @@ export type CookieJar = {
           "type": "pubkey"
         }
       ]
+    },
+    {
+      "name": "initializeCircleRoster",
+      "discriminator": [
+        65,
+        137,
+        193,
+        68,
+        223,
+        159,
+        186,
+        208
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "roster",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
     },
     {
       "name": "joinCircle",
@@ -2472,6 +2593,33 @@ export type CookieJar = {
                 "kind": "account",
                 "path": "circle.circleId",
                 "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "membership",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  109,
+                  101,
+                  109,
+                  98,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "membership.wallet",
+                "account": "member"
               }
             ]
           }
@@ -2890,7 +3038,15 @@ export type CookieJar = {
       ],
       "accounts": [
         {
-          "name": "creator",
+          "name": "starter",
+          "signer": true
+        },
+        {
+          "name": "payer",
+          "docs": [
+            "Funds the compact winner roster. May be the fee-paying relayer."
+          ],
+          "writable": true,
           "signer": true
         },
         {
@@ -2921,6 +3077,33 @@ export type CookieJar = {
               }
             ]
           }
+        },
+        {
+          "name": "roster",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "systemProgram",
+          "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
@@ -3008,6 +3191,73 @@ export type CookieJar = {
         {
           "name": "systemProgram",
           "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "syncCircleMembers",
+      "discriminator": [
+        15,
+        63,
+        46,
+        213,
+        146,
+        252,
+        239,
+        136
+      ],
+      "accounts": [
+        {
+          "name": "circle",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  105,
+                  114,
+                  99,
+                  108,
+                  101
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle.creator",
+                "account": "circle"
+              },
+              {
+                "kind": "account",
+                "path": "circle.circleId",
+                "account": "circle"
+              }
+            ]
+          }
+        },
+        {
+          "name": "roster",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  111,
+                  115,
+                  116,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "circle"
+              }
+            ]
+          }
         }
       ],
       "args": []
@@ -3729,6 +3979,19 @@ export type CookieJar = {
       ]
     },
     {
+      "name": "circleRoster",
+      "discriminator": [
+        88,
+        11,
+        87,
+        185,
+        14,
+        64,
+        17,
+        193
+      ]
+    },
+    {
       "name": "config",
       "discriminator": [
         155,
@@ -4168,6 +4431,26 @@ export type CookieJar = {
       "code": 6066,
       "name": "roomRequired",
       "msg": "This circle has no campaign room yet"
+    },
+    {
+      "code": 6067,
+      "name": "rosterNotReady",
+      "msg": "The circle winner roster is not ready yet"
+    },
+    {
+      "code": 6068,
+      "name": "rosterMismatch",
+      "msg": "The winner roster does not belong to this circle"
+    },
+    {
+      "code": 6069,
+      "name": "badRosterMember",
+      "msg": "A supplied roster member is invalid"
+    },
+    {
+      "code": 6070,
+      "name": "noEligibleMembers",
+      "msg": "No member remains eligible for a turn"
     }
   ],
   "types": [
@@ -4246,7 +4529,7 @@ export type CookieJar = {
         "",
         "Every field below is written once at creation and never changed, which is the",
         "reason anybody should be willing to join one: the organiser cannot raise the",
-        "contribution or weaken the collateral after money is committed."
+        "contribution or change the collateral policy after money is committed."
       ],
       "type": {
         "kind": "struct",
@@ -4273,7 +4556,8 @@ export type CookieJar = {
           {
             "name": "collateral",
             "docs": [
-              "Posted on joining. Missing a round is taken out of this."
+              "Optional amount posted on joining. Missing a round is taken out of this",
+              "when available; zero means the group accepts an uncovered miss."
             ],
             "type": "u64"
           },
@@ -4382,6 +4666,53 @@ export type CookieJar = {
                 32
               ]
             }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "circleRoster",
+      "docs": [
+        "Compact eligibility ledger for a circle.",
+        "",
+        "`Circle` predates winner elimination and is already live at its original",
+        "size, so changing that account would make every existing circle unreadable.",
+        "This companion PDA keeps two 100-seat bitmaps instead: one authoritative",
+        "winner set and one migration-progress set for circles that were already",
+        "running when the roster was introduced."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "circle",
+            "type": "pubkey"
+          },
+          {
+            "name": "winnerMask",
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "syncedMask",
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
+          },
+          {
+            "name": "ready",
+            "type": "bool"
           },
           {
             "name": "bump",
@@ -4807,8 +5138,8 @@ export type CookieJar = {
           {
             "name": "active",
             "docs": [
-              "False once collateral drops below one contribution. Cannot win until",
-              "topped back up."
+              "False once collateral drops below one contribution. A zero-collateral",
+              "circle never sidelines members for collateral alone."
             ],
             "type": "bool"
           },
@@ -5025,6 +5356,11 @@ export type CookieJar = {
       "name": "roomSeed",
       "type": "bytes",
       "value": "[114, 111, 111, 109]"
+    },
+    {
+      "name": "rosterSeed",
+      "type": "bytes",
+      "value": "[114, 111, 115, 116, 101, 114]"
     },
     {
       "name": "sponsorSeed",

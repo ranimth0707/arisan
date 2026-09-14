@@ -169,6 +169,134 @@ pub struct Member {
     pub bump: u8,
 }
 
+/// Compact eligibility ledger for a circle.
+///
+/// `Circle` predates winner elimination and is already live at its original
+/// size, so changing that account would make every existing circle unreadable.
+/// This companion PDA keeps two 100-seat bitmaps instead: one authoritative
+/// winner set and one migration-progress set for circles that were already
+/// running when the roster was introduced.
+#[account]
+#[derive(InitSpace)]
+pub struct CircleRoster {
+    pub circle: Pubkey,
+    pub winner_mask: [u64; 2],
+    pub synced_mask: [u64; 2],
+    pub ready: bool,
+    pub bump: u8,
+}
+
+impl CircleRoster {
+    pub fn full_mask(member_count: u16) -> [u64; 2] {
+        let low_count = member_count.min(64) as u32;
+        let high_count = member_count.saturating_sub(64) as u32;
+        [
+            if low_count == 64 {
+                u64::MAX
+            } else if low_count == 0 {
+                0
+            } else {
+                (1u64 << low_count) - 1
+            },
+            if high_count == 64 {
+                u64::MAX
+            } else if high_count == 0 {
+                0
+            } else {
+                (1u64 << high_count) - 1
+            },
+        ]
+    }
+
+    fn bit(seat: u16) -> (usize, u64) {
+        let word = usize::from(seat / 64);
+        let bit = 1u64 << u32::from(seat % 64);
+        (word, bit)
+    }
+
+    pub fn mark_synced(&mut self, seat: u16) {
+        let (word, bit) = Self::bit(seat);
+        self.synced_mask[word] |= bit;
+    }
+
+    pub fn mark_winner(&mut self, seat: u16) {
+        let (word, bit) = Self::bit(seat);
+        self.winner_mask[word] |= bit;
+    }
+
+    pub fn is_winner(&self, seat: u16) -> bool {
+        let (word, bit) = Self::bit(seat);
+        self.winner_mask[word] & bit != 0
+    }
+
+    pub fn is_fully_synced(&self, member_count: u16) -> bool {
+        self.synced_mask == Self::full_mask(member_count)
+    }
+
+    pub fn winner_count(&self) -> u16 {
+        (self.winner_mask[0].count_ones() + self.winner_mask[1].count_ones()) as u16
+    }
+
+    /// Maps a random rank in the remaining population back to its real seat.
+    pub fn select_unwon(&self, member_count: u16, mut rank: u16) -> Option<u16> {
+        for seat in 0..member_count {
+            if self.is_winner(seat) {
+                continue;
+            }
+            if rank == 0 {
+                return Some(seat);
+            }
+            rank = rank.saturating_sub(1);
+        }
+        None
+    }
+}
+
+#[cfg(test)]
+mod circle_roster_tests {
+    use super::CircleRoster;
+
+    fn roster(winners: &[u16]) -> CircleRoster {
+        let mut roster = CircleRoster {
+            circle: Default::default(),
+            winner_mask: [0; 2],
+            synced_mask: [0; 2],
+            ready: true,
+            bump: 0,
+        };
+        for seat in winners {
+            roster.mark_winner(*seat);
+        }
+        roster
+    }
+
+    #[test]
+    fn two_members_leave_only_the_other_seat() {
+        let r = roster(&[1]);
+        assert_eq!(r.select_unwon(2, 0), Some(0));
+        assert_eq!(r.select_unwon(2, 1), None);
+    }
+
+    #[test]
+    fn five_members_skip_every_prior_winner() {
+        let r = roster(&[1, 3]);
+        assert_eq!(r.select_unwon(5, 0), Some(0));
+        assert_eq!(r.select_unwon(5, 1), Some(2));
+        assert_eq!(r.select_unwon(5, 2), Some(4));
+    }
+
+    #[test]
+    fn bitmap_handles_the_sixty_four_bit_boundary_and_hundred_seats() {
+        let full = CircleRoster::full_mask(100);
+        assert_eq!(full[0], u64::MAX);
+        assert_eq!(full[1].count_ones(), 36);
+        let r = roster(&[0, 63, 64, 99]);
+        assert!(r.is_winner(63));
+        assert!(r.is_winner(64));
+        assert_eq!(r.winner_count(), 4);
+    }
+}
+
 /// One per sponsor. Sponsors fund their own users' gas rather than drawing from
 /// a shared pool, so nobody can spend someone else's balance.
 #[account]

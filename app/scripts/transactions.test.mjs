@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, test } from "node:test";
 import { createServer } from "vite";
-import { Keypair, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
+import { Keypair, SystemProgram, TransactionInstruction, TransactionMessage, VersionedTransaction } from "@solana/web3.js";
 
 const server = await createServer({ server: { middlewareMode: true }, appType: "custom" });
 after(() => server.close());
@@ -30,7 +30,10 @@ test("reproduces missing user signer in the old sponsored draw", () => {
 });
 
 for (const method of ["requestTurn", "finalizeTurn", "redrawTurn"]) test(`${method}: wallet can sign and relayer accepts fixed message`, async () => {
-  const ix = await program.methods[method]().accountsPartial({ circle }).instruction();
+  const accounts = method === "redrawTurn"
+    ? { circle, membership: Keypair.generate().publicKey }
+    : { circle };
+  const ix = await program.methods[method]().accountsPartial(accounts).instruction();
   const fixed = withRequesterSigner([ix], owner.publicKey, PROGRAM_ID);
   const tx = compile([reimbursement, ...fixed]);
   assertWalletSigner(tx, owner.publicKey);
@@ -45,6 +48,21 @@ test("existing user signer and writable privileges are preserved", () => {
   const ix = new TransactionInstruction({ programId: PROGRAM_ID, data: Buffer.alloc(0), keys: [{ pubkey: owner.publicKey, isSigner: true, isWritable: true }] });
   const instructions = [ix];
   assert.equal(withRequesterSigner(instructions, owner.publicKey, PROGRAM_ID), instructions);
+});
+
+test("legacy roster setup and draw fit one sponsored transaction", async () => {
+  const roster = Keypair.generate().publicKey;
+  const membership = Keypair.generate().publicKey;
+  const initialize = await program.methods.initializeCircleRoster().accountsPartial({
+    payer: relayer.publicKey, circle, roster, systemProgram: SystemProgram.programId,
+  }).instruction();
+  const sync = await program.methods.syncCircleMembers().accountsPartial({ circle, roster })
+    .remainingAccounts([{ pubkey: membership, isSigner: false, isWritable: false }]).instruction();
+  const fixed = withRequesterSigner([initialize, sync, request], owner.publicKey, PROGRAM_ID);
+  const tx = compile([reimbursement, ...fixed]);
+  assert.equal(tx.message.compiledInstructions.length, 4);
+  tx.sign([owner]);
+  validate(tx, relayer.publicKey);
 });
 
 function harness() {

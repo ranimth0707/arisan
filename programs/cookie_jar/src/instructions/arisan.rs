@@ -22,7 +22,7 @@ use anchor_lang::prelude::*;
 use crate::{
     constants::*,
     error::CookieError,
-    state::{Circle, CircleRoom, CircleState, Config, Member},
+    state::{Circle, CircleRoom, CircleRoster, CircleState, Config, Member},
     utils::{derive_seed, fund_vault, slot_hash_for, vault_rent_floor, vault_transfer},
 };
 
@@ -380,15 +380,29 @@ pub fn handle_leave_circle(ctx: Context<LeaveCircle>) -> Result<()> {
 /// Starts the circle. Membership closes and the first round begins.
 #[derive(Accounts)]
 pub struct StartCircle<'info> {
-    pub creator: Signer<'info>,
+    pub starter: Signer<'info>,
+
+    /// Funds the compact winner roster. May be the fee-paying relayer.
+    #[account(mut)]
+    pub payer: Signer<'info>,
 
     #[account(
         mut,
         seeds = [CIRCLE_SEED, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
-        bump = circle.bump,
-        constraint = circle.creator == creator.key() @ CookieError::NotAuthority
+        bump = circle.bump
     )]
     pub circle: Account<'info, Circle>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + CircleRoster::INIT_SPACE,
+        seeds = [ROSTER_SEED, circle.key().as_ref()],
+        bump
+    )]
+    pub roster: Account<'info, CircleRoster>,
+
+    pub system_program: Program<'info, System>,
 }
 
 pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
@@ -404,15 +418,123 @@ pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
     // seat is occupied, any member can start it so a demo or an absent organiser
     // cannot leave a perfectly formed circle stuck in the lobby.
     require!(
-        c.creator == ctx.accounts.creator.key() || c.member_count == c.max_members,
+        c.creator == ctx.accounts.starter.key() || c.member_count == c.max_members,
         CookieError::StartRequiresCreatorOrFull
     );
+
+    let roster = &mut ctx.accounts.roster;
+    roster.circle = c.key();
+    roster.winner_mask = [0; 2];
+    roster.synced_mask = CircleRoster::full_mask(c.member_count);
+    roster.ready = true;
+    roster.bump = ctx.bumps.roster;
 
     c.state = CircleState::Running;
     c.round = 1;
     c.next_payout_ts = now
         .checked_add(c.round_seconds)
         .ok_or(CookieError::MathOverflow)?;
+    Ok(())
+}
+
+/// Creates the winner roster for a circle that was already running before the
+/// elimination rule was deployed. New circles get this account when they start.
+#[derive(Accounts)]
+pub struct InitializeCircleRoster<'info> {
+    #[account(mut)]
+    pub payer: Signer<'info>,
+
+    #[account(
+        seeds = [CIRCLE_SEED, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
+        bump = circle.bump
+    )]
+    pub circle: Account<'info, Circle>,
+
+    #[account(
+        init,
+        payer = payer,
+        space = 8 + CircleRoster::INIT_SPACE,
+        seeds = [ROSTER_SEED, circle.key().as_ref()],
+        bump
+    )]
+    pub roster: Account<'info, CircleRoster>,
+
+    pub system_program: Program<'info, System>,
+}
+
+pub fn handle_initialize_circle_roster(ctx: Context<InitializeCircleRoster>) -> Result<()> {
+    let c = &ctx.accounts.circle;
+    require!(
+        c.state == CircleState::Running,
+        CookieError::CircleNotRunning
+    );
+
+    let roster = &mut ctx.accounts.roster;
+    roster.circle = c.key();
+    roster.winner_mask = [0; 2];
+    roster.ready = c.winners_so_far == 0;
+    roster.synced_mask = if roster.ready {
+        CircleRoster::full_mask(c.member_count)
+    } else {
+        [0; 2]
+    };
+    roster.bump = ctx.bumps.roster;
+    Ok(())
+}
+
+/// Imports legacy Member.has_won flags in one or more batches. It is
+/// permissionless, but every supplied account is still owner/discriminator and
+/// circle checked by Anchor before it can influence the roster.
+#[derive(Accounts)]
+pub struct SyncCircleMembers<'info> {
+    #[account(
+        seeds = [CIRCLE_SEED, circle.creator.as_ref(), &circle.circle_id.to_le_bytes()],
+        bump = circle.bump
+    )]
+    pub circle: Account<'info, Circle>,
+
+    #[account(
+        mut,
+        seeds = [ROSTER_SEED, circle.key().as_ref()],
+        bump = roster.bump,
+        constraint = roster.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub roster: Account<'info, CircleRoster>,
+}
+
+pub fn handle_sync_circle_members<'info>(
+    ctx: Context<'info, SyncCircleMembers<'info>>,
+) -> Result<()> {
+    let c = &ctx.accounts.circle;
+    require!(
+        c.state == CircleState::Running,
+        CookieError::CircleNotRunning
+    );
+    require!(!ctx.accounts.roster.ready, CookieError::RosterNotReady);
+    require!(
+        !ctx.remaining_accounts.is_empty(),
+        CookieError::BadRosterMember
+    );
+
+    let roster = &mut ctx.accounts.roster;
+    for account_info in ctx.remaining_accounts.iter() {
+        let member = Account::<Member>::try_from(account_info)
+            .map_err(|_| error!(CookieError::BadRosterMember))?;
+        require!(member.circle == c.key(), CookieError::BadRosterMember);
+        require!(member.seat < c.member_count, CookieError::BadRosterMember);
+        roster.mark_synced(member.seat);
+        if member.has_won {
+            roster.mark_winner(member.seat);
+        }
+    }
+
+    if roster.is_fully_synced(c.member_count) {
+        require!(
+            roster.winner_count() == c.winners_so_far,
+            CookieError::RosterMismatch
+        );
+        roster.ready = true;
+    }
     Ok(())
 }
 
@@ -669,6 +791,13 @@ pub struct FinalizeTurn<'info> {
     )]
     pub circle: Account<'info, Circle>,
 
+    #[account(
+        seeds = [ROSTER_SEED, circle.key().as_ref()],
+        bump = roster.bump,
+        constraint = roster.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub roster: Account<'info, CircleRoster>,
+
     /// CHECK: address-checked against the SlotHashes sysvar.
     #[account(address = solana_sdk_ids::sysvar::slot_hashes::ID)]
     pub slot_hashes: UncheckedAccount<'info>,
@@ -689,6 +818,11 @@ pub fn handle_finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
         clock.slot <= c.draw_target_slot.saturating_add(FINALIZE_WINDOW_SLOTS),
         CookieError::DrawExpired
     );
+    require!(ctx.accounts.roster.ready, CookieError::RosterNotReady);
+    require!(
+        ctx.accounts.roster.winner_count() == c.winners_so_far,
+        CookieError::RosterMismatch
+    );
 
     let hash = slot_hash_for(
         &ctx.accounts.slot_hashes.to_account_info(),
@@ -696,12 +830,22 @@ pub fn handle_finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
     )
     .ok_or(CookieError::DrawExpired)?;
 
-    // Seats are drawn, not members, because a seat number is a small dense range
-    // that can be checked in one comparison. Whether that seat is actually
-    // eligible is settled when the winner comes to claim.
+    // Draw uniformly from only the seats that have not received a pot. The
+    // final round therefore has exactly one possible result, while earlier
+    // winners are mathematically absent rather than rejected after the draw.
     let key = c.key();
     let seed = derive_seed(&hash, &key, c.round as u64);
-    c.winner_index = (seed % c.member_count as u64) as u16;
+    let remaining = c
+        .member_count
+        .checked_sub(c.winners_so_far)
+        .ok_or(CookieError::MathOverflow)?;
+    require!(remaining > 0, CookieError::NoEligibleMembers);
+    let rank = (seed % u64::from(remaining)) as u16;
+    c.winner_index = ctx
+        .accounts
+        .roster
+        .select_unwon(c.member_count, rank)
+        .ok_or(CookieError::NoEligibleMembers)?;
     c.winner_drawn = true;
 
     msg!("round {} drew seat {}", c.round, c.winner_index);
@@ -725,6 +869,14 @@ pub struct ClaimTurn<'info> {
         bump = circle.bump
     )]
     pub circle: Account<'info, Circle>,
+
+    #[account(
+        mut,
+        seeds = [ROSTER_SEED, circle.key().as_ref()],
+        bump = roster.bump,
+        constraint = roster.circle == circle.key() @ CookieError::RosterMismatch
+    )]
+    pub roster: Account<'info, CircleRoster>,
 
     #[account(mut, seeds = [POT_SEED, circle.key().as_ref()], bump = circle.pot_bump)]
     pub pot: SystemAccount<'info>,
@@ -750,8 +902,17 @@ pub fn handle_claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
         CookieError::CircleNotRunning
     );
     require!(c.winner_drawn, CookieError::DrawNotFinalized);
+    require!(ctx.accounts.roster.ready, CookieError::RosterNotReady);
+    require!(
+        ctx.accounts.roster.winner_count() == c.winners_so_far,
+        CookieError::RosterMismatch
+    );
     require!(m.seat == c.winner_index, CookieError::NotYourTurn);
     require!(!m.has_won, CookieError::AlreadyHadATurn);
+    require!(
+        !ctx.accounts.roster.is_winner(m.seat),
+        CookieError::AlreadyHadATurn
+    );
     require!(m.active, CookieError::MemberSidelined);
     require!(m.paid_round >= c.round, CookieError::PayFirst);
     require!(m.rounds_paid > 0, CookieError::PayFirst);
@@ -770,6 +931,7 @@ pub fn handle_claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
 
     let m = &mut ctx.accounts.membership;
     m.has_won = true;
+    ctx.accounts.roster.mark_winner(m.seat);
 
     let c = &mut ctx.accounts.circle;
     c.pot_amount = 0;
@@ -806,6 +968,14 @@ pub struct RedrawTurn<'info> {
         bump = circle.bump
     )]
     pub circle: Account<'info, Circle>,
+
+    #[account(
+        seeds = [MEMBER_SEED, circle.key().as_ref(), membership.wallet.as_ref()],
+        bump = membership.bump,
+        constraint = membership.circle == circle.key() @ CookieError::BadRosterMember,
+        constraint = membership.seat == circle.winner_index @ CookieError::NotYourTurn
+    )]
+    pub membership: Account<'info, Member>,
 }
 
 pub fn handle_redraw_turn(ctx: Context<RedrawTurn>) -> Result<()> {
@@ -817,8 +987,13 @@ pub fn handle_redraw_turn(ctx: Context<RedrawTurn>) -> Result<()> {
         CookieError::CircleNotRunning
     );
     require!(c.winner_drawn, CookieError::DrawNotFinalized);
+    let selected = &ctx.accounts.membership;
+    let cannot_claim = selected.has_won
+        || !selected.active
+        || selected.paid_round < c.round
+        || selected.rounds_paid == 0;
     require!(
-        now >= c.next_payout_ts.saturating_add(TURN_CLAIM_WINDOW),
+        cannot_claim || now >= c.next_payout_ts.saturating_add(TURN_CLAIM_WINDOW),
         CookieError::ClaimWindowOpen
     );
 

@@ -90,6 +90,8 @@ small{font-size:13px;line-height:1.6}
 .stat b{display:block;color:var(--ink);font-size:25px;font-weight:550;letter-spacing:-.7px;line-height:1.4;margin-top:5px}
 .stat b small{font-size:12px;letter-spacing:0;color:var(--muted)}
 .circle-timing{font-size:13px;padding:12px 0;border-top:1px solid var(--line);color:var(--muted)}
+.circle-commitment{margin:0;padding:13px 16px;border:1px solid #dfe6d6;border-radius:12px;background:#f7faf3;color:#4f584b;font-size:12px;line-height:1.6}
+.circle-commitment strong{color:var(--ink)}
 .room-details{padding:18px 0;border-top:1px solid var(--line)}
 .room-author{font-size:12px;color:var(--muted)}
 .room-details p{font-size:14px;margin:6px 0 10px;overflow-wrap:anywhere;white-space:pre-wrap}

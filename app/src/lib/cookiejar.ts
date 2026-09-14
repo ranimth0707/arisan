@@ -60,6 +60,7 @@ export const findPot = (circle: PublicKey) => pda([seed("pot"), circle.toBytes()
 export const findBond = (circle: PublicKey) => pda([seed("bond"), circle.toBytes()]);
 export const findMember = (circle: PublicKey, wallet: PublicKey) =>
   pda([seed("member"), circle.toBytes(), wallet.toBytes()]);
+export const findRoster = (circle: PublicKey) => pda([seed("roster"), circle.toBytes()]);
 
 export const connection = new Connection(RPC_URL, "confirmed");
 

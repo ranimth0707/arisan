@@ -9,6 +9,7 @@ import { Icon, type View } from "./components/UI";
 import { TxToast } from "./components/TxToast";
 import { inspectWallet } from "./lib/chain";
 import { NetworkSetup } from "./components/NetworkSetup";
+import { NetworkStats } from "./components/NetworkStats";
 
 const pages: Record<View, { title: string; description: string }> = {
   home: { title: "Arisan dimulai dari grupmu.", description: "Buat campaign untuk orang-orang yang kamu kenal, atau masuk lewat kode dari creator." },
@@ -70,6 +71,7 @@ export default function App() {
               <a className="start-card join-card" href="#join"><span className="action-icon"><Icon name="enter" /></span><h2>Join with code</h2><p>Sudah diajak ikut arisan?<br /> Masukkan kode dari creator.</p><span className="text-action">Masuk room <Icon name="arrow" /></span></a>
             </div>
             <a className="learn-banner" href="#guide"><span className="learn-icon"><Icon name="book" /></span><span><strong>Baru pertama kali? Mulai dari sini.</strong><small>Simulasi 3 anggota · 1 putaran · tanpa wallet</small></span><Icon name="arrow" /></a>
+            <NetworkStats />
           </>}
           {(["home", "campaigns", "join"] as View[]).includes(view) &&
             <Circles program={program} owner={owner} submit={submit} onChanged={() => {}} mode={view as "home" | "campaigns" | "join"} navigate={navigate} />}

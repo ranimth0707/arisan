@@ -112,6 +112,15 @@ claim enough demo COOK for the reserve shown in the room, then return to
 every member's reserve is complete, the creator can start it. The round lasts one
 minute, so you can pay, draw and collect without waiting a month.
 
+### Live Arisan metrics
+
+The public app exposes a read-only [`/api/metrics`](https://arisan-cook.vercel.app/api/metrics)
+endpoint for developers and reviewers. It reads Cookie Chain directly and reports
+active TVL, protected TVL, room/member counts, contribution volume, payout volume,
+and indexed transaction counts with an `asOf` timestamp. TVL excludes vault rent,
+the faucet and relayer balances; volume is derived from confirmed `contribute`,
+`slash_absent`, and `claim_turn` transactions.
+
 ### Campaign rooms
 
 Circles are invite-only rooms, not an open pool for unrelated wallets. A creator

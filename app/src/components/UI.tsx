@@ -1,6 +1,6 @@
 export type View = "home" | "campaigns" | "create" | "join" | "guide" | "faucet";
 export type Navigate = (view: View) => void;
-type IconName = "home" | "circles" | "plus" | "enter" | "book" | "wallet" | "arrow" | "check";
+type IconName = "home" | "circles" | "plus" | "enter" | "book" | "wallet" | "arrow" | "check" | "refresh";
 export function Icon({ name }: { name: IconName }) {
   const paths: Record<IconName, React.ReactNode> = {
     home: <><path d="m3 10 9-7 9 7v10H3Z" /><path d="M9 20v-7h6v7" /></>,
@@ -11,6 +11,7 @@ export function Icon({ name }: { name: IconName }) {
     wallet: <><path d="M20 7H4V4l14-1v4M4 7v13h17V7Zm12 5h5v4h-5Z" /></>,
     arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,
     check: <path d="m5 12 4 4L19 6" />,
+    refresh: <><path d="M20 11a8 8 0 0 0-14.9-3M4 5v4h4M4 13a8 8 0 0 0 14.9 3M20 19v-4h-4" /></>,
   };
   return <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }

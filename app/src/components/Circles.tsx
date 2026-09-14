@@ -176,6 +176,15 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
     }
     catch { return {}; }
   });
+  const [hiddenCircles, setHiddenCircles] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved: unknown = JSON.parse(localStorage.getItem("arisan-hidden-circles") ?? "{}");
+      if (!saved || typeof saved !== "object") return {};
+      return Object.fromEntries(Object.entries(saved).filter((entry): entry is [string, boolean] => entry[1] === true));
+    }
+    catch { return {}; }
+  });
+  const [showHidden, setShowHidden] = useState(false);
 
   const [syncError, setSyncError] = useState(false);
   const [slot, setSlot] = useState<number | null>(null);
@@ -184,7 +193,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
     try {
       const [list, roomList, boards, currentSlot, safetyList] = await Promise.race([
         Promise.all([loadCircles(program), loadRooms(program), loadMembers(program), connection.getSlot("confirmed"), loadSafeties(program)]),
-        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("Jaringan sedang lambat. Coba muat ulang campaign.")), 12000); }),
+        new Promise<never>((_, reject) => { timeout = setTimeout(() => reject(new Error("The network is slow. Reload the campaign and try again.")), 12000); }),
       ]);
       setRooms(Object.fromEntries(roomList.map((room) => [room.circle.toBase58(), room])));
       setMembers(boards);
@@ -214,14 +223,14 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
   const openRoom = async () => {
     setOpening(true); setErr(null);
     try {
-      if (!roomCode.trim()) throw new Error("Masukkan kode dari creator terlebih dahulu.");
+      if (!roomCode.trim()) throw new Error("Enter the creator's code first.");
       const hash = await hashInviteCode(roomCode);
       const room = Object.values(rooms).find(candidate => candidate.inviteCodeHash.every((v, i) => v === hash[i]));
-      if (!room) throw new Error("Kode belum ditemukan. Periksa kembali atau minta kode yang benar ke creator.");
+      if (!room) throw new Error("Code not found. Check it or ask the creator for the correct code.");
       rememberAccess(room.circle, roomCode.trim());
       setSelected(room.circle.toBase58());
       setOpen(null);
-      setNote("Campaign ditemukan. Baca aturan di bawah sebelum bergabung.");
+      setNote("Campaign found. Read the rules below before joining.");
     } catch (e) { setErr(readableError(e)); } finally { setOpening(false); }
   };
 
@@ -311,7 +320,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 
     const board = members[c.address.toBase58()] ?? [];
     if (board.length !== c.memberCount) {
-      throw new Error("Pembukuan anggota belum lengkap. Muat ulang campaign lalu coba lagi.");
+      throw new Error("The member ledger is incomplete. Reload the campaign and try again.");
     }
 
     const setup = [];
@@ -362,9 +371,9 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
         // Another member may have advanced the room, or the 300-slot window
         // may have expired while this tab or a wallet approval stayed open.
         const [latest, currentSlot] = await Promise.all([program.account.circle.fetch(c.address), connection.getSlot("confirmed")]);
-        if (latest.winnerDrawn) throw new Error("Undian sudah selesai. Muat ulang campaign untuk melihat penerimanya.");
+        if (latest.winnerDrawn) throw new Error("The draw is already complete. Reload the campaign to see the recipient.");
         const phase = drawPhase(latest.drawTargetSlot.toNumber(), currentSlot);
-        if (phase === "waiting") throw new Error("Undian sedang menunggu blok berikutnya. Coba lagi beberapa detik lagi.");
+        if (phase === "waiting") throw new Error("The draw is waiting for the next block. Try again in a few seconds.");
         requested = phase === "request" || phase === "expired";
         const setup = await ensureRoster(c, payer);
         const turn = requested
@@ -381,7 +390,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
       c.drawTargetSlot === 0 ? "requestTurn" : "finalizeTurn",
     ).then(success => {
       if (success && requested) {
-        setNote("Undian dimulai. Tunggu beberapa detik, lalu pilih Selesaikan undian. Selesaikan segera agar tidak kedaluwarsa.");
+        setNote("The draw has started. Wait a few seconds, then choose Finish the draw. Complete it before it expires.");
       }
     });
   };
@@ -393,7 +402,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
       membership: findMember(c.address, winner.wallet),
     }).instruction()],
     "none", "redrawTurn",
-  ).then(success => { if (success) setNote("Undian direset. Pilih Mulai undian untuk menentukan kursi lagi."); });
+  ).then(success => { if (success) setNote("The draw was reset. Choose Run the draw to select a seat again."); });
 
   const collect = async (c: CircleView) => {
     if (!owner) return;
@@ -440,7 +449,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
         const me = (members[c.address.toBase58()] ?? []).find(member => member.wallet.equals(owner));
         const required = c.contribution * Math.max(0, c.memberCount - c.winnersSoFar);
         const amount = Math.max(0, required - (me?.collateral ?? 0));
-        if (amount <= 0) throw new Error("Cadanganmu sudah mencukupi untuk kewajiban tersisa.");
+        if (amount <= 0) throw new Error("Your reserve already covers the remaining obligations.");
         await assertCanAfford(owner, amount, "complete your remaining reserve");
         return [await program.methods.topUpBond(bn(amount)).accountsPartial({
           member: owner, circle: c.address, bond: findBond(c.address),
@@ -464,29 +473,46 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
       "withdrawBond",
     );
 
-  const mine = (circles ?? []).filter(c => owner && (c.creator.equals(owner) || members[c.address.toBase58()]?.some(m => m.wallet.equals(owner))));
-  const opened = (circles ?? []).filter(c => Boolean(accessCodes[c.address.toBase58()]));
+  const toggleHidden = (c: CircleView) => {
+    if (c.state !== "finished") return;
+    const key = c.address.toBase58();
+    const next = { ...hiddenCircles };
+    if (next[key]) delete next[key];
+    else next[key] = true;
+    setHiddenCircles(next);
+    try { localStorage.setItem("arisan-hidden-circles", JSON.stringify(next)); } catch { /* In-memory state still works for this session. */ }
+    setOpen(null);
+  };
+
+  const mineAll = (circles ?? []).filter(c => owner && (c.creator.equals(owner) || members[c.address.toBase58()]?.some(m => m.wallet.equals(owner))));
+  const openedAll = (circles ?? []).filter(c => Boolean(accessCodes[c.address.toBase58()]));
+  const hideUnlessRequested = (c: CircleView) => showHidden || !hiddenCircles[c.address.toBase58()];
+  const mine = mineAll.filter(hideUnlessRequested);
+  const opened = openedAll.filter(hideUnlessRequested);
   const visible = mode === "join" ? (circles ?? []).filter(c => c.address.toBase58() === selected) : filter === "opened" ? opened : mine;
   return (
     <>
       {mode === "join" && <section className="join-panel">
         <span className="action-icon"><Icon name="enter" /></span>
-        <h2>Punya undangan arisan?</h2>
-        <p>Kode diberikan oleh creator campaign. Memasukkan kode belum memindahkan COOK atau membuatmu menjadi anggota.</p>
+        <h2>Have an Arisan invite?</h2>
+        <p>The campaign creator gives you the code. Entering it does not move COOK or make you a member.</p>
         <form onSubmit={e => { e.preventDefault(); void openRoom(); }}>
-          <label htmlFor="room-code">Kode room</label>
-          <div className="code-copy"><input id="room-code" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="ARISAN-ABCD-2345" autoComplete="off" spellCheck={false} /><button className="primary" disabled={opening || circles === null || !roomCode.trim()} aria-busy={opening}>{opening ? "Mencari…" : "Buka room"}<Icon name="arrow" /></button></div>
+          <label htmlFor="room-code">Room code</label>
+          <div className="code-copy"><input id="room-code" value={roomCode} onChange={e => setRoomCode(e.target.value)} placeholder="ARISAN-ABCD-2345" autoComplete="off" spellCheck={false} /><button className="primary" disabled={opening || circles === null || !roomCode.trim()} aria-busy={opening}>{opening ? "Searching…" : "Open room"}<Icon name="arrow" /></button></div>
         </form>
-        <div className="demo-shortcut"><span>Ingin mencoba? Kode demo: <code>ARISAN-DEMO-9002</code></span><button className="text-button" onClick={() => setRoomCode("ARISAN-DEMO-9002")}>Gunakan kode</button></div>
-        <a href="#guide">Belum paham cara ikut? Buka panduan.</a>
+        <div className="demo-shortcut"><span>Want to try it? Demo code: <code>ARISAN-DEMO-9002</code></span><button className="text-button" onClick={() => setRoomCode("ARISAN-DEMO-9002")}>Use code</button></div>
+        <a href="#guide">Not sure how it works? Open the guide.</a>
       </section>}
-      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Muat ulang</button></div>}
+      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Reload</button></div>}
       {note && <div className="banner info" role="status">{note}</div>}
-      {circles !== null && <div className="sync-status"><span>{syncError ? "Pembaruan terputus; data mungkin belum terbaru." : "Status diperbarui otomatis setiap 15 detik."}</span><button className="text-button" onClick={() => void refresh()}>Muat ulang</button></div>}
-      {mode !== "join" && <div className="section-heading"><h2>{mode === "home" ? "Campaign saya" : "Room arisan"} <span className="count">{mine.length}</span></h2><a href="#create" className="text-action"><Icon name="plus" />Create campaign</a></div>}
-      {mode === "campaigns" && <div className="segmented"><button onClick={() => setFilter("mine")} aria-pressed={filter === "mine"}>Dibuat / diikuti</button><button onClick={() => setFilter("opened")} aria-pressed={filter === "opened"}>Undangan dibuka</button></div>}
-      {circles === null ? <div className="skeleton-list" role="status"><span>Memuat campaign…</span><div /><div /></div> : visible.length === 0 ? (
-        mode === "join" ? null : <div className="empty"><span className="empty-symbol"><Icon name="circles" /></span><h3>{owner ? "Belum ada campaign di sini." : "Grup arisanmu akan muncul di sini."}</h3><p>{owner ? "Buat campaign baru atau masuk menggunakan kode dari creator." : "Hubungkan wallet untuk melihat campaign yang kamu buat dan ikuti."}</p><div className="row">{!owner && <WalletMultiButton>Hubungkan wallet</WalletMultiButton>}<button className="ghost" onClick={() => navigate("create")}>Create campaign</button><button className="text-button" onClick={() => navigate("join")}>Saya punya kode<Icon name="arrow" /></button></div></div>
+      {circles !== null && <div className="sync-status"><span>{syncError ? "Updates are disconnected; this data may be out of date." : "Status updates automatically every 15 seconds."}</span><button className="text-button" onClick={() => void refresh()}>Reload</button></div>}
+      {mode !== "join" && <div className="section-heading"><h2>{mode === "home" ? "My campaigns" : "Arisan rooms"} <span className="count">{mine.length}</span></h2><a href="#create" className="text-action"><Icon name="plus" />Create campaign</a></div>}
+      {mode === "campaigns" && <>
+        <div className="segmented"><button onClick={() => setFilter("mine")} aria-pressed={filter === "mine"}>Created / joined</button><button onClick={() => setFilter("opened")} aria-pressed={filter === "opened"}>Opened invites</button></div>
+        {mineAll.some(c => hiddenCircles[c.address.toBase58()]) && <button className="text-button hidden-toggle" type="button" onClick={() => setShowHidden(value => !value)}>{showHidden ? "Hide completed" : `Show hidden (${mineAll.filter(c => hiddenCircles[c.address.toBase58()]).length})`}</button>}
+      </>}
+      {circles === null ? <div className="skeleton-list" role="status"><span>Loading campaigns…</span><div /><div /></div> : visible.length === 0 ? (
+        mode === "join" ? null : <div className="empty"><span className="empty-symbol"><Icon name="circles" /></span><h3>{owner ? "No campaigns here yet." : "Your Arisan groups will appear here."}</h3><p>{owner ? "Create a new campaign or enter a code from a creator." : "Connect a wallet to see campaigns you created and joined."}</p><div className="row">{!owner && <WalletMultiButton>Connect wallet</WalletMultiButton>}<button className="ghost" onClick={() => navigate("create")}>Create campaign</button><button className="text-button" onClick={() => navigate("join")}>I have a code<Icon name="arrow" /></button></div></div>
       ) : (
         <div className="campaign-list">
           {visible.map((c) => {
@@ -511,118 +537,123 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             return (
               <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
                 <div className="spread">
-                  <div className="circle-title"><span className="avatar">{c.name.charAt(0)}</span><div><strong className="circle-name">{c.name}</strong><span className="muted">{isCreator ? "Dibuat oleh kamu" : me ? "Kamu anggota campaign ini" : "Undangan campaign"}</span></div></div>
+                  <div className="circle-title"><span className="avatar">{c.name.charAt(0)}</span><div><strong className="circle-name">{c.name}</strong><span className="muted">{isCreator ? "Created by you" : me ? "You are a member" : "Invited campaign"}</span></div></div>
                   <span className={`pill ${c.state === "running" ? "prop" : c.state === "forming" ? "lucky" : "closed"}`}>
-                    {c.state === "forming" ? (c.memberCount >= c.maxMembers ? "Room penuh" : "Menerima anggota") : c.state === "running" ? `Putaran ${c.round}` : "Selesai"}
+                    {c.state === "forming" ? (c.memberCount >= c.maxMembers ? "Room full" : "Accepting members") : c.state === "running" ? `Round ${c.round}` : "Finished"}
                   </span>
                 </div>
 
                 <div className="circle-metrics">
-                  <div className="metric"><div className="stat">Iuran per putaran<b>{formatCook(c.contribution)} <small>COOK</small></b></div></div>
-                  <div className="metric"><div className="stat">Kas saat ini<b>{formatCook(c.pot)} <small>COOK</small></b></div></div>
-                  <div className="metric"><div className="stat">Anggota<b>{c.memberCount}/{c.maxMembers}</b></div></div>
+                  <div className="metric"><div className="stat">Contribution per round<b>{formatCook(c.contribution)} <small>COOK</small></b></div></div>
+                  <div className="metric"><div className="stat">Current pool<b>{formatCook(c.pot)} <small>COOK</small></b></div></div>
+                  <div className="metric"><div className="stat">Members<b>{c.memberCount}/{c.maxMembers}</b></div></div>
                 </div>
 
                 <div className="circle-timing">
                   {c.state === "forming"
-                    ? `Cadangan keamanan saat join: ${formatCook(c.collateral)} COOK per anggota · Putaran ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " menit" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " jam" : Math.round(c.roundSeconds / 86400) + " hari"}`
+                    ? `Reserve when joining: ${formatCook(c.collateral)} COOK per member · Round ${c.roundSeconds < 3600 ? Math.round(c.roundSeconds / 60) + " minute" : c.roundSeconds < 86400 ? Math.round(c.roundSeconds / 3600) + " hour" : Math.round(c.roundSeconds / 86400) + " day"}`
                     : c.state === "running"
                       ? roundOver
-                        ? "Batas waktu putaran sudah lewat"
-                        : `Sisa waktu putaran: ${countdown(c.nextPayoutTs)}`
-                      : `Semua ${c.winnersSoFar} giliran selesai`}
+                        ? "Round deadline has passed"
+                        : `${countdown(c.nextPayoutTs)} left in this round`
+                      : `${c.winnersSoFar} turns complete`}
                 </div>
 
                 <p className="circle-commitment">
-                  <strong>{c.state === "forming" ? "Jika dimulai sekarang" : "Komitmen setiap anggota"}:</strong>{" "}
-                  {c.memberCount} putaran × {formatCook(c.contribution)} COOK = {formatCook(c.memberCount * c.contribution)} COOK total.
-                  Penerima lama otomatis keluar dari undian berikutnya. Creator tidak dapat menarik kas. Cadangan keamanan bukan biaya: jika semua patuh, sisanya kembali setelah selesai. Putaran baru terkunci sampai cadangan semua anggota cukup untuk menutup kewajiban tersisa.
+                  <strong>{c.state === "forming" ? "If started now" : "Each member's commitment"}:</strong>{" "}
+                  {c.memberCount} rounds × {formatCook(c.contribution)} COOK = {formatCook(c.memberCount * c.contribution)} COOK total.
+                  Previous recipients are automatically removed from future draws. The creator cannot withdraw the pool. The reserve is not a fee: if everyone follows the rules, the unused balance returns after completion. New rounds stay locked until every member's reserve covers the remaining obligations.
                 </p>
 
                 {room ? (
                   <div className="room-details">
                     <span className="room-author">Creator {room.creator.toBase58().slice(0, 4)}…{room.creator.toBase58().slice(-4)}</span>
                     <p>{room.description}</p>
-                    <a href={room.socialUrl} target="_blank" rel="noreferrer">Lihat posting creator ↗</a>
+                    <a href={room.socialUrl} target="_blank" rel="noreferrer">View creator's post ↗</a>
                   </div>
                 ) : (
                   <div className="banner warn room-warning">
-                    Campaign lama ini belum memiliki detail room. Hubungi creator sebelum mengundang anggota baru.
+                    This legacy campaign has no room details yet. Contact the creator before inviting new members.
                   </div>
                 )}
 
                 {owed && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
-                    Iuran putaran {c.round}: {formatCook(c.contribution)} COOK belum dibayar.
+                    Round {c.round} contribution: {formatCook(c.contribution)} COOK unpaid.
                   </div>
                 )}
                 {me && !me.active && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
-                    Jaminanmu tidak cukup. Isi ulang agar bisa mengambil giliran.
+                    Your reserve is too low. Top it up before collecting a turn.
                   </div>
                 )}
                 {c.state === "running" && (!safety || !safety.protected) && (
                   <div className="banner warn" style={{ marginBottom: 10 }}>
-                    Campaign terkunci sementara: cadangan keamanan belum mencukupi untuk melindungi anggota lain. Lengkapi cadangan yang kurang, lalu siapa pun bisa melanjutkan pembukuan.
+                    Campaign temporarily locked: reserves are not sufficient to protect the other members. Repair the shortfall, then anyone can continue the ledger.
                   </div>
                 )}
 
-                {c.state === "forming" && <p className="next-action"><strong>Langkah berikutnya: </strong>{c.memberCount >= c.maxMembers ? "Room penuh. Tunggu creator memulai arisan." : me ? "Kamu sudah bergabung. Tunggu creator memulai arisan setelah minimal dua anggota masuk." : isCreator ? "Campaign lama ini belum mencatat creator sebagai anggota. Gabung sekarang agar kursimu ikut dihitung." : "Baca posting dan aturan. Join memindahkan jaminan dari wallet kamu."}</p>}
-                {c.state === "running" && !c.winnerDrawn && <p className="next-action"><strong>Langkah berikutnya: </strong>{!roundOver ? "Bayar iuran, lalu tunggu batas waktu putaran untuk memulai undian." : phase === "expired" ? "Undian sebelumnya kedaluwarsa. Mulai ulang undian untuk melanjutkan." : c.drawTargetSlot ? "Undian sudah dimulai. Selesaikan undian untuk melihat kursi penerima." : `Iuran terkumpul dari ${c.paidThisRound}/${c.memberCount} anggota. Mulai undian, selesaikan, lalu penerima mengambil kas.`}</p>}
-                {isCreator && accessCodes[key] && <details className="invite-details"><summary>Kode undangan grup</summary><code>{accessCodes[key]}</code><p>Simpan kode dan kirim ke anggota yang kamu undang.</p></details>}
+                {c.state === "forming" && <p className="next-action"><strong>Next step: </strong>{c.memberCount >= c.maxMembers ? "Room is full. Wait for the creator to start the Arisan." : me ? "You have joined. Wait for the creator to start after at least two members join." : isCreator ? "This legacy campaign does not list the creator as a member. Join now so your seat is counted." : "Read the post and rules. Joining moves the reserve from your wallet."}</p>}
+                {c.state === "running" && !c.winnerDrawn && <p className="next-action"><strong>Next step: </strong>{!roundOver ? "Pay the contribution, then wait for the round deadline before running the draw." : phase === "expired" ? "The previous draw expired. Restart the draw to continue." : c.drawTargetSlot ? "The draw has started. Finish it to see the recipient seat." : `${c.paidThisRound}/${c.memberCount} members have contributed. Run and finish the draw, then the recipient can collect the pool.`}</p>}
+                {isCreator && accessCodes[key] && <details className="invite-details"><summary>Group invite code</summary><code>{accessCodes[key]}</code><p>Save the code and share it with the members you invited.</p></details>}
                 <div className="actions">
-                  {!owner && <WalletMultiButton>Hubungkan wallet untuk ikut</WalletMultiButton>}
+                  {!owner && <WalletMultiButton>Connect wallet to join</WalletMultiButton>}
                   {c.state === "forming" && owner && !me && unlocked && c.memberCount < c.maxMembers && (
                     <button className="primary" disabled={busy !== null} onClick={() => join(c)}>
-                      {busy === key + "join" ? "…" : isCreator ? "Gabung sebagai creator" : `Join room · ${formatCook(c.collateral)} COOK`}
+                      {busy === key + "join" ? "…" : isCreator ? "Join as creator" : `Join room · ${formatCook(c.collateral)} COOK`}
                     </button>
                   )}
                   {c.state === "forming" && owner && !me && !unlocked && room && (
-                    <span className="room-lock">Masukkan kode dari creator untuk bergabung</span>
+                    <span className="room-lock">Enter the creator's code to join</span>
                   )}
                   {c.state === "forming" && owner && c.memberCount >= 2 && (isCreator || c.memberCount >= c.maxMembers) && (
                     <button className="primary" disabled={busy !== null} onClick={() => start(c)}>
-                      {busy === key + "start" ? "..." : "Mulai arisan"}
+                      {busy === key + "start" ? "..." : "Start Arisan"}
                     </button>
                   )}
                   {owed && (
                     <button className="primary" disabled={busy !== null} onClick={() => pay(c)}>
-                      {busy === key + "pay" ? "..." : "Bayar iuran"}
+                      {busy === key + "pay" ? "..." : "Pay contribution"}
                     </button>
                   )}
                   {owner && c.state === "running" && roundOver && !c.winnerDrawn && (
                     <button className="primary" disabled={busy !== null || phase === "waiting" || phase === "loading"} onClick={() => draw(c)}>
                       {busy === key + "draw"
                         ? "..."
-                        : phase === "request" ? "Mulai undian" : phase === "expired" ? "Mulai ulang undian" : phase === "waiting" || phase === "loading" ? "Menunggu blok…" : "Selesaikan undian"}
+                        : phase === "request" ? "Run the draw" : phase === "expired" ? "Restart the draw" : phase === "waiting" || phase === "loading" ? "Waiting for block…" : "Finish the draw"}
                     </button>
                   )}
                   {c.state === "running" && c.winnerDrawn && me?.seat === c.winnerIndex && !blockedClaim && c.pot > 0 && (
                     <button className="primary" disabled={busy !== null} onClick={() => collect(c)}>
-                      {busy === key + "collect" ? "..." : `Ambil giliran · ${formatCook(c.pot)} COOK`}
+                      {busy === key + "collect" ? "..." : `Collect turn · ${formatCook(c.pot)} COOK`}
                     </button>
                   )}
-                  {owner && winner && c.state === "running" && c.winnerDrawn && (Boolean(blockedClaim) || now / 1000 >= redrawAt) && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c, winner)}>{busy === key + "redraw" ? "…" : blockedClaim ? "Keluarkan kursi & undi ulang" : "Undi ulang"}</button>}
+                  {owner && winner && c.state === "running" && c.winnerDrawn && (Boolean(blockedClaim) || now / 1000 >= redrawAt) && <button className="ghost" disabled={busy !== null} onClick={() => redraw(c, winner)}>{busy === key + "redraw" ? "…" : blockedClaim ? "Remove seat & redraw" : "Draw again"}</button>}
                   {me && reserveShortfall > 0 && (
                     <button className="ghost" disabled={busy !== null} onClick={() => topUp(c)}>
-                      {busy === key + "topup" ? "..." : `Lengkapi cadangan · ${formatCook(reserveShortfall)} COOK`}
+                      {busy === key + "topup" ? "..." : `Top up reserve · ${formatCook(reserveShortfall)} COOK`}
                     </button>
                   )}
                   {c.state === "finished" && me && me.collateral > 0 && (
                     <button className="primary" disabled={busy !== null} onClick={() => takeBond(c)}>
-                      {busy === key + "bond" ? "..." : `Tarik jaminan · ${formatCook(me.collateral)} COOK`}
+                      {busy === key + "bond" ? "..." : `Withdraw reserve · ${formatCook(me.collateral)} COOK`}
+                    </button>
+                  )}
+                  {c.state === "finished" && (me || isCreator) && (
+                    <button className="ghost" disabled={busy !== null} onClick={() => toggleHidden(c)}>
+                      {hiddenCircles[key] ? "Show in my list" : "Hide from my list"}
                     </button>
                   )}
                   <button className="ghost" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : key)}>
-                    {expanded ? "Tutup pembukuan" : "Lihat anggota & pembukuan"}
+                    {expanded ? "Close ledger" : "View members & ledger"}
                   </button>
                 </div>
 
                 {c.state === "running" && c.winnerDrawn && (
                   <div className="banner info" style={{ marginTop: 10 }}>
-                    <strong>Kursi {c.winnerIndex + 1} terpilih.</strong> {blockedClaim ?? (me?.seat === c.winnerIndex ? "Kamu bisa mengambil kas melalui tombol Ambil giliran." : `Menunggu ${winner?.wallet.toBase58().slice(0, 4)}…${winner?.wallet.toBase58().slice(-4)} mengambil kas.`)}
-                    {blockedClaim && <p>{winner?.hasWon ? "Kursi ini tidak akan masuk undian berikutnya. Keluarkan sekarang lalu mulai undian baru." : now / 1000 >= redrawAt ? "Batas klaim sudah lewat. Gunakan Undi ulang untuk mencoba kursi lagi." : "Kursi ini tidak memenuhi syarat dan dapat langsung dikeluarkan dari hasil undian."}</p>}
-                    {c.pot === 0 && <p>Kas masih kosong. Anggota perlu menyetor iuran.</p>}
+                    <strong>Seat {c.winnerIndex + 1} selected.</strong> {blockedClaim ?? (me?.seat === c.winnerIndex ? "You can collect the pool with the Collect turn button." : `Waiting for ${winner?.wallet.toBase58().slice(0, 4)}…${winner?.wallet.toBase58().slice(-4)} to collect the pool.`)}
+                    {blockedClaim && <p>{winner?.hasWon ? "This seat will not enter future draws. Remove it now and start a new draw." : now / 1000 >= redrawAt ? "The claim window has passed. Use Draw again to try another seat." : "This seat is not eligible and can be removed from the draw result."}</p>}
+                    {c.pot === 0 && <p>The pool is empty. Members need to contribute first.</p>}
                   </div>
                 )}
 
@@ -648,7 +679,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
 /**
  * The public ledger. In a real arisan this is a notebook somebody keeps and
  * everybody has to trust. Here it is the chain, so every member can see exactly
- * who has paid, who has missed, and who has already sudah menerima.
+ * who has paid, who has missed, and who has already received a turn.
  */
 function Books({
   circle, board, owner, roundOver, busy, onChase,
@@ -661,7 +692,7 @@ function Books({
   onChase: (m: MemberView) => void;
 }) {
   if (board.length === 0) {
-    return <p className="muted" style={{ marginTop: 12 }}>Belum ada anggota yang bergabung.</p>;
+    return <p className="muted" style={{ marginTop: 12 }}>No members have joined yet.</p>;
   }
 
   return (
@@ -672,28 +703,28 @@ function Books({
         return (
           <div key={m.seat} className="book-row">
             <span className="mono book-wallet">
-              kursi {m.seat + 1} · {m.wallet.toBase58().slice(0, 4)}…{m.wallet.toBase58().slice(-4)}
-              {isMe && <strong> (kamu)</strong>}
+              seat {m.seat + 1} · {m.wallet.toBase58().slice(0, 4)}…{m.wallet.toBase58().slice(-4)}
+              {isMe && <strong> (you)</strong>}
             </span>
             <span className="book-status">
-              {m.hasWon && <span className="pill closed">sudah menerima</span>}
+              {m.hasWon && <span className="pill closed">received</span>}
               {m.roundsMissed > 0 && (
-                <span className="pill lucky">tunggak {m.roundsMissed}</span>
+                <span className="pill lucky">missed {m.roundsMissed}</span>
               )}
               {/* Only ever says paid when they actually paid. A round settled by
                   slashing their collateral is a miss, not a payment, and
                   labelling it "paid" would quietly launder the one fact the
                   group most needs to see. */}
               {owes
-                ? <span className="pill lucky">belum setor putaran {circle.round}</span>
+                ? <span className="pill lucky">round {circle.round} unpaid</span>
                 : circle.state === "running" && m.roundsPaid >= circle.round
-                  ? <span className="pill prop">setor {m.roundsPaid} kali</span>
+                  ? <span className="pill prop">paid {m.roundsPaid} times</span>
                   : circle.state === "running" && m.paidRound >= circle.round
-                    ? <span className="pill lucky">ditutup dari cadangan</span>
+                    ? <span className="pill lucky">covered from reserve</span>
                     : circle.state === "running" && (
-                        <span className="pill closed">riwayat iuran belum lengkap</span>
+                        <span className="pill closed">payment history incomplete</span>
                       )}
-              <span className="mono">jaminan {formatCook(m.collateral)} COOK</span>
+              <span className="mono">reserve {formatCook(m.collateral)} COOK</span>
               {owes && roundOver && (
                 <button
                   className="ghost"
@@ -702,7 +733,7 @@ function Books({
                 >
                   {busy === circle.address.toBase58() + "slash" + m.seat
                     ? "..."
-                    : m.collateral > 0 ? "Tutup dari cadangan" : "Tandai tunggakan"}
+                    : m.collateral > 0 ? "Cover from reserve" : "Mark as missed"}
                 </button>
               )}
             </span>

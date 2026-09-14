@@ -2,55 +2,55 @@ import { useState } from "react";
 import { Icon, type Navigate } from "./UI";
 
 const steps = [
-  { title: "Mulai dari satu grup.", detail: "Contoh: kamu, Bima, dan Citra sepakat iuran 10 COOK per putaran. Setiap orang mengunci cadangan 30 COOK (10 × 3 putaran), bukan biaya tambahan.", action: "Coba setor iuran" },
-  { title: "Iuran masuk ke kas bersama.", detail: "Tiga anggota × 10 COOK = 30 COOK. Cadangan disimpan terpisah. Jika seseorang mangkir, program memotong cadangannya agar kas tetap 30 COOK.", action: "Lihat contoh undian" },
-  { title: "Satu orang mendapat giliran.", detail: "Di contoh ini, giliran jatuh ke kamu. Pada campaign asli, hasil undian ditentukan program. Penerima harus memenuhi syarat pembayaran dan jaminan.", action: "Coba ambil giliran" },
-  { title: "Giliranmu selesai, iuran tetap jalan.", detail: "Kamu menerima 30 COOK. Putaran berikutnya kamu tetap membayar 10 COOK, tetapi tidak mendapat giliran lagi. Arisan selesai setelah semua anggota menerima giliran.", action: "Ulangi simulasi" },
+  { title: "Start with one group.", detail: "Example: you, Bima, and Citra agree to contribute 10 COOK per round. Each person locks 30 COOK (10 × 3 rounds) as a reserve, not an extra fee.", action: "Try a contribution" },
+  { title: "Contributions enter the shared pool.", detail: "Three members × 10 COOK = 30 COOK. The reserve is held separately. If someone misses a payment, the program uses their reserve so the pool stays at 30 COOK.", action: "See a draw example" },
+  { title: "One person gets the turn.", detail: "In this example, the turn goes to you. In a live campaign, the program determines the draw. The recipient must meet the payment and reserve requirements.", action: "Try collecting a turn" },
+  { title: "Your turn ends, contributions continue.", detail: "You receive 30 COOK. You still contribute 10 COOK in the next rounds, but you do not draw again. The Arisan ends after everyone has received a turn.", action: "Replay the simulation" },
 ];
 export function Guide({ navigate }: { navigate: Navigate }) {
   const [step, setStep] = useState(0);
   const [role, setRole] = useState<"member" | "creator">("member");
   return <>
-    <section className="simulation" aria-label="Simulasi arisan">
+    <section className="simulation" aria-label="Arisan simulation">
       <div className="simulation-visual">
-        <span className="pill closed">Simulasi · bukan transaksi asli</span>
-        <span className="pot-label">{step === 3 ? "Kamu menerima" : "Kas putaran 1"}</span>
+        <span className="pill closed">Simulation · not a real transaction</span>
+        <span className="pot-label">{step === 3 ? "You receive" : "Round 1 pool"}</span>
         <div className="pot-amount">{step === 0 ? "0" : "30"} <span>COOK</span></div>
-        <div className="demo-members">{["Kamu", "Bima", "Citra"].map((name, i) => <div key={name} className={i === 0 && step >= 2 ? "demo-member selected" : "demo-member"}>
-          <span className="avatar">{name[0]}</span><strong>{name}</strong><small>{step === 0 ? "Belum setor" : step >= 2 && i === 0 ? (step === 3 ? "Sudah menerima" : "Dapat giliran") : "Setor 10 COOK"}</small>
+        <div className="demo-members">{["You", "Bima", "Citra"].map((name, i) => <div key={name} className={i === 0 && step >= 2 ? "demo-member selected" : "demo-member"}>
+          <span className="avatar">{name[0]}</span><strong>{name}</strong><small>{step === 0 ? "Not paid yet" : step >= 2 && i === 0 ? (step === 3 ? "Received" : "Turn selected") : "Contribute 10 COOK"}</small>
         </div>)}</div>
       </div>
       <div className="simulation-copy">
-        <span className="step-count">LANGKAH {step + 1} DARI 4</span>
+        <span className="step-count">STEP {step + 1} OF 4</span>
         <div className="step-progress" aria-hidden="true">{steps.map((_, i) => <span key={i} className={i <= step ? "done" : ""} />)}</div>
         <div aria-live="polite"><h2>{steps[step].title}</h2><p>{steps[step].detail}</p></div>
         <button className="primary" onClick={() => setStep((step + 1) % 4)}>{steps[step].action}<Icon name="arrow" /></button>
-        <small>Simulasi ini tidak menghubungkan wallet atau memindahkan uang.</small>
+        <small>This simulation does not connect a wallet or move funds.</small>
       </div>
     </section>
     <section className="guide-section">
-      <h2>Sekarang, mulai dari mana?</h2>
-      <div className="segmented" aria-label="Pilih panduan"><button aria-pressed={role === "member"} onClick={() => setRole("member")}>Saya mau ikut</button><button aria-pressed={role === "creator"} onClick={() => setRole("creator")}>Saya mau membuat</button></div>
+      <h2>Where do I start?</h2>
+      <div className="segmented" aria-label="Choose a guide"><button aria-pressed={role === "member"} onClick={() => setRole("member")}>I want to join</button><button aria-pressed={role === "creator"} onClick={() => setRole("creator")}>I want to create</button></div>
       <ol className="guide-steps">
         {(role === "member" ? [
-          ["Minta kode ke creator", "Kode membuka campaign yang dituju. Baca tujuan grup, posting creator, iuran, dan durasi sebelum ikut."],
-          ["Hubungkan wallet & siapkan COOK", "Untuk mencoba, buka Get demo COOK. Saldo dipakai untuk jaminan dan iuran, bukan hanya gas."],
-          ["Join room, lalu tunggu creator", "Saat Join, cadangan keamanan dipindahkan dari wallet. Nilainya adalah iuran × jumlah anggota. Creator memulai arisan setelah minimal dua anggota bergabung."],
-          ["Bayar setiap putaran", "Setor iuran sampai semua mendapat giliran, termasuk setelah kamu menerima kas. Pantau batas waktu dan pembukuan di room."],
+          ["Ask the creator for the code", "The code opens the campaign you were invited to. Read the group's purpose, creator's post, contribution, and duration before joining."],
+          ["Connect a wallet and get COOK", "To try it, open Get demo COOK. Your balance covers the reserve and contributions, not just gas."],
+          ["Join the room and wait for the creator", "Joining moves the reserve from your wallet. It equals the contribution × the number of members. The creator starts the Arisan after at least two members join."],
+          ["Pay every round", "Contribute until everyone gets a turn, including after you receive the pool. Watch the deadline and ledger in the room."],
         ] : [
-          ["Isi detail campaign", "Beri nama dan jelaskan siapa yang boleh ikut serta tujuan arisannya."],
-          ["Sepakati aturan", "Tentukan iuran, cadangan keamanan, jumlah anggota, dan lama putaran. Aturan tidak dapat diubah setelah dibuat."],
-          ["Posting ke sosial media", "Gunakan draft yang disiapkan, publikasikan sendiri, lalu tempel URL posting publik. Link disimpan, isi posting belum diverifikasi otomatis."],
-          ["Buat room & undang grupmu", "Hubungkan wallet, review aturan, lalu Create campaign. Creator otomatis menjadi anggota pertama; simpan kode yang muncul dan bagikan ke anggota."],
+          ["Add campaign details", "Name the campaign and explain who can join and what the Arisan is for."],
+          ["Agree on the rules", "Set the contribution, reserve, member count, and round duration. The rules cannot change after creation."],
+          ["Post on social media", "Use the prepared draft, publish it yourself, and paste the public post URL. The link is stored, but the post is not automatically verified."],
+          ["Create the room and invite your group", "Connect a wallet, review the rules, then create the campaign. The creator automatically becomes the first member; save and share the generated code."],
         ]).map(([title, detail], i) => <li key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{detail}</p></div></li>)}
       </ol>
-      <button className="primary" onClick={() => navigate(role === "member" ? "join" : "create")}>{role === "member" ? "Saya punya kode" : "Create campaign"}<Icon name="arrow" /></button>
+      <button className="primary" onClick={() => navigate(role === "member" ? "join" : "create")}>{role === "member" ? "I have a code" : "Create campaign"}<Icon name="arrow" /></button>
     </section>
-    <section className="faq"><h2>Yang perlu kamu tahu</h2>
-      <details><summary>Apa bedanya cadangan keamanan dan iuran?</summary><p>Cadangan keamanan dikunci saat bergabung dan disimpan terpisah dari kas. Untuk campaign baru nilainya minimal iuran × jumlah anggota, sehingga setiap kewajiban tersisa bisa ditutup. Iuran tetap dibayar setiap putaran untuk membentuk kas. Cadangan yang tidak terpakai bisa ditarik setelah arisan selesai.</p></details>
-      <details><summary>Kalau ada yang tidak bayar?</summary><p>Setelah tenggat, siapa pun dapat menutup tunggakan dari cadangan anggota tersebut. Saldo cadangannya berkurang, tetapi kas putaran tetap utuh. Jika cadangan semua anggota belum cukup, program mengunci undian dan pencairan sampai saldo dilengkapi—anggota lain tidak dipaksa menutup kekurangannya.</p></details>
-      <details><summary>Apakah demo memakai uang sungguhan?</summary><p>Simulasi di atas hanya contoh. Get demo COOK dan campaign di aplikasi memakai transaksi nyata di Cookie Chain mainnet. Periksa nominal sebelum menyetujui transaksi di wallet.</p></details>
-      <details><summary>Apakah kode membatasi siapa yang bisa ikut?</summary><p>Belum sepenuhnya. Aplikasi meminta kode untuk membuka room, tetapi program blockchain saat ini belum memiliki otorisasi anggota yang kuat. Pengguna teknis bisa melewati pembatasan kode aplikasi. Detail dan pembukuan juga bersifat publik. Jangan menganggap kode sebagai jaminan privasi atau identitas anggota.</p></details>
+    <section className="faq"><h2>What you should know</h2>
+      <details><summary>What is the difference between the reserve and a contribution?</summary><p>The reserve is locked when you join and held separately from the pool. For new campaigns, it must be at least the contribution × the number of members, so remaining obligations can be covered. Contributions are paid every round to build the pool. Unused reserve can be withdrawn after the Arisan ends.</p></details>
+      <details><summary>What happens if someone does not pay?</summary><p>After the deadline, anyone can cover the missed contribution from that member's reserve. Their reserve balance decreases, but the round pool stays whole. If the reserves are not sufficient, the program locks the draw and payout until the shortfall is repaired—other members are never forced to cover it.</p></details>
+      <details><summary>Does the demo use real money?</summary><p>The simulation above is only an example. Get demo COOK and campaigns in the app use real transactions on Cookie Chain mainnet. Check the amount before approving a wallet transaction.</p></details>
+      <details><summary>Does the code restrict who can join?</summary><p>Not completely. The app asks for a code to open a room, but the current blockchain program does not have strong membership authorization. Technical users may bypass the app-level code gate. Details and the ledger are public, so do not treat the code as a privacy or identity guarantee.</p></details>
     </section>
   </>;
 }

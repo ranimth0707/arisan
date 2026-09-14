@@ -154,7 +154,7 @@ async function simulateBeforeSigning(conn: Connection, tx: VersionedTransaction)
   const { value } = await conn.simulateTransaction(tx, { sigVerify: false, commitment: "confirmed" });
   if (value.err) {
     const detail = value.logs?.find(line => line.includes("Error Message:"));
-    throw new Error(detail ?? "Transaksi belum dapat dijalankan: " + JSON.stringify(value.err));
+    throw new Error(detail ?? "The transaction could not be simulated: " + JSON.stringify(value.err));
   }
 }
 
@@ -188,7 +188,7 @@ async function sendSponsored(
     "confirmed",
   );
 
-  if (confirmation.value.err) throw new Error("Transaksi gagal di blockchain: " + JSON.stringify(confirmation.value.err));
+  if (confirmation.value.err) throw new Error("The transaction failed on chain: " + JSON.stringify(confirmation.value.err));
 
   report({ stage: "confirmed", signature: body.signature, sponsored: true });
   return { signature: body.signature as string, sponsored: true };
@@ -223,18 +223,18 @@ async function sendSelfPaid(
 
   report({ stage: "confirming", signature, sponsored: false });
   const confirmation = await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
-  if (confirmation.value.err) throw new Error("Transaksi gagal di blockchain: " + JSON.stringify(confirmation.value.err));
+  if (confirmation.value.err) throw new Error("The transaction failed on chain: " + JSON.stringify(confirmation.value.err));
 
   report({ stage: "confirmed", signature, sponsored: false });
   return { signature, sponsored: false };
 }
 
 export const stageLabel: Record<SendStage, string> = {
-  building: "Menyiapkan transaksi",
-  "awaiting-signature": "Periksa dan setujui di wallet",
-  sponsoring: "Sponsor memproses biaya",
-  broadcasting: "Mengirim ke Cookie Chain",
-  confirming: "Menunggu konfirmasi",
-  confirmed: "Transaksi berhasil",
-  failed: "Transaksi belum berhasil",
+  building: "Preparing transaction",
+  "awaiting-signature": "Review and approve in your wallet",
+  sponsoring: "Sponsor is covering the fee",
+  broadcasting: "Sending to Cookie Chain",
+  confirming: "Waiting for confirmation",
+  confirmed: "Transaction confirmed",
+  failed: "Transaction failed",
 };

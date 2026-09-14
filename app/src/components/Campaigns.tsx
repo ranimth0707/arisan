@@ -350,7 +350,7 @@ function AskForHelp({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         maxLength={64}
-        placeholder="Bayar biaya rumah sakit ibu"
+        placeholder="Pay for a medical bill"
       />
 
       <label>Tell people the situation</label>

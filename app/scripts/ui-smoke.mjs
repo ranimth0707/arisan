@@ -19,27 +19,27 @@ try {
   const { NetworkSetup } = await server.ssrLoadModule("/src/components/NetworkSetup.tsx");
   const noop = () => {};
   const guide = render(createElement(Guide, { navigate: noop }));
-  assert.match(guide, /Simulasi · bukan transaksi asli/);
-  assert.match(guide, /Coba setor iuran/);
-  assert.match(guide, /Saya mau membuat/);
-  assert.match(guide, /Pengguna teknis bisa melewati/);
+  assert.match(guide, /Simulation · not a real transaction/);
+  assert.match(guide, /Try a contribution/);
+  assert.match(guide, /I want to create/);
+  assert.match(guide, /Technical users may bypass/);
   const create = render(createElement(CreateCampaign, { owner: null, program: {}, submit: noop, navigate: noop }));
-  assert.match(create, /Nama campaign/);
-  assert.match(create, /Tentang campaign/);
-  assert.match(create, />Lanjut</);
+  assert.match(create, /Campaign name/);
+  assert.match(create, /About the campaign/);
+  assert.match(create, />Continue</);
   assert.doesNotMatch(create, /disabled=""/); // No wallet required to begin.
   const home = render(createElement(Circles, { owner: null, program: {}, submit: noop, navigate: noop, onChanged: noop, mode: "home" }));
   assert.match(home, /Create campaign/); // Creation stays visible during RPC loading.
-  assert.match(home, /Memuat campaign/);
+  assert.match(home, /Loading campaigns/);
   const join = render(createElement(Circles, { owner: null, program: {}, submit: noop, navigate: noop, onChanged: noop, mode: "join" }));
-  assert.match(join, /Kode room/);
+  assert.match(join, /Room code/);
   assert.match(join, /ARISAN-DEMO-9002/);
   const faucet = render(createElement(Faucet, { owner: null, onChanged: noop, navigate: noop }));
-  assert.match(faucet, /Hubungkan wallet untuk klaim/);
-  assert.match(faucet, /Masuk room/);
-  assert.match(faucet, /Coba simulasi dulu/);
+  assert.match(faucet, /Connect wallet to claim/);
+  assert.match(faucet, /Open a room/);
+  assert.match(faucet, /Try the simulation first/);
   const network = render(createElement(NetworkSetup, {}));
-  assert.match(network, /Tambahkan Cookie Chain ke wallet/);
+  assert.match(network, /Add Cookie Chain to your wallet/);
   assert.match(network, /rpc\.cookiescan\.io/);
   console.log("PASS: guide, create without wallet, create during loading, join by code, and faucet next-step entry screens.");
 } finally { await server.close(); }

@@ -7,7 +7,7 @@ export function withRequesterSigner(
 ): TransactionInstruction[] {
   if (instructions.some(ix => ix.keys.some(key => key.isSigner && key.pubkey.equals(requester)))) return instructions;
   const index = instructions.findIndex(ix => ix.programId.equals(programId));
-  if (index < 0) throw new Error("Tidak ada instruksi aplikasi untuk ditandatangani.");
+  if (index < 0) throw new Error("No app instruction is available to sign.");
   return instructions.map((ix, i) => i !== index ? ix : new TransactionInstruction({
     programId: ix.programId,
     data: ix.data,
@@ -18,6 +18,6 @@ export function withRequesterSigner(
 export function assertWalletSigner(tx: VersionedTransaction, owner: PublicKey) {
   const signers = tx.message.staticAccountKeys.slice(0, tx.message.header.numRequiredSignatures);
   if (!signers.some(key => key.equals(owner))) {
-    throw new Error("Wallet kamu belum tercantum sebagai penanda tangan transaksi. Muat ulang aplikasi.");
+    throw new Error("Your wallet is not listed as a transaction signer. Reload the app and try again.");
   }
 }

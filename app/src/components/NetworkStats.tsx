@@ -23,7 +23,7 @@ function cook(value: number) {
 
 function timeLabel(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.valueOf()) ? "baru saja" : date.toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" });
+  return Number.isNaN(date.valueOf()) ? "just now" : date.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
 export function NetworkStats() {
@@ -51,24 +51,24 @@ export function NetworkStats() {
       <div className="network-stats-heading">
         <div>
           <span className="eyebrow">ON-CHAIN ACTIVITY</span>
-          <h2 id="network-stats-title">Arisan yang sedang berjalan</h2>
-          <p>Angka ini dibaca dari vault dan transaksi Arisan di Cookie Chain.</p>
+          <h2 id="network-stats-title">Live Arisan activity</h2>
+          <p>Read directly from Arisan vaults and confirmed transactions on Cookie Chain.</p>
         </div>
         <button className="ghost stats-refresh" type="button" onClick={() => void refresh()} disabled={loading} aria-busy={loading}>
-          <Icon name="refresh" />{loading ? "Memuat…" : "Perbarui"}
+          <Icon name="refresh" />{loading ? "Loading…" : "Refresh"}
         </button>
       </div>
 
-      {loading && <div className="stats-grid stats-loading" aria-label="Memuat statistik"><span /><span /><span /><span /></div>}
-      {!loading && error && <div className="banner warn stats-error" role="alert">Statistik belum bisa dimuat. <button className="text-button" type="button" onClick={() => void refresh()}>Coba lagi</button></div>}
+      {loading && <div className="stats-grid stats-loading" aria-label="Loading network statistics"><span /><span /><span /><span /></div>}
+      {!loading && error && <div className="banner warn stats-error" role="alert">Stats are temporarily unavailable. <button className="text-button" type="button" onClick={() => void refresh()}>Try again</button></div>}
       {!loading && !error && data && <>
         <div className="stats-grid">
-          <div className="network-stat primary-stat"><span>TVL aktif</span><strong>{cook(data.tvl.activeCook)} <small>COOK</small></strong><em>{cook(data.tvl.protectedCook)} COOK terlindungi</em></div>
-          <div className="network-stat"><span>Arus kas terindeks</span><strong>{cook(data.volume.allTime.grossCook)} <small>COOK</small></strong><em>{data.volume.allTime.transactions.toLocaleString("id-ID")} transaksi kontribusi &amp; payout</em></div>
-          <div className="network-stat"><span>Room aktif</span><strong>{data.rooms.active.toLocaleString("id-ID")}</strong><em>{data.rooms.forming} sedang mencari anggota</em></div>
-          <div className="network-stat"><span>Anggota terdaftar</span><strong>{data.members.toLocaleString("id-ID")}</strong><em>{data.rooms.protected} room memakai safety guard</em></div>
+          <div className="network-stat primary-stat"><span>Active TVL</span><strong>{cook(data.tvl.activeCook)} <small>COOK</small></strong><em>{cook(data.tvl.protectedCook)} COOK protected</em></div>
+          <div className="network-stat"><span>Indexed cash flow</span><strong>{cook(data.volume.allTime.grossCook)} <small>COOK</small></strong><em>{data.volume.allTime.transactions.toLocaleString("en-US")} contribution &amp; payout transactions</em></div>
+          <div className="network-stat"><span>Active rooms</span><strong>{data.rooms.active.toLocaleString("en-US")}</strong><em>{data.rooms.forming} looking for members</em></div>
+          <div className="network-stat"><span>Registered members</span><strong>{data.members.toLocaleString("en-US")}</strong><em>{data.rooms.protected} rooms using the safety guard</em></div>
         </div>
-        <div className="network-stats-foot"><span>Diperbarui {timeLabel(data.asOf)} · {data.volume.complete ? "seluruh riwayat terindeks" : "riwayat volume masih sebagian"}</span><a href={`https://cookiescan.io/account/${data.source.program}`} target="_blank" rel="noreferrer">Verifikasi di CookieScan ↗</a></div>
+        <div className="network-stats-foot"><span>Updated {timeLabel(data.asOf)} · {data.volume.complete ? "complete history indexed" : "volume history is partial"}</span><a href={`https://cookiescan.io/address/${data.source.program}`} target="_blank" rel="noreferrer">Verify on CookieScan ↗</a></div>
       </>}
     </section>
   );

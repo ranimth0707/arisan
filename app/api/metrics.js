@@ -184,6 +184,6 @@ export default async function handler(_req, res) {
     return res.status(200).json(result);
   } catch {
     cached = null;
-    return res.status(503).json({ ok: false, error: "Metrics sementara tidak tersedia. Coba lagi sebentar." });
+    return res.status(503).json({ ok: false, error: "Metrics are temporarily unavailable. Try again shortly." });
   }
 }

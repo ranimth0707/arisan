@@ -10,9 +10,9 @@ export function drawPhase(targetSlot: number, slot: number | null) {
 }
 
 export function claimBlocker(member: { hasWon: boolean; active: boolean; paidRound: number } | undefined, round: number) {
-  if (!member) return "Data anggota belum tersedia.";
-  if (member.hasWon) return "Kursi ini sudah menerima kas pada putaran sebelumnya.";
-  if (!member.active) return "Anggota perlu mengisi ulang jaminan sebelum mengambil kas.";
-  if (member.paidRound < round) return "Anggota perlu menyelesaikan iuran atau menutupnya dari cadangan sebelum mengambil kas.";
+  if (!member) return "Member data is not available yet.";
+  if (member.hasWon) return "This seat already received the pool in an earlier round.";
+  if (!member.active) return "This member must top up the reserve before collecting the pool.";
+  if (member.paidRound < round) return "This member must pay the contribution or cover it from the reserve before collecting the pool.";
   return null;
 }

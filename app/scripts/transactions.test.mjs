@@ -28,7 +28,7 @@ const compile = (instructions, payer = relayer.publicKey) => new VersionedTransa
 test("reproduces missing user signer in the old sponsored draw", () => {
   const tx = compile([reimbursement, request]);
   assert.throws(() => tx.sign([owner]), /Cannot sign with non signer key/);
-  assert.throws(() => assertWalletSigner(tx, owner.publicKey), /belum tercantum/);
+  assert.throws(() => assertWalletSigner(tx, owner.publicKey), /not listed as a transaction signer/);
 });
 
 for (const method of ["requestTurn", "finalizeTurn", "redrawTurn"]) test(`${method}: wallet can sign and relayer accepts fixed message`, async () => {
@@ -136,8 +136,8 @@ test("draw finalization respects exact expiry boundary and can restart", () => {
 test("only an active, settled member who has never received a pot can claim", () => {
   const member = { active: true, paidRound: 2, roundsPaid: 2, hasWon: false };
   assert.equal(claimBlocker(member, 2), null);
-  assert.match(claimBlocker({ ...member, hasWon: true }, 2), /sudah menerima/);
-  assert.match(claimBlocker({ ...member, active: false }, 2), /jaminan/);
-  assert.match(claimBlocker({ ...member, paidRound: 1 }, 2), /iuran/);
+  assert.match(claimBlocker({ ...member, hasWon: true }, 2), /earlier round/);
+  assert.match(claimBlocker({ ...member, active: false }, 2), /reserve/);
+  assert.match(claimBlocker({ ...member, paidRound: 1 }, 2), /contribution/);
   assert.equal(claimBlocker({ ...member, roundsPaid: 0 }, 2), null, "a reserve-covered miss is settled without being labelled paid");
 });

@@ -15,12 +15,12 @@ export function TxToast({ progress }: { progress: SendProgress | null }) {
         <span>
           <b>{stageLabel[progress.stage]}</b>
           {progress.sponsored && progress.stage !== "failed" && (
-            <span style={{ opacity: 0.75 }}> · biaya disponsori</span>
+            <span style={{ opacity: 0.75 }}> · fee sponsored</span>
           )}
         </span>
         {progress.signature && (
           <a href={txUrl(progress.signature)} target="_blank" rel="noreferrer">
-            Lihat transaksi
+            View transaction
           </a>
         )}
       </div>

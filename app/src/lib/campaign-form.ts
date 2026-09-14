@@ -1,6 +1,6 @@
 export interface CampaignDraft { name: string; description: string; contribution: string; collateral: string; seats: string; duration: string; socialUrl: string }
 export const defaultDraft: CampaignDraft = { name: "", description: "", contribution: "0.1", collateral: "0.3", seats: "3", duration: "60", socialUrl: "" };
-export const durationLabels: Record<string, string> = { "60": "1 menit (demo)", "86400": "1 hari", "604800": "1 minggu", "2592000": "30 hari" };
+export const durationLabels: Record<string, string> = { "60": "1 minute (demo)", "86400": "1 day", "604800": "1 week", "2592000": "30 days" };
 export function parseCookInput(value: string): number | null {
   if (!/^\d+(\.\d{1,9})?$/.test(value)) return null;
   const [whole, fraction = ""] = value.split(".");
@@ -30,24 +30,24 @@ export function isSocialPost(value: string) {
 }
 export function validateDraft(draft: CampaignDraft, step: number): { field: keyof CampaignDraft; message: string } | null {
   const bytes = (s: string) => new TextEncoder().encode(s.trim()).length;
-  if (!draft.name.trim() || bytes(draft.name) > 48) return { field: "name", message: "Isi nama campaign, maksimal 48 byte." };
-  if (!draft.description.trim() || bytes(draft.description) > 280) return { field: "description", message: "Isi tujuan campaign, maksimal 280 byte." };
+  if (!draft.name.trim() || bytes(draft.name) > 48) return { field: "name", message: "Enter a campaign name, up to 48 bytes." };
+  if (!draft.description.trim() || bytes(draft.description) > 280) return { field: "description", message: "Enter the campaign purpose, up to 280 bytes." };
   if (step < 1) return null;
   const amount = parseCookInput(draft.contribution);
   const collateralInput = draft.collateral.trim();
   const parsedBond = parseCookInput(collateralInput);
   const bond = parsedBond ?? (/^0(?:\.0+)?$/.test(collateralInput) ? 0 : null);
   const seats = Number(draft.seats);
-  if (amount === null) return { field: "contribution", message: "Isi iuran di atas 0 COOK, maksimal 9 desimal dan dalam batas nominal aplikasi." };
-  if (bond === null) return { field: "collateral", message: "Isi cadangan positif, maksimal 9 desimal." };
-  if (bond !== null && bond < 0) return { field: "collateral", message: "Jaminan tidak boleh negatif." };
-  if (!Number.isInteger(seats) || seats < 2 || seats > 100) return { field: "seats", message: "Isi jumlah anggota antara 2 dan 100." };
+  if (amount === null) return { field: "contribution", message: "Enter a contribution above 0 COOK, with up to 9 decimals and within the app limit." };
+  if (bond === null) return { field: "collateral", message: "Enter a positive reserve, with up to 9 decimals." };
+  if (bond !== null && bond < 0) return { field: "collateral", message: "The reserve cannot be negative." };
+  if (!Number.isInteger(seats) || seats < 2 || seats > 100) return { field: "seats", message: "Enter between 2 and 100 members." };
   const requiredBond = amount * seats;
-  if (!Number.isSafeInteger(requiredBond) || !Number.isSafeInteger(requiredBond * seats) || !Number.isSafeInteger(bond * seats)) return { field: "contribution", message: "Total nominal grup terlalu besar. Kurangi iuran atau cadangan." };
-  if (bond < requiredBond) return { field: "collateral", message: `Cadangan minimal ${formatLamports(requiredBond)} COOK per anggota agar tunggakan tidak merugikan anggota lain.` };
-  if (!Object.hasOwn(durationLabels, draft.duration)) return { field: "duration", message: "Pilih durasi putaran." };
+  if (!Number.isSafeInteger(requiredBond) || !Number.isSafeInteger(requiredBond * seats) || !Number.isSafeInteger(bond * seats)) return { field: "contribution", message: "The group total is too large. Reduce the contribution or reserve." };
+  if (bond < requiredBond) return { field: "collateral", message: `Reserve at least ${formatLamports(requiredBond)} COOK per member so missed payments cannot harm other members.` };
+  if (!Object.hasOwn(durationLabels, draft.duration)) return { field: "duration", message: "Choose a round duration." };
   if (step < 2) return null;
-  if (bytes(draft.socialUrl) > 200 || !isSocialPost(draft.socialUrl.trim())) return { field: "socialUrl", message: "Tempel link posting publik X, Instagram, Threads, Facebook, atau Telegram. Bukan link profil." };
+  if (bytes(draft.socialUrl) > 200 || !isSocialPost(draft.socialUrl.trim())) return { field: "socialUrl", message: "Paste a public post link from X, Instagram, Threads, Facebook, or Telegram—not a profile link." };
   return null;
 }
 

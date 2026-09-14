@@ -10,7 +10,7 @@ access to a lump sum they could not have saved alone.
 | | |
 |---|---|
 | Live app | **https://arisan-cook.vercel.app** |
-| Program | [`Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`](https://cookiescan.io/account/Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg) |
+| Program | [`Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`](https://cookiescan.io/address/Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg) |
 | Network | Cookie Chain mainnet |
 | Wallet | Nightly |
 

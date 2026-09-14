@@ -29,7 +29,7 @@ export function Faucet({ owner, onChanged, navigate }: Props) {
     setErr(null);
     try {
       const res = await fetch("/api/faucet", { signal: AbortSignal.timeout(8000) });
-      if (!res.ok) throw new Error("Faucet sedang tidak tersedia. Coba lagi sebentar.");
+      if (!res.ok) throw new Error("The faucet is temporarily unavailable. Try again shortly.");
       setStatus(await res.json() as FaucetStatus);
     } catch (e) {
       setStatus(null);
@@ -72,18 +72,18 @@ export function Faucet({ owner, onChanged, navigate }: Props) {
   return <div className="faucet-layout">
     <section className="faucet-card">
       <span className="action-icon"><Icon name="wallet" /></span>
-      <h2>Siapkan saldo untuk mencoba.</h2>
-      <p className="faucet-copy">COOK dari faucet bisa dipakai untuk jaminan saat join dan iuran setiap putaran. Ini transaksi nyata di Cookie Chain mainnet.</p>
+      <h2>Get a balance to try it.</h2>
+      <p className="faucet-copy">Faucet COOK covers the reserve when you join and contributions each round. These are real transactions on Cookie Chain mainnet.</p>
       <div className="faucet-stats">
-        <div className="stat">COOK per klaim<b>{status ? status.amountCook : "—"} COOK</b></div>
-        <div className="stat">Saldo wallet kamu<b>{balance === null ? "—" : formatCook(balance)} COOK</b></div>
+        <div className="stat">COOK per claim<b>{status ? status.amountCook : "—"} COOK</b></div>
+        <div className="stat">Your wallet balance<b>{balance === null ? "—" : formatCook(balance)} COOK</b></div>
       </div>
-      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Coba lagi</button></div>}
-      {lastTx && <div className="banner info" role="status">COOK sudah dikirim. <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">Lihat transaksi ↗</a></div>}
-      {!owner ? <WalletMultiButton>Hubungkan wallet untuk klaim</WalletMultiButton> : <button className="primary" disabled={busy || status === null} aria-busy={busy} onClick={() => void claim()}>{busy ? "Mengirim COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
-      <p className="faucet-footnote">Satu klaim per wallet/IP per menit. {status ? "Sisa faucet: " + formatCook(status.balanceLamports) + " COOK. " : ""}Setiap tindakan di campaign tetap memerlukan persetujuanmu. Biaya membuat room memakai saldo wallet; tindakan lain mencoba sponsor jika tersedia.</p>
+      {err && <div className="banner warn" role="alert">{err} <button className="text-button" onClick={() => void refresh()}>Try again</button></div>}
+      {lastTx && <div className="banner info" role="status">COOK sent. <a href={txUrl(lastTx)} target="_blank" rel="noreferrer">View transaction ↗</a></div>}
+      {!owner ? <WalletMultiButton>Connect wallet to claim</WalletMultiButton> : <button className="primary" disabled={busy || status === null} aria-busy={busy} onClick={() => void claim()}>{busy ? "Sending COOK…" : "Claim demo COOK"}<Icon name="arrow" /></button>}
+      <p className="faucet-footnote">One claim per wallet/IP per minute. {status ? "Faucet balance: " + formatCook(status.balanceLamports) + " COOK. " : ""}Every campaign action still requires your approval. Room creation uses your wallet balance; other actions try sponsorship when available.</p>
     </section>
     <NetworkSetup />
-    <aside className="faucet-next"><h3>Setelah dapat COOK?</h3><ol><li>Buka Join with code.</li><li>Gunakan kode dari creator, atau kode demo yang tersedia.</li><li>Baca detail room, lalu Join dan setor nominal yang disepakati.</li><li>Tunggu creator memulai, lalu bayar iuran.</li></ol><button className="primary" onClick={() => navigate("join")}>Masuk room<Icon name="arrow" /></button><p className="faucet-footnote">Hanya ingin belajar tanpa transaksi? <a href="#guide">Coba simulasi dulu.</a></p></aside>
+    <aside className="faucet-next"><h3>What next?</h3><ol><li>Open Join with code.</li><li>Use the creator's code or the available demo code.</li><li>Read the room details, then join and contribute the agreed amount.</li><li>Wait for the creator to start, then pay each round.</li></ol><button className="primary" onClick={() => navigate("join")}>Open a room<Icon name="arrow" /></button><p className="faucet-footnote">Just want to learn without a transaction? <a href="#guide">Try the simulation first.</a></p></aside>
   </div>;
 }

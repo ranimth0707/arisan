@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arisan — Volume &amp; TVL strategy</title>
+  <style>
+    :root { color-scheme: dark; font: 16px/1.6 system-ui, sans-serif; background: #11150f; color: #edf3e5; }
+    main { max-width: 860px; margin: 0 auto; padding: 48px 24px 80px; }
+    h1, h2 { line-height: 1.15; } h1 { font-size: 42px; } h2 { margin-top: 40px; }
+    .card { background: #1b2418; border: 1px solid #35452e; border-radius: 16px; padding: 20px; margin: 16px 0; }
+    .number { color: #c9f27b; font-size: 30px; font-weight: 700; }
+    code { color: #d5f79c; } a { color: #c9f27b; }
+    li { margin: 8px 0; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Arisan: a truthful Volume &amp; TVL plan</h1>
+  <p>Prepared for Cookie Chain ecosystem and hackathon distribution. The product remains invite-only for private groups; the website and metrics are public.</p>
+
+  <h2>What we measure</h2>
+  <div class="card">
+    <p><strong>TVL</strong> = principal currently locked in active Arisan rooms:</p>
+    <p><code>sum(bond vault principal + pot principal)</code></p>
+    <p>Exclude vault rent, relayer balance, faucet balance and finished rooms. Report a second number for <strong>protected TVL</strong>: only rooms with a valid CircleSafety guard.</p>
+  </div>
+  <div class="card">
+    <p><strong>Contribution volume</strong> = direct round payments plus collateral used to settle missed rounds.</p>
+    <p><strong>Payout volume</strong> = pots claimed by winners.</p>
+    <p><strong>Gross cashflow</strong> = contribution volume + payout volume. Always show the formula and the “as of” timestamp so reserve is not misrepresented as volume.</p>
+  </div>
+
+  <h2>Current on-chain snapshot</h2>
+  <div class="card">
+    <p>At the snapshot recorded on 2026-09-14:</p>
+    <p>Raw active/forming vault balances: <span class="number">107.510691 COOK</span></p>
+    <p>Protected active/forming vault balances: <span class="number">2.201782 COOK</span></p>
+    <p>This distinction matters: legacy rooms and demos are visible on-chain, but must not be marketed as protected TVL until migrated.</p>
+  </div>
+
+  <h2>Growth strategy without wash activity</h2>
+  <ol>
+    <li>Recruit real private groups through Indonesian communities: one creator, 3–5 people, one invite code, one small completed cycle.</li>
+    <li>Publish a creator kit: short explanation, risk warning, join code, QR/link, and a CookieScan link for the room and each payout.</li>
+    <li>Keep a single public demo room for developers and judges, funded by the faucet and clearly labelled “demo”. Do not count faucet-only activity as organic traction.</li>
+    <li>Post weekly proof: active groups, protected TVL, contribution volume, payout volume, completed rounds, unique wallets and the measurement timestamp.</li>
+    <li>Submit the project to Cookie Chain ecosystem discovery after the metrics page and README are live. Cookie Chain's builder guidance says live metrics should come from RPC, explorer APIs or an indexer.</li>
+  </ol>
+
+  <h2>Developer-facing surface</h2>
+  <ol>
+    <li>Add a wallet-free “Network stats” card to the app.</li>
+    <li>Expose <code>/api/metrics</code> with program id, RPC, timestamp, TVL breakdown, volume breakdown and room counts.</li>
+    <li>Link every number to the relevant CookieScan accounts or transactions.</li>
+    <li>Document the formulas in README so developers can independently reproduce them.</li>
+  </ol>
+
+  <h2>What we should not claim</h2>
+  <p>Do not call reserve TVL “volume”, do not include faucet or relayer balances in user TVL, do not count test wallets as community adoption, and do not publish a cumulative volume number until it is reconstructed from confirmed on-chain transactions or a trusted indexer.</p>
+</main>
+</body>
+</html>

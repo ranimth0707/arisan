@@ -108,7 +108,7 @@ charged twice, and a member cannot collect two turns.
 ### Try the live demo
 
 The live app has a 3-seat room named **Demo · Join by code**. Its invite code is
-published on purpose: **ARISAN-DEMO-9002**. Connect a wallet, open **Get demo COOK**,
+published on purpose: **ARISAN-DEMO-9003**. Connect a wallet, open **Get demo COOK**,
 claim enough demo COOK for the reserve shown in the room, then return to
 **Circles**, paste the code, and join. Once the room has at least two members and
 every member's reserve is complete, the creator can start it. The round lasts one

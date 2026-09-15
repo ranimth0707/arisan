@@ -16,10 +16,10 @@ import {
 const bn = (n) => new anchor.BN(n.toString());
 const deployer = loadKeypair(KEYS.deployer);
 const program = loadProgram(deployer);
-const circleId = 9002;
+const circleId = 9003;
 const circle = findCircle(deployer.publicKey, circleId);
 const room = findRoom(circle);
-const inviteCode = "ARISAN-DEMO-9002";
+const inviteCode = "ARISAN-DEMO-9003";
 const inviteCodeHash = Array.from(createHash("sha256").update(inviteCode).digest());
 
 const existing = await connection().getAccountInfo(circle);
@@ -56,7 +56,10 @@ const createSignature = await program.methods
     "https://github.com/ranimth0707/arisan",
     inviteCodeHash,
     bn(toLamports(0.1)),
-    bn(toLamports(0.1)),
+    // The program requires a reserve covering every seat. The first demo room
+    // predated that rule and could be joined but never started, which is worse
+    // than not existing: it wastes the one minute a reviewer gives you.
+    bn(toLamports(0.3)),
     3,
     bn(60),
   )

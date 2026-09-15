@@ -28,6 +28,7 @@ import bs58 from "bs58";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import readline from "node:readline";
 
 const RPC = "https://rpc.cookiescan.io";
 const LAMPORTS_PER_COOK = 1_000_000_000;
@@ -50,11 +51,41 @@ async function readPipedInput() {
   return text;
 }
 
-const raw = (await readPipedInput()) || process.env.SOLANA_PRIVATE_KEY || "";
+/**
+ * Asks for the key on the terminal without echoing it.
+ *
+ * Some wallet CLIs write an exported key straight to the terminal rather than
+ * to stdout, precisely so it cannot be captured by a pipe or a `$(...)`. That is
+ * a sensible thing for them to do, and it means the only way to hand the key
+ * over is to paste it. Not echoing keeps it out of the scrollback, and reading
+ * it here keeps it out of shell history and out of the environment.
+ */
+function promptHidden(question) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin, output: process.stdout, terminal: true,
+    });
+    process.stdout.write(question);
+    rl._writeToOutput = () => {};
+    rl.question("", (answer) => {
+      rl.close();
+      process.stdout.write("\n");
+      resolve(answer);
+    });
+  });
+}
+
+let raw = (await readPipedInput()) || process.env.SOLANA_PRIVATE_KEY || "";
+
+if (!raw.trim() && process.stdin.isTTY) {
+  console.log("Paste the zns-01 Solana private key. It will not be shown.");
+  console.log("Get it with: zerion wallet export-key --wallet zns-01 --chain solana");
+  console.log("Wipe your scrollback afterwards, since that command prints it.\n");
+  raw = await promptHidden("private key: ");
+}
+
 if (!raw.trim()) {
-  console.error("No private key given. Either pipe it in:");
-  console.error("  zerion wallet export-key --wallet zns-01 --chain solana \\");
-  console.error("    | node scripts/fund-treasury.mjs " + (process.argv[2] ?? "<amount>"));
+  console.error("No private key given. Run this in a terminal so it can prompt,");
   console.error("or set SOLANA_PRIVATE_KEY in your own shell first.");
   process.exit(1);
 }

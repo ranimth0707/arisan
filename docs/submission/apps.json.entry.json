@@ -16,7 +16,7 @@
     "website": "https://arisan-cook.vercel.app",
     "demo": "https://arisan-cook.vercel.app",
     "github": "https://github.com/ranimth0707/arisan",
-    "x": "REPLACE_WITH_YOUR_X_URL",
+    "x": null,
     "docs": "https://github.com/ranimth0707/arisan/blob/main/README.md",
     "video": null
   },
@@ -34,7 +34,7 @@
     {
       "name": "Rani",
       "role": "Developer",
-      "x": "REPLACE_WITH_YOUR_X_URL",
+      "x": null,
       "github": "https://github.com/ranimth0707"
     }
   ]

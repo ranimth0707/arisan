@@ -23,7 +23,12 @@
   "media": {
     "logo": "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/logos/arisan.png",
     "banner": null,
-    "screenshots": []
+    "screenshots": [
+      "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/screenshots/arisan/01-live-activity.png",
+      "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/screenshots/arisan/02-join-a-room.png",
+      "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/screenshots/arisan/03-get-demo-cook.png",
+      "https://raw.githubusercontent.com/cookiechain/superteam-hackathon-submissions/main/screenshots/arisan/04-how-a-round-works.png"
+    ]
   },
   "team": [
     {

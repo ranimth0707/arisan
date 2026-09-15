@@ -66,8 +66,18 @@ export function NetworkStats() {
           <div className="network-stat primary-stat"><span>Active TVL</span><strong>{cook(data.tvl.activeCook)} <small>COOK</small></strong><em>{cook(data.tvl.protectedCook)} COOK protected</em></div>
           <div className="network-stat"><span>Indexed cash flow</span><strong>{cook(data.volume.allTime.grossCook)} <small>COOK</small></strong><em>{data.volume.allTime.transactions.toLocaleString("en-US")} contribution &amp; payout transactions</em></div>
           <div className="network-stat"><span>Active rooms</span><strong>{data.rooms.active.toLocaleString("en-US")}</strong><em>{data.rooms.forming} looking for members</em></div>
-          <div className="network-stat"><span>Registered members</span><strong>{data.members.toLocaleString("en-US")}</strong><em>{data.rooms.protected} rooms using the safety guard</em></div>
+          {/* "Members" would read as people. Most of these seats are operator-
+              seeded wallets, and letting that be misread would put every other
+              number here in doubt the moment somebody checked. */}
+          <div className="network-stat"><span>Seats taken</span><strong>{data.members.toLocaleString("en-US")}</strong><em>{data.rooms.protected} rooms using the safety guard</em></div>
         </div>
+        <p className="stats-disclosure">
+          Most of these seats and most of this TVL are operator-seeded, not organic demand.
+          The COOK is real and locked under the same rules as anyone else&rsquo;s, and every
+          figure here is recomputed from the chain rather than stored — but it shows the
+          mechanism running, not people wanting it yet.{" "}
+          <a href="https://github.com/ranimth0707/arisan#seeded-liquidity-said-out-loud" target="_blank" rel="noreferrer">How this was seeded ↗</a>
+        </p>
         <div className="network-stats-foot"><span>Updated {timeLabel(data.asOf)} · {data.volume.complete ? "complete history indexed" : "volume history is partial"}</span><a href={`https://cookiescan.io/address/${data.source.program}`} target="_blank" rel="noreferrer">Verify on CookieScan ↗</a></div>
       </>}
     </section>

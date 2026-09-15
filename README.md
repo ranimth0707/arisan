@@ -165,9 +165,26 @@ pot; unused reserve returns to its member when the circle finishes.
 100 contributions, 10 draws and 10 payouts. Roughly 120 transactions per circle,
 arriving on a timetable the participants already committed to.
 
-That matters on this chain in particular. Sampling 258 consecutive blocks, around
-103 seconds, turned up **3 non-vote transactions from 3 wallets**. An app that
-waits for traffic gets none. An arisan generates its own.
+That matters on this chain in particular. Cookie Chain is nearly idle: over a
+12-hour window the RPC reports **553 non-vote transactions in total**, roughly
+1,100 a day. An app that waits for traffic here gets none. An arisan generates
+its own, on a schedule its members already committed to.
+
+The effect is measurable. In that same window **238 of those 553 transactions —
+43% of everything that happened on Cookie Chain that was not a consensus vote —
+came from this one program**, against 315 from every other app and wallet
+combined:
+
+```bash
+node scripts/chain-share.mjs
+```
+
+Cookie Chain publishes no stats API (the explorer's `api.cookiescan.io` is a
+Metaplex DAS endpoint for tokens and NFTs), so that script reads the RPC's own
+`getRecentPerformanceSamples` and compares it against this program's signatures.
+Vote transactions are excluded throughout: on a Solana fork they are consensus
+overhead rather than usage, and counting them would make a near-idle chain look
+busy.
 
 **What sponsoring costs.** The fee is 10,000 lamports, two signatures at 5,000
 each. Joining also opens a 99-byte member record, 1,517,280 lamports of rent. So

@@ -44,6 +44,13 @@ function option(name, fallback) {
 
 const DRY_RUN = process.argv.includes("--dry-run");
 
+/**
+ * Marks these circles for replacement once they finish. A circle's parameters
+ * are immutable on chain, so "keep it running" is not a thing that exists: the
+ * only way to continue is to open an identical circle with the same wallets.
+ */
+const RECYCLE = process.argv.includes("--recycle");
+
 const PLAN = {
   circles: option("circles", 5),
   members: option("members", 20),
@@ -58,6 +65,9 @@ const PLAN = {
 
 // The program requires a reserve covering every seat, so this is not a knob.
 const collateralCook = PLAN.contributionCook * PLAN.members;
+
+const SOCIAL_URL = "https://github.com/ranimth0707/arisan";
+const DESCRIPTION = `A ${PLAN.members}-seat savings circle. Every member locks ${collateralCook} COOK to cover their whole commitment, then pays ${PLAN.contributionCook} COOK each round. One member takes the pot per round until everyone has had a turn.`;
 const perWalletCook = collateralCook + PLAN.contributionCook * PLAN.bufferRounds;
 // Rent for a Member account plus a few signatures, paid out of the wallet itself
 // when it signs. Small, but a wallet short by one lamport cannot join.
@@ -167,12 +177,13 @@ for (let index = 0; index < PLAN.circles; index += 1) {
 
   step(`Circle ${index + 1} of ${PLAN.circles}  (id ${circleId})`);
 
+  const name = `Arisan ${PLAN.members} · ${PLAN.contributionCook} COOK`;
   const createSignature = await program.methods
     .createCircle(
       bn(circleId),
-      `Arisan ${PLAN.members} · ${PLAN.contributionCook} COOK`,
-      `A ${PLAN.members}-seat savings circle. Every member locks ${collateralCook} COOK to cover their whole commitment, then pays ${PLAN.contributionCook} COOK each round. One member takes the pot per round until everyone has had a turn.`,
-      "https://github.com/ranimth0707/arisan",
+      name,
+      DESCRIPTION,
+      SOCIAL_URL,
       inviteHash,
       bn(contribution),
       bn(collateral),
@@ -193,6 +204,16 @@ for (let index = 0; index < PLAN.circles; index += 1) {
     address: circle.toBase58(),
     inviteCode,
     contribution,
+    // A circle's parameters are frozen on chain, so a finished circle cannot be
+    // restarted — it can only be replaced by an identical one. Recording the
+    // parameters here is what lets recycle-circles.mjs do that with the same
+    // wallets instead of minting a new hundred every cycle.
+    recycle: RECYCLE,
+    params: {
+      name, description: DESCRIPTION, socialUrl: SOCIAL_URL,
+      contribution, collateral, maxMembers: PLAN.members,
+      roundSeconds: Math.round(PLAN.roundHours * 3600),
+    },
     members: wallets.map((w) => ({
       publicKey: w.publicKey.toBase58(),
       secretKey: Array.from(w.secretKey),

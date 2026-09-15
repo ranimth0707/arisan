@@ -142,27 +142,44 @@ for (const record of state.circles) {
   const settled = current.paidThisRound === current.memberCount;
 
   if (!current.winnerDrawn && roundOver && settled) {
-    const requested = await attempt("request turn", () => program.methods
+    let requested = await attempt("request turn", () => program.methods
       .requestTurn()
       .accountsPartial({ circle, safety: findSafety(circle), bond: findBond(circle) })
       .rpc());
 
-    if (requested) {
+    // A draw commits to a slot three ahead and must be finalized within 300
+    // slots of it, about two minutes. Past that the program calls the request
+    // stale and refuses, so that stalling the finalize cannot be used to reach
+    // back to a hash the caller has already seen and retry until it suits them.
+    //
+    // A slow RPC round trip can miss that window through no fault of anyone, and
+    // on short rounds losing the draw costs a whole round. So an expired draw is
+    // re-requested here rather than left for the next run: a fresh request
+    // commits to a fresh unknown slot, which is exactly what the rule wants.
+    for (let attemptNo = 1; requested && attemptNo <= 3; attemptNo += 1) {
       current = await program.account.circle.fetch(circle);
+      if (current.winnerDrawn) break;
+
       const target = current.drawTargetSlot.toNumber();
-      // The seed is the hash of a block three slots ahead, so it does not exist
-      // yet at request time. Wait for it rather than guessing.
       let slot = await conn.getSlot();
       while (slot < target) {
         await sleep(400);
         slot = await conn.getSlot();
       }
-      await attempt("finalize turn", () => program.methods
-        .finalizeTurn()
-        .accountsPartial({
-          circle, roster: findRoster(circle), safety: findSafety(circle),
-          bond: findBond(circle), slotHashes: SLOT_HASHES,
-        })
+
+      const finalized = await attempt(`finalize turn${attemptNo > 1 ? ` (retry ${attemptNo - 1})` : ""}`,
+        () => program.methods
+          .finalizeTurn()
+          .accountsPartial({
+            circle, roster: findRoster(circle), safety: findSafety(circle),
+            bond: findBond(circle), slotHashes: SLOT_HASHES,
+          })
+          .rpc());
+      if (finalized) break;
+
+      requested = await attempt("re-request turn", () => program.methods
+        .requestTurn()
+        .accountsPartial({ circle, safety: findSafety(circle), bond: findBond(circle) })
         .rpc());
     }
   } else if (!current.winnerDrawn && roundOver && !settled) {

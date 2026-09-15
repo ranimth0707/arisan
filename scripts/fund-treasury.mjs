@@ -8,7 +8,14 @@
 // Your key is read from the environment, used to sign locally, and never sent
 // anywhere. Only the signed transaction bytes are broadcast.
 //
-// Run in your own terminal:
+// Run in your own terminal. Piping is the easiest way, because there is no
+// environment variable left behind to lose or to leak:
+//
+//   zerion wallet export-key --wallet zns-01 --chain solana \
+//     | node scripts/fund-treasury.mjs 14000
+//
+// Or with an environment variable, if you prefer:
+//
 //   export SOLANA_PRIVATE_KEY="$(zerion wallet export-key --wallet zns-01 --chain solana)"
 //   node scripts/fund-treasury.mjs 14000
 //   unset SOLANA_PRIVATE_KEY
@@ -32,16 +39,59 @@ if (!Number.isFinite(amountCook) || amountCook <= 0) {
   process.exit(1);
 }
 
-const raw = process.env.SOLANA_PRIVATE_KEY;
-if (!raw) {
-  console.error("set SOLANA_PRIVATE_KEY in your own shell first");
+/** Reads piped stdin, or nothing at all when the script is run interactively. */
+async function readPipedInput() {
+  if (process.stdin.isTTY) return "";
+  let text = "";
+  for await (const chunk of process.stdin) {
+    text += chunk;
+    if (text.length > 64_000) break;
+  }
+  return text;
+}
+
+const raw = (await readPipedInput()) || process.env.SOLANA_PRIVATE_KEY || "";
+if (!raw.trim()) {
+  console.error("No private key given. Either pipe it in:");
+  console.error("  zerion wallet export-key --wallet zns-01 --chain solana \\");
+  console.error("    | node scripts/fund-treasury.mjs " + (process.argv[2] ?? "<amount>"));
+  console.error("or set SOLANA_PRIVATE_KEY in your own shell first.");
   process.exit(1);
 }
 
-/** Accepts either base58 or the JSON byte array that solana-keygen writes. */
+/**
+ * Accepts whatever the wallet hands over: a base58 key, the JSON byte array
+ * solana-keygen writes, or a JSON object from a CLI that reports its results
+ * structurally. Guessing here is friendlier than making the caller reshape a
+ * secret on the command line, where it would end up in shell history.
+ */
 function loadKeypair(input) {
   const text = input.trim();
-  if (text.startsWith("[")) return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(text)));
+
+  if (text.startsWith("[")) {
+    return Keypair.fromSecretKey(Uint8Array.from(JSON.parse(text)));
+  }
+
+  if (text.startsWith("{")) {
+    const parsed = JSON.parse(text);
+    const candidate = parsed.solana ?? parsed.privateKey ?? parsed.secretKey
+      ?? parsed.key ?? parsed.solanaPrivateKey ?? parsed.sol;
+    const value = typeof candidate === "object" && candidate !== null
+      ? (candidate.privateKey ?? candidate.secretKey ?? candidate.key)
+      : candidate;
+    if (!value) {
+      throw new Error(
+        `could not find a private key in that JSON (keys: ${Object.keys(parsed).join(", ")})`,
+      );
+    }
+    return loadKeypair(String(value));
+  }
+
+  // A single trailing newline is normal; anything else suggests the prompt or a
+  // log line got captured along with the key.
+  if (/\s/.test(text)) {
+    throw new Error("the input has spaces or line breaks in it, so it is not just a key");
+  }
   return Keypair.fromSecretKey(bs58.decode(text));
 }
 
@@ -55,7 +105,19 @@ const treasury = Keypair.fromSecretKey(
   Uint8Array.from(JSON.parse(fs.readFileSync(TREASURY_FILE, "utf8"))),
 );
 
-const payer = loadKeypair(raw);
+let payer;
+try {
+  payer = loadKeypair(raw);
+} catch (e) {
+  console.error(`Could not read that as a private key: ${e.message}`);
+  // Deliberately not suggesting a command that prints key material: the shape
+  // is enough to diagnose this, and the contents would land in shell history.
+  console.error("To see the shape without revealing it:");
+  console.error("  zerion wallet export-key --wallet zns-01 --chain solana | cut -c1-1");
+  console.error("  '{' means JSON; anything else should be a bare base58 key.");
+  process.exit(1);
+}
+
 const connection = new Connection(RPC, "confirmed");
 
 const before = await connection.getBalance(payer.publicKey);

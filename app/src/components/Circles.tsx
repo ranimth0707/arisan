@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type CSSProperties } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { Icon, type Navigate } from "./UI";
 import { PublicKey, SystemProgram } from "@solana/web3.js";
@@ -147,6 +147,8 @@ interface Props {
   mode: "home" | "campaigns" | "join";
   navigate: Navigate;
 }
+
+type MotionVars = CSSProperties & { "--motion-index"?: number };
 
 export function Circles({ program, owner, submit, onChanged, mode, navigate }: Props) {
   const [circles, setCircles] = useState<CircleView[] | null>(null);
@@ -515,7 +517,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
         mode === "join" ? null : <div className="empty"><span className="empty-symbol"><Icon name="circles" /></span><h3>{owner ? "No campaigns here yet." : "Your Arisan groups will appear here."}</h3><p>{owner ? "Create a new campaign or enter a code from a creator." : "Connect a wallet to see campaigns you created and joined."}</p><div className="row">{!owner && <WalletMultiButton>Connect wallet</WalletMultiButton>}<button className="ghost" onClick={() => navigate("create")}>Create campaign</button><button className="text-button" onClick={() => navigate("join")}>I have a code<Icon name="arrow" /></button></div></div>
       ) : (
         <div className="campaign-list">
-          {visible.map((c) => {
+          {visible.map((c, index) => {
             const key = c.address.toBase58();
             const board = members[key] ?? [];
             const me = owner ? board.find((m) => m.wallet.equals(owner)) : undefined;
@@ -535,7 +537,7 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
             const safety = safeties[key];
 
             return (
-              <article className="circle-card" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name}>
+              <article className="circle-card campaign-item" key={key} id={"room-" + key} tabIndex={-1} aria-label={"Detail campaign " + c.name} style={{ "--motion-index": index } as MotionVars}>
                 <div className="spread">
                   <div className="circle-title"><span className="avatar">{c.name.charAt(0)}</span><div><strong className="circle-name">{c.name}</strong><span className="muted">{isCreator ? "Created by you" : me ? "You are a member" : "Invited campaign"}</span></div></div>
                   <span className={`pill ${c.state === "running" ? "prop" : c.state === "forming" ? "lucky" : "closed"}`}>
@@ -696,7 +698,7 @@ function Books({
   }
 
   return (
-    <div className="books">
+    <div className="books books-enter">
       {board.map((m) => {
         const owes = circle.state === "running" && m.paidRound < circle.round;
         const isMe = owner?.equals(m.wallet) ?? false;

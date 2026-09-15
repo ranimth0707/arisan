@@ -9,6 +9,7 @@ import {
 import { loadJars, type JarView } from "./Jars";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
+import { Icon } from "./UI";
 
 export interface CampaignView {
   address: PublicKey;
@@ -157,7 +158,7 @@ export function Campaigns({ program, owner, submit, sponsored, onChanged }: Prop
   };
 
   if (!campaigns) {
-    return <div className="empty"><span className="jar">🍪</span>Looking for people who need help...</div>;
+    return <div className="empty"><span className="empty-symbol"><Icon name="circles" /></span><h3>Looking for people who need help…</h3><p>Open requests will appear here after they are posted on-chain.</p></div>;
   }
 
   return (
@@ -185,8 +186,8 @@ export function Campaigns({ program, owner, submit, sponsored, onChanged }: Prop
 
       {campaigns.length === 0 ? (
         <div className="empty">
-          <span className="jar">🍪</span>
-          Nobody has asked yet. If you need a hand, you can be the first.
+          <span className="empty-symbol"><Icon name="circles" /></span>
+          <h3>Nobody has asked yet.</h3><p>If you need a hand, you can be the first to post a request.</p>
         </div>
       ) : (
         <div className="grid">

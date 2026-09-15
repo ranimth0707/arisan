@@ -8,6 +8,7 @@ import {
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
+import { Icon } from "./UI";
 
 export interface JarView {
   address: PublicKey;
@@ -265,7 +266,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
     } catch { /* surfaced by toast */ } finally { setBusy(null); }
   };
 
-  if (!jars) return <div className="empty"><span className="jar">🍪</span>Reading the shelf...</div>;
+  if (!jars) return <div className="empty"><span className="empty-symbol"><Icon name="wallet" /></span>Reading the shelf...</div>;
 
   const openCount = jars.filter((j) => j.endTs > Date.now() / 1000).length;
 
@@ -314,7 +315,7 @@ export function Jars({ program, owner, submit, onChanged }: Props) {
       )}
 
       {jars.length === 0 ? (
-        <div className="empty"><span className="jar">🍪</span>No tins yet. Open the first one.</div>
+        <div className="empty"><span className="empty-symbol"><Icon name="wallet" /></span><h3>No tins yet.</h3><p>Open the first one to start saving COOK with a clear exit path.</p></div>
       ) : (
         <div className="grid">
           {jars.map((jar) => {

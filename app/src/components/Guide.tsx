@@ -23,7 +23,7 @@ export function Guide({ navigate }: { navigate: Navigate }) {
       <div className="simulation-copy">
         <span className="step-count">STEP {step + 1} OF 4</span>
         <div className="step-progress" aria-hidden="true">{steps.map((_, i) => <span key={i} className={i <= step ? "done" : ""} />)}</div>
-        <div aria-live="polite"><h2>{steps[step].title}</h2><p>{steps[step].detail}</p></div>
+        <div className="step-copy" aria-live="polite" key={step}><h2>{steps[step].title}</h2><p>{steps[step].detail}</p></div>
         <button className="primary" onClick={() => setStep((step + 1) % 4)}>{steps[step].action}<Icon name="arrow" /></button>
         <small>This simulation does not connect a wallet or move funds.</small>
       </div>

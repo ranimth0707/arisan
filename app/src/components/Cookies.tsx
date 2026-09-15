@@ -8,6 +8,7 @@ import {
 } from "../lib/cookiejar";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
+import { Icon } from "./UI";
 
 export interface CookieView {
   address: PublicKey;
@@ -104,9 +105,9 @@ export function Cookies({ program, owner, submit }: Props) {
       {err && <div className="banner warn">{err}</div>}
 
       {!cookies ? (
-        <div className="empty"><span className="jar">🥠</span>Checking the oven...</div>
+        <div className="empty"><span className="empty-symbol"><Icon name="wallet" /></span><h3>Checking the oven…</h3></div>
       ) : cookies.length === 0 ? (
-        <div className="empty"><span className="jar">🥠</span>No fortune cookies yet.</div>
+        <div className="empty"><span className="empty-symbol"><Icon name="wallet" /></span><h3>No fortune cookies yet.</h3><p>Share a cookie when you want someone to find a small surprise on-chain.</p></div>
       ) : (
         <div className="grid">
           {cookies.map((c) => {

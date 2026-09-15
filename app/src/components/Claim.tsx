@@ -10,6 +10,7 @@ import {
 import { loadJars, type JarView } from "./Jars";
 import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
+import { Icon } from "./UI";
 
 interface Props {
   program: CookieJarProgram;
@@ -140,7 +141,7 @@ export function Claim({ program, owner, submit, sponsored, address }: Props) {
     );
   }
 
-  if (!envelope) return <div className="empty"><span className="jar">🥠</span>Finding your cookie...</div>;
+  if (!envelope) return <div className="empty"><span className="empty-symbol"><Icon name="wallet" /></span><h3>Finding your cookie…</h3></div>;
 
   const e = envelope;
   const left = e.claimsTotal - e.claimsDone;
@@ -149,7 +150,7 @@ export function Claim({ program, owner, submit, sponsored, address }: Props) {
   if (done) {
     return (
       <div className="card" style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 60 }}>🍪</div>
+        <span className="success-mark"><Icon name="check" /></span>
         <h2 style={{ margin: "8px 0" }}>You got {formatCook(done.amount)} COOK</h2>
         <p className="muted">
           {intoJar
@@ -172,7 +173,7 @@ export function Claim({ program, owner, submit, sponsored, address }: Props) {
   return (
     <div className="card">
       <div style={{ textAlign: "center", marginBottom: 14 }}>
-        <div style={{ fontSize: 56 }}>🥠</div>
+        <span className="cookie-mark" aria-hidden="true"><Icon name="wallet" /></span>
         <h2 style={{ margin: "6px 0" }}>{e.message || "Someone left you a fortune cookie"}</h2>
         <p className="muted" style={{ margin: 0 }}>
           {formatCook(e.remaining.toNumber())} COOK still inside · {left} of {e.claimsTotal} left

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { WalletMultiButton } from "@solana/wallet-adapter-react-ui";
 import { useCookieJar } from "./hooks/useCookieJar";
 import { Circles } from "./components/Circles";
@@ -19,6 +19,18 @@ const pages: Record<View, { title: string; description: string }> = {
   guide: { title: "Get to know Arisan.", description: "Try one round below. No wallet or COOK required." },
   faucet: { title: "Get demo COOK", description: "Fund your wallet to try a campaign on Cookie Chain." },
 };
+
+// Motion storyboard — route entrance stays quick and keeps all actions available:
+// 000ms  heading + description settle into place
+// 060ms  primary action surfaces begin their reveal
+// 120ms  campaign/data surfaces arrive in the reading order
+// 180ms  supporting guidance and network context finish the sequence
+const TIMING = {
+  pageReveal: "360ms",
+  itemStagger: "60ms",
+} as const;
+type MotionVars = CSSProperties & { "--page-reveal"?: string; "--item-stagger"?: string };
+
 function currentView(): View {
   const key = location.hash.slice(1);
   return Object.hasOwn(pages, key) ? key as View : "home";
@@ -63,7 +75,7 @@ export default function App() {
           <span className="breadcrumb">Arisan <span>/</span> {view === "home" ? "Home" : pages[view].title}</span>
           <WalletMultiButton />
         </header>
-        <div className="page-content">
+        <div key={view} className="page-content page-enter" style={{ "--page-reveal": TIMING.pageReveal, "--item-stagger": TIMING.itemStagger } as MotionVars}>
           <div className="page-heading"><h1 ref={heading} tabIndex={-1}>{pages[view].title}</h1><p>{pages[view].description}</p></div>
           {view === "home" && <>
             <div className="start-actions">
@@ -78,7 +90,7 @@ export default function App() {
           {view === "create" && <CreateCampaign program={program} owner={owner} submit={submit} navigate={navigate} />}
           {view === "guide" && <Guide navigate={navigate} />}
           {view === "faucet" && <Faucet owner={owner} onChanged={() => {}} navigate={navigate} />}
-          {owner && !walletChains.knowsCookieChain && <NetworkSetup walletName={walletChains.walletName} connected />}
+          {view !== "faucet" && owner && !walletChains.knowsCookieChain && <NetworkSetup walletName={walletChains.walletName} connected />}
           {relayerChecked && !sponsored && <p className="connection-note">Transaction sponsorship is unavailable. Fees will use the COOK balance in your wallet.</p>}
           <footer className="app-footer"><span className="network"><i />Cookie Chain mainnet</span><a href="#guide">Need help?</a><span className="release-note">Campaign rooms · v2</span></footer>
         </div>

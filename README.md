@@ -165,25 +165,33 @@ pot; unused reserve returns to its member when the circle finishes.
 100 contributions, 10 draws and 10 payouts. Roughly 120 transactions per circle,
 arriving on a timetable the participants already committed to.
 
-That matters on this chain in particular. Cookie Chain is nearly idle: over a
-12-hour window the RPC reports **553 non-vote transactions in total**, roughly
-1,100 a day. An app that waits for traffic here gets none. An arisan generates
-its own, on a schedule its members already committed to.
-
-The effect is measurable. In that same window **238 of those 553 transactions —
-43% of everything that happened on Cookie Chain that was not a consensus vote —
-came from this one program**, against 315 from every other app and wallet
-combined:
+That matters on this chain in particular. Cookie Chain carries very little
+traffic, so an app that waits for it gets none. An arisan generates its own, on
+a timetable its members already committed to — and the effect is large enough to
+see from outside:
 
 ```bash
 node scripts/chain-share.mjs
 ```
 
+Two 12-hour windows, a day apart, both measured with that script:
+
+| | chain-wide, non-vote | from this program | share |
+| --- | --- | --- | --- |
+| 2026-09-15 | 553 | 238 | **43%** |
+| 2026-09-16 | 1,865 | 376 | **20%** |
+
+The share fell while our own output grew, because the rest of the chain got
+roughly three times busier in a day — other entries in this bounty ramping up
+before the deadline, most likely. Which is the point of quoting the script
+rather than a number: any figure here goes stale, and a stale figure a reviewer
+can disprove is worse than none. Run it yourself for today's.
+
 Cookie Chain publishes no stats API (the explorer's `api.cookiescan.io` is a
 Metaplex DAS endpoint for tokens and NFTs), so that script reads the RPC's own
 `getRecentPerformanceSamples` and compares it against this program's signatures.
 Vote transactions are excluded throughout: on a Solana fork they are consensus
-overhead rather than usage, and counting them would make a near-idle chain look
+overhead rather than usage, and counting them would make a quiet chain look
 busy.
 
 **What sponsoring costs.** The fee is 10,000 lamports, two signatures at 5,000
@@ -343,6 +351,22 @@ on Solana and [Njangi](https://njangionchain.com/learn/blockchain-rosca) on Sui.
 What is here that is not there: it runs on Cookie Chain, and sponsored actions
 can let a member with an empty wallet join, pay and collect; the COOK being
 contributed still has to come from that member.
+
+## Jumper Coinbase RWA mission helper
+
+The read-only helper at [`scripts/jumper-rwa-cli.mjs`](scripts/jumper-rwa-cli.mjs)
+uses the installed Zerion CLI for Base transaction history and Jumper's public
+verification endpoint for the official task state. It deliberately never signs,
+broadcasts, or loops trades; actual eligible swaps must be completed through
+Jumper RWA.
+
+```bash
+npm run jumper:rwa -- assets --pretty
+npm run jumper:rwa -- status --address 0xYourBaseWallet --limit 200 --pretty
+npm run jumper:rwa -- plan --target 100000 --current 250 --pretty
+npm run jumper:rwa -- open --asset NVDA
+npm run test:jumper:rwa
+```
 
 ## Run it locally
 

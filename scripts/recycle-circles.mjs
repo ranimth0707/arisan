@@ -84,10 +84,22 @@ async function topUp(wallets, target) {
   return short.reduce((total, s) => total + s.lamports, 0);
 }
 
+/**
+ * Restricts this run to records carrying a tag, so the public demo room — whose
+ * rounds are a minute long — can be cranked every minute without dragging a
+ * hundred and fifty wallets through the same pass.
+ */
+const ONLY = (() => {
+  const index = process.argv.indexOf("--only");
+  return index === -1 ? null : process.argv[index + 1];
+})();
+const inScope = (record) => ONLY === null || record.tag === ONLY;
+
 let replaced = 0;
 let skipped = 0;
 
 for (const record of state.circles) {
+  if (!inScope(record)) continue;
   if (!record.recycle) continue;
 
   const circle = findCircle(treasury.publicKey, record.circleId);
@@ -135,7 +147,11 @@ for (const record of state.circles) {
   const p = record.params;
   const circleId = Math.floor(Date.now() / 1000) + replaced;
   const next = findCircle(treasury.publicKey, circleId);
-  const inviteCode = `ARISAN-${randomBytes(4).toString("hex").toUpperCase()}`;
+  // The public demo room's code is printed in the README and in the launch
+  // thread, so it has to survive being replaced. Everything else gets a fresh
+  // code, since a seeded circle's code was never meant to be shared.
+  const inviteCode = record.fixedInviteCode
+    ?? `ARISAN-${randomBytes(4).toString("hex").toUpperCase()}`;
   const inviteHash = Array.from(createHash("sha256").update(inviteCode).digest());
 
   await program.methods

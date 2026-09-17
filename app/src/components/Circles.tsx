@@ -227,8 +227,19 @@ export function Circles({ program, owner, submit, onChanged, mode, navigate }: P
     try {
       if (!roomCode.trim()) throw new Error("Enter the creator's code first.");
       const hash = await hashInviteCode(roomCode);
-      const room = Object.values(rooms).find(candidate => candidate.inviteCodeHash.every((v, i) => v === hash[i]));
-      if (!room) throw new Error("Code not found. Check it or ask the creator for the correct code.");
+      const matches = Object.values(rooms)
+        .filter(candidate => candidate.inviteCodeHash.every((v, i) => v === hash[i]));
+      if (!matches.length) throw new Error("Code not found. Check it or ask the creator for the correct code.");
+
+      // One code can front several rooms — the public demo keeps spares, because
+      // a room that is full or already running has nothing to offer someone who
+      // just arrived. Send them to one they can actually sit down in, and only
+      // fall back to the first match if every room is occupied.
+      const seatFree = (address: PublicKey) => {
+        const circle = circles?.find(c => c.address.equals(address));
+        return circle ? circle.state === "forming" && circle.memberCount < circle.maxMembers : false;
+      };
+      const room = matches.find(candidate => seatFree(candidate.circle)) ?? matches[0];
       rememberAccess(room.circle, roomCode.trim());
       setSelected(room.circle.toBase58());
       setOpen(null);

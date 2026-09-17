@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Rotating savings circles on Cookie Chain, with collateral instead of trust",
   "scripts": {
-    "fund": "node scripts/fund-deployer.mjs"
+    "fund": "node scripts/fund-deployer.mjs",
+    "jumper:rwa": "node scripts/jumper-rwa-cli.mjs",
+    "test:jumper:rwa": "node --test scripts/jumper-rwa-cli.test.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",

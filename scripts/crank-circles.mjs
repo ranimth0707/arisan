@@ -35,6 +35,9 @@ const cook = (l) => (Number(l) / LAMPORTS_PER_COOK).toLocaleString("en-US", { ma
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const short = (s) => `${s.slice(0, 8)}…`;
 
+/** Mirrors TURN_CLAIM_WINDOW in programs/cookie_jar/src/constants.rs. */
+const TURN_CLAIM_WINDOW = 60 * 60 * 24;
+
 if (!fs.existsSync(MEMBERS_FILE)) {
   console.error(`no seeded circles at ${MEMBERS_FILE}. Run scripts/seed-circles.mjs first.`);
   process.exit(1);
@@ -46,6 +49,17 @@ const conn = connection();
 const program = loadProgram(treasury);
 
 const keypairOf = (member) => Keypair.fromSecretKey(Uint8Array.from(member.secretKey));
+
+/**
+ * Restricts this run to records carrying a tag, so the public demo room — whose
+ * rounds are a minute long — can be cranked every minute without dragging a
+ * hundred and fifty wallets through the same pass.
+ */
+const ONLY = (() => {
+  const index = process.argv.indexOf("--only");
+  return index === -1 ? null : process.argv[index + 1];
+})();
+const inScope = (record) => ONLY === null || record.tag === ONLY;
 
 let actions = 0;
 let failures = 0;
@@ -67,6 +81,7 @@ async function attempt(label, run) {
 }
 
 for (const record of state.circles) {
+  if (!inScope(record)) continue;
   const circle = findCircle(treasury.publicKey, record.circleId);
   let account;
   try {
@@ -92,7 +107,6 @@ for (const record of state.circles) {
 
   // ------------------------------------------------------------ 1. PAY IN
   const round = account.round;
-  const unpaid = [];
   for (const member of record.members) {
     const wallet = keypairOf(member);
     let membership;
@@ -105,8 +119,7 @@ for (const record of state.circles) {
 
     const balance = await conn.getBalance(wallet.publicKey);
     if (balance < account.contribution.toNumber() + 5_000_000) {
-      unpaid.push({ member, wallet, membership, reason: "wallet empty" });
-      continue;
+      continue; // settled from its reserve below
     }
     const ok = await attempt(`pay   ${short(member.publicKey)}`, () => program.methods
       .contribute()
@@ -117,22 +130,38 @@ for (const record of state.circles) {
       })
       .signers([wallet])
       .rpc());
-    if (!ok) unpaid.push({ member, wallet, membership, reason: "contribute failed" });
+    void ok; // a failed contribution is settled from the reserve below
   }
 
   // --------------------------------------------------- 2. SETTLE ABSENTEES
+  //
+  // Every unpaid seat, not only the ones we hold. A visitor who joins the demo
+  // room, plays a round and walks away would otherwise stall it forever: the
+  // round can never settle, so the draw never runs, so the circle never
+  // finishes, so it is never replaced — and because it is full and running, no
+  // new visitor can join either. One abandoned seat would quietly end the demo.
+  //
+  // Slashing is permissionless by design and costs the absentee nothing they did
+  // not already agree to: one contribution out of the reserve they posted, into
+  // the pot, recorded as a miss rather than a payment.
+  //
   // Only once the round is over. Before that a member is not late, and the
   // program refuses the slash anyway.
-  if (unpaid.length && Math.floor(Date.now() / 1000) >= account.nextPayoutTs.toNumber()) {
-    for (const entry of unpaid) {
-      await attempt(`slash ${short(entry.member.publicKey)} (${entry.reason})`, () => program.methods
-        .slashAbsent()
-        .accountsPartial({
-          circle, pot: findPot(circle), bond: findBond(circle),
-          membership: findMember(circle, entry.wallet.publicKey),
-          systemProgram: SystemProgram.programId,
-        })
-        .rpc());
+  if (Math.floor(Date.now() / 1000) >= account.nextPayoutTs.toNumber()) {
+    const seats = (await program.account.member.all())
+      .filter((m) => m.account.circle.equals(circle) && m.account.paidRound < round);
+    for (const seat of seats) {
+      const wallet = seat.account.wallet;
+      const ours = record.members.some((m) => m.publicKey === wallet.toBase58());
+      await attempt(`slash ${short(wallet.toBase58())} (seat ${seat.account.seat}${ours ? "" : ", not ours"})`,
+        () => program.methods
+          .slashAbsent()
+          .accountsPartial({
+            circle, pot: findPot(circle), bond: findBond(circle),
+            membership: findMember(circle, wallet),
+            systemProgram: SystemProgram.programId,
+          })
+          .rpc());
     }
   }
 
@@ -201,7 +230,27 @@ for (const record of state.circles) {
   }
 
   if (!winner) {
-    line(`    seat ${winnerSeat} is not one of ours — leaving it for its owner to claim`);
+    // A visitor's seat won. It is theirs to collect, so this waits — but not
+    // forever. If they never come back the circle cannot finish, and a demo room
+    // that cannot finish is never replaced and never has a seat for anybody
+    // else. The program allows a redraw once the claim window has passed, which
+    // is exactly this situation, so take it when it becomes available.
+    const drawn = (await program.account.member.all())
+      .find((m) => m.account.circle.equals(circle) && m.account.seat === winnerSeat);
+    const windowClosed = drawn && Math.floor(Date.now() / 1000)
+      >= current.nextPayoutTs.toNumber() + TURN_CLAIM_WINDOW;
+
+    if (drawn && windowClosed) {
+      await attempt(`redraw seat ${winnerSeat} (claim window passed)`, () => program.methods
+        .redrawTurn()
+        .accountsPartial({ circle, membership: findMember(circle, drawn.account.wallet) })
+        .rpc());
+    } else {
+      const waitMins = drawn
+        ? Math.ceil((current.nextPayoutTs.toNumber() + TURN_CLAIM_WINDOW - Date.now() / 1000) / 60)
+        : 0;
+      line(`    seat ${winnerSeat} is not one of ours — theirs to collect, redraw in ${waitMins}m`);
+    }
     continue;
   }
 
@@ -229,8 +278,13 @@ for (const record of state.circles) {
 //
 // Nothing here touches a bond or a pot. This only moves the change.
 
-/** Left in a wallet so it can pay several rounds and its own fees. */
-const FLOAT_ROUNDS = 4;
+/**
+ * Rounds a wallet can fund before the treasury tops it up again. Two, not four:
+ * the crank runs more often than any round closes, so a wallet never needs to
+ * self-fund for long, and every extra round of float is capital parked across a
+ * hundred and fifty wallets instead of locked as TVL.
+ */
+const FLOAT_ROUNDS = 2;
 const FEE_FLOOR = 20_000_000;
 
 if (!STATUS_ONLY) {
@@ -249,8 +303,13 @@ if (!STATUS_ONLY) {
     for (const member of record.members) {
       const wallet = keypairOf(member);
       const balance = await conn.getBalance(wallet.publicKey);
-      if (balance > float * 2) sweeps.push({ wallet, lamports: balance - float });
-      else if (balance < float / 2) topUps.push({ to: wallet.publicKey, lamports: float - balance });
+      // Sweeping at twice the float and topping up at half of it left a dead
+      // band that most wallets settled inside: 88 of 100 parked at exactly the
+      // float, 12 ran dry, and nothing was ever above the sweep line to fund
+      // them. The treasury covered the gap until it nearly emptied. A tighter
+      // band keeps the same total circulating and moves it to whoever needs it.
+      if (balance > float * 1.5) sweeps.push({ wallet, lamports: balance - float });
+      else if (balance < float) topUps.push({ to: wallet.publicKey, lamports: float - balance });
     }
   }
 

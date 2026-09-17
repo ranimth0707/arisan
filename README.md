@@ -107,12 +107,27 @@ charged twice, and a member cannot collect two turns.
 
 ### Try the live demo
 
-The live app has a 3-seat room named **Demo · Join by code**. Its invite code is
-published on purpose: **ARISAN-DEMO-9003**. Connect a wallet, open **Get demo COOK**,
-claim enough demo COOK for the reserve shown in the room, then return to
-**Circles**, paste the code, and join. Once the room has at least two members and
-every member's reserve is complete, the creator can start it. The round lasts one
-minute, so you can pay, draw and collect without waiting a month.
+Open **Get demo COOK**, claim, then **Join with code** using **`ARISAN-DEMO`**,
+which is published on purpose. Rounds there last one minute, so you can pay,
+watch the draw and collect in a single sitting.
+
+Three things about that room are the result of walking the path a stranger
+actually takes, rather than the path its author already knows:
+
+- **Two seats, not three.** A non-creator may only start a circle once every
+  seat is taken. A three-seat room holding one of ours plus one visitor left
+  that visitor stuck: reserve posted, circle unstartable, nothing to do but
+  leave. Two seats means your arrival fills the room and you start it yourself.
+- **The other seat will not pay.** That is deliberate. When the round closes,
+  the public ledger offers you **Cover from reserve** — you settle the absent
+  member out of the reserve they posted, the pot stays whole, and their books
+  record a miss rather than a payment. It is the safety rule, run by you, on
+  your first visit.
+- **One code, several rooms.** A room mid-cycle has nothing to offer someone who
+  just arrived, so the app sends you to whichever one still has a seat.
+
+If the draw lands on your seat, you collect the pot. If it lands on ours, a
+crank collects it within the minute and the circle moves on.
 
 ### Live Arisan metrics
 

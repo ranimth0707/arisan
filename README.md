@@ -47,13 +47,44 @@ a rule that executes itself.
 key to it. Contributions can only ever leave in one direction: to the member
 whose turn was drawn.
 
-**A missed round cannot make another member's payout smaller.** Every new circle
-locks a reserve per member equal to `contribution × member count` before it can
-start. When someone skips, the program takes that round's amount from their own
-reserve and puts it into the pot. The reserve is not a fee: whatever remains is
-withdrawable after the circle finishes. If the reserve is not complete, the
-program locks the draw and payout instead of making the other members insure the
-shortfall.
+**The reserve prices a place in the queue, not a ticket at the door.** This is
+the part we got wrong first and had to rebuild, so it is worth being exact.
+
+The group is not equally exposed to everyone. Take the pot on round `k` of `N`
+and you still owe `(N - k) × contribution` afterwards — every remaining
+contribution if you go first, nothing at all if you go last. Before your turn
+you hold none of the group's money, and walking away costs you the turn you were
+waiting for, so that half is self-enforcing.
+
+So the reserve is sized to that liability and enforced when a turn is claimed:
+
+```
+reserve needed to collect on round k  =  (N - k) × contribution
+
+  first turn   the whole remaining commitment   — this is borrowing
+  last turn    nothing                          — this is saving
+```
+
+Join with the entry reserve and never add to it: you save, and you take a late
+turn. Top it up and you move up the queue. One member has to be willing to go
+first and back it, or nobody can be paid in round one — which is just the honest
+shape of credit.
+
+The first version demanded `contribution × member count` from everyone up front.
+That made the reserve safe and the product pointless: you had to already own the
+pot to be allowed to receive it, which is neither saving nor credit. A live
+three-seat circle now starts with **0.12 COOK** in its bond where the old rule
+demanded **0.45** — see `scripts/test-graduated-reserve.mjs`, which proves it
+against mainnet.
+
+**What this buys, and what it does not.** A member who stops paying *after*
+collecting is fully covered: the program takes that round's amount out of their
+reserve and puts it in the pot, so nobody else insures them. A member who stops
+*before* their turn is not covered, and cannot be — they posted almost nothing,
+which is the entire point. That shrinks one round's pot, is recorded in the
+public books as a miss rather than a payment, and sidelines them from collecting.
+That residual risk is why rooms are invite-based: this is built for a group that
+knows each other, which is what an arisan has always been.
 
 **The draw cannot be timed.** Requesting a round's draw commits it to the hash of
 a block three slots in the future. At the moment it is called, nobody, including

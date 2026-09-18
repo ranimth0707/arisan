@@ -4900,6 +4900,16 @@
       "code": 6074,
       "name": "TailMemberRequired",
       "msg": "Leaving a seat that is not the last one requires the last seat's member account"
+    },
+    {
+      "code": 6075,
+      "name": "CollateralAboveCommitment",
+      "msg": "A seat cannot cost more reserve than the whole commitment it backs"
+    },
+    {
+      "code": 6076,
+      "name": "ReserveTooThinForTurn",
+      "msg": "Your reserve does not cover what you would still owe after this turn"
     }
   ],
   "types": [

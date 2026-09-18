@@ -161,4 +161,8 @@ pub enum CookieError {
     InvalidAuthority,
     #[msg("Leaving a seat that is not the last one requires the last seat's member account")]
     TailMemberRequired,
+    #[msg("A seat cannot cost more reserve than the whole commitment it backs")]
+    CollateralAboveCommitment,
+    #[msg("Your reserve does not cover what you would still owe after this turn")]
+    ReserveTooThinForTurn,
 }

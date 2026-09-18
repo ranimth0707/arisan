@@ -3,32 +3,50 @@
 ## What the research found
 
 A ROSCA is not risk-free credit. Members who receive the pot early still owe
-future contributions. Research on ROSCAs documents the exact failure mode: a
-member can stop contributing after their turn and leave the remaining members
-short. That is why a social promise or a small, optional bond cannot guarantee a
-whole pot.
+future contributions, and the research documents the exact failure mode: a member
+stops contributing after their turn and leaves the rest short.
+
+Note where that risk sits. It is *after* the turn, not before it — a member who
+has not been paid yet is held in place by the turn they are still waiting for.
+That asymmetry is what the reserve is built around, and getting it wrong in
+either direction breaks the circle: too little and an early winner can walk, too
+much and nobody who actually needs the money can afford to join.
 
 ## The invariant
 
-New circles use a protected-by-default rule:
-
 ```text
-reserve per member = contribution × number of seats
-reserve for the group = reserve per member × number of seats
+reserve needed to collect on round k of N  =  (N - k) × contribution
 ```
 
-Every member locks that reserve before the creator can start the circle. The
-reserve is not a fee. A missed round moves exactly one contribution from that
+That is the liability a member carries *after* taking the pot, and it is the
+only thing the reserve is sized against. It is the whole remaining commitment
+for whoever goes first and nothing at all for whoever goes last, so the reserve
+becomes the price of a place in the queue rather than a toll at the door. A
+member may join holding the entry reserve and never add to it; they simply
+cannot be paid early. `handle_claim_turn` is where this is enforced, because
+that is the moment the money actually moves.
+
+The reserve is not a fee. A missed round moves one contribution from that
 member's reserve into the pot; any unused balance remains withdrawable after the
 circle finishes.
+
+**The earlier rule required `contribution × seats` from every member before the
+circle could start.** It made the reserve airtight and the product meaningless:
+you had to already own the pot in order to be allowed to receive it. A circle you
+can only join if you could already afford to skip it is neither savings nor
+credit, and correcting that is the reason this document changed.
 
 After a round is settled, the program reduces the required reserve by the
 settled round. It allows a draw only when:
 
-- every member has either paid or been settled by a one-time collateral slash;
-- the roster contains every seat and excludes every previous winner;
-- every remaining obligation is still backed by the bond vault; and
-- the safety PDA is marked protected.
+- every member has either paid or been settled from their own reserve;
+- the roster contains every seat and excludes every previous winner; and
+- the bond vault can cover one winner's post-turn liability.
+
+That last one used to demand the sum across every member, which only describes
+something real when every seat is reserved to the hilt. Exactly one member
+collects per round, and whether *that* member is covered is decided per member
+at claim time, so the vault only has to be able to back the one.
 
 If any one of those checks fails, the round stops. Other members are never
 asked to top up somebody else's missing reserve, and the pot is never paid

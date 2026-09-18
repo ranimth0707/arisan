@@ -4906,6 +4906,16 @@ export type CookieJar = {
       "code": 6074,
       "name": "tailMemberRequired",
       "msg": "Leaving a seat that is not the last one requires the last seat's member account"
+    },
+    {
+      "code": 6075,
+      "name": "collateralAboveCommitment",
+      "msg": "A seat cannot cost more reserve than the whole commitment it backs"
+    },
+    {
+      "code": 6076,
+      "name": "reserveTooThinForTurn",
+      "msg": "Your reserve does not cover what you would still owe after this turn"
     }
   ],
   "types": [

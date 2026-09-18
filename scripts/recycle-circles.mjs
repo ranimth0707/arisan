@@ -65,23 +65,51 @@ async function topUp(wallets, target) {
   }
   if (!short.length) return 0;
 
+  // Fund only what the treasury can actually cover, and never let one short
+  // batch end the run. The whole batch used to be sent regardless: if the
+  // treasury could not cover it the transaction failed, the exception escaped,
+  // and every circle after this one in the pass was abandoned — a funding
+  // shortage turning into a total outage.
   const BATCH = 12;
+  const FEE_FLOOR = 20_000_000;
+  let sent = 0;
+
   for (let offset = 0; offset < short.length; offset += BATCH) {
-    const slice = short.slice(offset, offset + BATCH);
-    const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
-    const message = new TransactionMessage({
-      payerKey: treasury.publicKey,
-      recentBlockhash: blockhash,
-      instructions: slice.map((s) => SystemProgram.transfer({
-        fromPubkey: treasury.publicKey, toPubkey: s.to, lamports: s.lamports,
-      })),
-    }).compileToV0Message();
-    const tx = new VersionedTransaction(message);
-    tx.sign([treasury]);
-    const signature = await conn.sendRawTransaction(tx.serialize(), { skipPreflight: false });
-    await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+    const budget = (await conn.getBalance(treasury.publicKey)) - FEE_FLOOR;
+    if (budget <= 0) break;
+
+    const slice = [];
+    let spend = 0;
+    for (const entry of short.slice(offset, offset + BATCH)) {
+      if (spend + entry.lamports > budget) break;
+      slice.push(entry);
+      spend += entry.lamports;
+    }
+    if (!slice.length) {
+      line(`  treasury has ${cook(budget)} COOK, short of the ${cook(short[offset].lamports)} COOK the next seat needs`);
+      break;
+    }
+
+    try {
+      const { blockhash, lastValidBlockHeight } = await conn.getLatestBlockhash();
+      const message = new TransactionMessage({
+        payerKey: treasury.publicKey,
+        recentBlockhash: blockhash,
+        instructions: slice.map((s) => SystemProgram.transfer({
+          fromPubkey: treasury.publicKey, toPubkey: s.to, lamports: s.lamports,
+        })),
+      }).compileToV0Message();
+      const tx = new VersionedTransaction(message);
+      tx.sign([treasury]);
+      const signature = await conn.sendRawTransaction(tx.serialize(), { skipPreflight: false });
+      await conn.confirmTransaction({ signature, blockhash, lastValidBlockHeight }, "confirmed");
+      sent += spend;
+    } catch (e) {
+      line(`  top-up batch failed: ${String(e.message ?? e).slice(0, 70)}`);
+      break;
+    }
   }
-  return short.reduce((total, s) => total + s.lamports, 0);
+  return sent;
 }
 
 /**

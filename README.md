@@ -47,44 +47,39 @@ a rule that executes itself.
 key to it. Contributions can only ever leave in one direction: to the member
 whose turn was drawn.
 
-**The reserve prices a place in the queue, not a ticket at the door.** This is
-the part we got wrong first and had to rebuild, so it is worth being exact.
+**The deposit is a buffer for paying late, not insurance against leaving.** This
+is the part we got wrong twice, so it is worth being exact.
 
-The group is not equally exposed to everyone. Take the pot on round `k` of `N`
-and you still owe `(N - k) × contribution` afterwards — every remaining
-contribution if you go first, nothing at all if you go last. Before your turn
-you hold none of the group's money, and walking away costs you the turn you were
-waiting for, so that half is self-enforcing.
+Miss a round and the program takes that round's amount out of your own deposit
+and puts it in the pot. The round still pays in full, nobody else covers you, and
+your books record a miss rather than a payment. Run the deposit down and you are
+sidelined from collecting until you top it back up. Two contributions is the
+sensible size: you can be late twice.
 
-So the reserve is sized to that liability and enforced when a turn is claimed:
+**What it does not do is stop the member who takes the first pot and
+disappears.** That cannot be fixed with a deposit, and the arithmetic says why:
 
-```
-reserve needed to collect on round k  =  (N - k) × contribution
+| seats | still owed after turn 1 | deposit | covered? |
+| --- | --- | --- | --- |
+| 3 | 2 × contribution | 2 × contribution | yes |
+| 10 | 9 × contribution | 2 × contribution | no |
+| 20 | 19 × contribution | 2 × contribution | no |
 
-  first turn   the whole remaining commitment   — this is borrowing
-  last turn    nothing                          — this is saving
-```
+Closing that gap means a deposit larger than the pot — which means only members
+who never needed the circle could join. The first version of this demanded
+exactly that, `contribution × seats` from everyone up front, and it was useless:
+you had to already own the pot in order to be allowed to receive it.
 
-Join with the entry reserve and never add to it: you save, and you take a late
-turn. Top it up and you move up the queue. One member has to be willing to go
-first and back it, or nobody can be paid in round one — which is just the honest
-shape of credit.
+So the group carries that risk, the way every arisan always has. **This is built
+for a private circle of people who already know each other and have already
+agreed to save together**, which is why rooms are invite-only. It is not a
+trustless lending protocol and does not pretend to be one.
 
-The first version demanded `contribution × member count` from everyone up front.
-That made the reserve safe and the product pointless: you had to already own the
-pot to be allowed to receive it, which is neither saving nor credit. A live
-three-seat circle now starts with **0.12 COOK** in its bond where the old rule
-demanded **0.45** — see `scripts/test-graduated-reserve.mjs`, which proves it
-against mainnet.
-
-**What this buys, and what it does not.** A member who stops paying *after*
-collecting is fully covered: the program takes that round's amount out of their
-reserve and puts it in the pot, so nobody else insures them. A member who stops
-*before* their turn is not covered, and cannot be — they posted almost nothing,
-which is the entire point. That shrinks one round's pot, is recorded in the
-public books as a miss rather than a payment, and sidelines them from collecting.
-That residual risk is why rooms are invite-based: this is built for a group that
-knows each other, which is what an arisan has always been.
+What the chain contributes is the part a spreadsheet and a group chat do badly:
+nobody holds the money, the rules freeze the moment people commit, the draw
+cannot be timed or steered, and the books are public and permanent.
+`scripts/test-community-deposit.mjs` proves all of it against mainnet, including
+the gap above.
 
 **The draw cannot be timed.** Requesting a round's draw commits it to the hash of
 a block three slots in the future. At the moment it is called, nobody, including

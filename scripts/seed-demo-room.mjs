@@ -39,7 +39,9 @@ const cook = (l) => (Number(l) / LAMPORTS_PER_COOK).toLocaleString("en-US", { ma
 const INVITE_CODE = "ARISAN-DEMO";
 const SEATS = 2;
 const CONTRIBUTION = toLamports(0.1);
-const COLLATERAL = CONTRIBUTION * SEATS; // the program's reserve rule, not a choice
+// Two contributions: late twice before the seat is sidelined. It covers a
+// missed round, not a member leaving — see docs/ARISAN-SAFETY.md.
+const COLLATERAL = CONTRIBUTION * 2;
 const ROUND_SECONDS = 60;
 const NAME = "Demo · Join by code";
 const DESCRIPTION = "A live two-seat demo. Claim demo COOK, join with the published code, "

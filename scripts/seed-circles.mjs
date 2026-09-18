@@ -63,11 +63,12 @@ const PLAN = {
   bufferRounds: option("buffer-rounds", 4),
 };
 
-// The program requires a reserve covering every seat, so this is not a knob.
-const collateralCook = PLAN.contributionCook * PLAN.members;
+// Two contributions, so a member can be late twice before being sidelined.
+// It is a buffer for paying late, not insurance against somebody leaving.
+const collateralCook = PLAN.contributionCook * 2;
 
 const SOCIAL_URL = "https://github.com/ranimth0707/arisan";
-const DESCRIPTION = `A ${PLAN.members}-seat savings circle. Every member locks ${collateralCook} COOK to cover their whole commitment, then pays ${PLAN.contributionCook} COOK each round. One member takes the pot per round until everyone has had a turn.`;
+const DESCRIPTION = `A ${PLAN.members}-seat savings circle. Everyone pays ${PLAN.contributionCook} COOK a round and one member takes the pot, until everyone has had a turn. The ${collateralCook} COOK deposit covers a missed round, so being late does not shrink somebody else's payout.`;
 const perWalletCook = collateralCook + PLAN.contributionCook * PLAN.bufferRounds;
 // Rent for a Member account plus a few signatures, paid out of the wallet itself
 // when it signs. Small, but a wallet short by one lamport cannot join.
@@ -81,7 +82,7 @@ step("Plan");
 line(`circles            : ${PLAN.circles}`);
 line(`members per circle : ${PLAN.members}`);
 line(`contribution       : ${PLAN.contributionCook} COOK per member per round`);
-line(`collateral         : ${collateralCook} COOK per member (contribution x seats, required)`);
+line(`deposit            : ${collateralCook} COOK per member (two contributions, covers being late twice)`);
 line(`round length       : ${PLAN.roundHours}h  (${PLAN.members} rounds = ${(PLAN.members * PLAN.roundHours / 24).toFixed(0)} days to finish)`);
 line(`wallet funding     : ${perWalletCook} COOK each (${collateralCook} locked + ${PLAN.contributionCook * PLAN.bufferRounds} working)`);
 line("");

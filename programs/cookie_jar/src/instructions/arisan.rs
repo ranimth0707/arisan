@@ -6,31 +6,28 @@
 //! out the same amount, having had access to a lump sum they could not have
 //! saved alone.
 //!
-//! Offline this works because everyone knows each other. Online it collapses,
-//! for two reasons this module is built around:
+//! Offline this works because everyone in the group knows each other. This is
+//! built for exactly that group — a private circle of people who have already
+//! agreed to save together — and not for strangers. Being clear about that is
+//! what decides the design.
 //!
-//! 1. Somebody stops paying once they have already won. Note the "once they have
-//!    already won": that is where the exposure lives. Before your turn, walking
-//!    away costs you the turn you were waiting for, so the incentive holds
-//!    itself together. After it, you are holding the group's money.
+//! **The deposit is a buffer for paying late, not insurance against leaving.**
+//! Miss a round and the program takes that round's amount out of your deposit
+//! and puts it in the pot, so the round still pays out and nobody else covers
+//! you. Run it down and you are sidelined from collecting until you top it back
+//! up. Two contributions is the sensible size: you can be late twice.
 //!
-//!    So the reserve is sized to that liability and to nothing else. Take the
-//!    pot on round k of N and you still owe `(N - k) x contribution`, which is
-//!    every remaining contribution if you go first and nothing at all if you go
-//!    last. `handle_claim_turn` will not release a pot to a member who does not
-//!    hold that much, which turns the reserve into the price of a place in the
-//!    queue rather than a toll at the door. Join with an empty reserve and you
-//!    may still save; you simply cannot be paid early. Top it up and you move up.
+//! It does **not** stop the member who takes the first pot and disappears. That
+//! cannot be solved with a deposit — collateral large enough to cover it is
+//! collateral larger than the pot, which means only people who never needed the
+//! circle can join. An earlier version of this demanded exactly that and was
+//! useless. The group carries that risk, as every arisan always has, which is
+//! why rooms are invite-only.
 //!
-//!    The half that stays with the group is a member who stops paying before
-//!    their turn. That shrinks one round's pot, it is recorded publicly as a
-//!    miss, and it sidelines them from collecting. Pretending otherwise would
-//!    mean demanding the whole commitment up front, which is what the first
-//!    version of this did — and a circle you must already be able to afford is
-//!    neither savings nor credit.
-//! 2. Whoever holds the money disappears with it. Here nobody holds it. The pot
-//!    lives in a program account, the draw is random and permissionless, and the
-//!    organiser has no key to it and cannot change the rules after people join.
+//! What the chain contributes is the part a spreadsheet and a group chat do
+//! badly: nobody holds the money, the pot is a program account with no key, the
+//! rules are frozen once people commit, the draw cannot be timed or steered, and
+//! the books are public and permanent.
 
 use anchor_lang::prelude::*;
 
@@ -63,38 +60,15 @@ fn reserve_total(circle: &Circle) -> Result<u64> {
         .ok_or(CookieError::MathOverflow.into())
 }
 
-/// Once every member has settled the current round, that round's obligation
-/// has already been funded by either a wallet payment or a collateral slash.
-/// The reserve check for the draw therefore covers only the turns after the
-/// current payout. This is what lets a fully collateral-funded default advance
-/// instead of failing because the bond was just moved into the pot.
-fn reserve_after_current_round(circle: &Circle) -> Result<u64> {
-    let future_turns = remaining_turns(circle)?
-        .checked_sub(1)
-        .ok_or(CookieError::MathOverflow)?;
-    circle
-        .contribution
-        .checked_mul(future_turns)
-        .ok_or(CookieError::MathOverflow)?
-        .checked_mul(u64::from(circle.member_count))
-        .ok_or(CookieError::MathOverflow.into())
-}
-
-/// What the bond vault must hold for a turn to be payable: one winner's
-/// liability after collecting, not every member's.
+/// The floor the bond vault has to clear for a turn to be payable: one
+/// contribution, so a single missed round is still coverable.
 ///
-/// The aggregate checks used to demand `contribution × remaining × members`,
-/// which is only correct when every seat is reserved to the hilt. Once a seat
-/// can be held by a saver carrying nothing, that sum stops describing anything
-/// real. Exactly one member collects per round, and the per-member test in
-/// `handle_claim_turn` is what decides whether they are covered — so the vault
-/// only has to be able to back that one.
+/// It used to be `contribution × remaining × members` — the entire group's
+/// commitment. That only describes something real if the deposit is meant to
+/// insure the group against a member leaving, and it is not. It is a buffer for
+/// paying late.
 fn winner_reserve_floor(circle: &Circle) -> Result<u64> {
-    let turns_left_after_this = remaining_turns(circle)?.saturating_sub(1);
-    circle
-        .contribution
-        .checked_mul(turns_left_after_this)
-        .ok_or(CookieError::MathOverflow.into())
+    Ok(circle.contribution)
 }
 
 fn bond_balance(bond: &SystemAccount<'_>) -> Result<u64> {
@@ -974,20 +948,17 @@ pub fn handle_slash_absent(ctx: Context<SlashAbsent>) -> Result<()> {
 
     let round = ctx.accounts.circle.round;
     let contribution = ctx.accounts.circle.contribution;
-    let future_obligation = contribution
-        .checked_mul(u64::from(
-            c.member_count
-                .saturating_sub(c.winners_so_far.saturating_add(1)),
-        ))
-        .ok_or(CookieError::MathOverflow)?;
-
     let m = &mut ctx.accounts.membership;
     m.collateral = m.collateral.saturating_sub(taken);
     m.rounds_missed = m.rounds_missed.saturating_add(1);
     // Counts as settled for this round so the same absence cannot be charged
     // twice, but not as a payment, which is what `rounds_paid` tracks.
     m.paid_round = round;
-    m.active = m.collateral >= future_obligation;
+    // Sidelined once the deposit can no longer cover another missed round — not
+    // once it stops covering every remaining one. The deposit is a buffer for
+    // being late, not insurance against a member leaving, and sizing it as the
+    // latter is what priced out everybody the circle is for.
+    m.active = m.collateral >= contribution;
 
     let c = &mut ctx.accounts.circle;
     c.pot_amount = c
@@ -1037,10 +1008,8 @@ pub fn handle_top_up_bond(ctx: Context<TopUpBond>, amount: u64) -> Result<()> {
         amount,
     )?;
 
-    // Topping up is how a member buys their way forward in the queue: the
-    // reserve they hold decides the earliest turn they may be drawn for, and
-    // `winner_reserve_floor` is that price at the circle's current position.
-    let required = winner_reserve_floor(&ctx.accounts.circle)?;
+    // Back in once the deposit covers another missed round.
+    let required = ctx.accounts.circle.contribution;
     let m = &mut ctx.accounts.membership;
     m.collateral = m
         .collateral
@@ -1279,26 +1248,6 @@ pub fn handle_claim_turn(ctx: Context<ClaimTurn>) -> Result<()> {
     require!(m.seat == c.winner_index, CookieError::NotYourTurn);
     require!(!m.has_won, CookieError::AlreadyHadATurn);
 
-    // The whole reserve rule, in one place: you may take the pot only if you
-    // still hold what you would owe the group afterwards.
-    //
-    // Collect on the last turn and that is nothing, so a member who joined with
-    // an empty reserve to save can always take the turn they waited for.
-    // Collect first, and it is every remaining contribution, because the group
-    // is handing you money against a promise that is worth exactly what backs
-    // it. The reserve therefore prices a place in the queue rather than
-    // gatekeeping the door.
-    let turns_left_after_this = remaining_turns(c)?
-        .checked_sub(1)
-        .ok_or(CookieError::MathOverflow)?;
-    let owed_after_winning = c
-        .contribution
-        .checked_mul(turns_left_after_this)
-        .ok_or(CookieError::MathOverflow)?;
-    require!(
-        m.collateral >= owed_after_winning,
-        CookieError::ReserveTooThinForTurn
-    );
     require!(
         !ctx.accounts.roster.is_winner(m.seat),
         CookieError::AlreadyHadATurn

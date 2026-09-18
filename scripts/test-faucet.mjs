@@ -1,8 +1,13 @@
 // Adversarial checks on the demo faucet, against a running relayer.
 //
+//   FAUCET_MAX_PER_IP=20 \
 //   RELAYER_SECRET_KEY="$(cat ~/.config/solana/cookiejar-relayer.json)" \
+//   FAUCET_SECRET_KEY="$(cat ~/.config/solana/cookiejar-faucet.json)" \
 //     node relayer/dev-server.js &
 //   node scripts/test-faucet.mjs
+//
+// The raised IP limit is what lets the suite run twice in ten minutes. Without
+// it the run throttles itself part-way and reports that as a failure.
 //
 // Wallet addresses are free to generate, so no request-shaped limit can stop a
 // determined drainer. What these checks defend is the property that actually
@@ -66,7 +71,14 @@ check("a program address is refused", program.status === 400, program.body.error
 
 // The one check a drainer cannot sidestep by rotating addresses: swept COOK has
 // to land somewhere, and a destination that already holds enough is refused.
-const funded = await claim(loadKeypair(KEYS.deployer).publicKey.toBase58());
+// Fund a wallet past the threshold here rather than pointing at an existing one:
+// this assertion used to target the deployer and started failing the day the
+// deployer's own balance fell below it, which told us nothing about the faucet.
+const alreadyHas = Keypair.generate();
+await sendAndConfirmTransaction(conn, new Transaction().add(SystemProgram.transfer({
+  fromPubkey: relayer.publicKey, toPubkey: alreadyHas.publicKey, lamports: 2_100_000_000,
+})), [relayer], { commitment: "confirmed" });
+const funded = await claim(alreadyHas.publicKey.toBase58());
 check("a wallet that already has COOK is refused", funded.status === 400, funded.body.error);
 
 // ============================================================== HAPPY PATH
@@ -88,7 +100,7 @@ step("Rotating the wallet does not reset the limit");
 
 // The previous key was `faucet:<ip>:<wallet>`, which handed every generated
 // address a fresh quota and therefore limited nothing at all.
-const rotated = Array.from({ length: 6 }, () => Keypair.generate());
+const rotated = Array.from({ length: status.perIp + 2 }, () => Keypair.generate());
 const rotations = [];
 for (const wallet of rotated) {
   rotations.push(await claim(wallet.publicKey.toBase58()));
@@ -96,17 +108,17 @@ for (const wallet of rotated) {
 const throttled = rotations.filter((r) => r.status === 429).length;
 line(`refused         : ${throttled} of ${rotations.length} rotated wallets`);
 check("fresh addresses still hit the per-connection limit", throttled > 0,
-  `${throttled} refused`);
+  `${throttled} refused, limit is ${status.perIp}`);
 
 const paid = rotations.filter((r) => r.status === 200);
-check("the connection limit bites within a handful of requests", paid.length <= 4,
-  `${paid.length} funded before the limit`);
+check("the connection limit bites at the configured number", paid.length <= status.perIp,
+  `${paid.length} funded, limit is ${status.perIp}`);
 
 // ================================================================= CLEANUP
 step("Sweeping the demo COOK back");
 
 let returned = 0;
-for (const keypair of [fresh, ...rotated]) {
+for (const keypair of [fresh, alreadyHas, ...rotated]) {
   const left = await conn.getBalance(keypair.publicKey);
   // Exactly one signature, so exactly one 5,000 lamport fee. Sending the rest
   // leaves the account at zero, which closes it. Leaving any dust behind fails:

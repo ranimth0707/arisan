@@ -13,7 +13,8 @@ const instructionNames = new Map(
 );
 const relevantVolumeInstructions = new Set(["contribute", "slash_absent", "claim_turn"]);
 const CACHE_MS = 60_000;
-const MAX_SIGNATURES = 5_000;
+/** How many recent transactions the rolling window will read bodies for. */
+const RECENT_SIGNATURE_LIMIT = 600;
 
 /**
  * How long a single invocation may spend walking history before it gives up and
@@ -26,28 +27,6 @@ const SCAN_BUDGET_MS = 8_000;
 const DAY_SECONDS = 86_400;
 
 let cached;
-
-/**
- * Totals carried between invocations on a warm instance, so a busy program is
- * not re-indexed from genesis every minute. `newest` is the high-water mark:
- * later runs ask the RPC only for signatures after it.
- *
- * It advances only when a scan finished, because a partial scan leaves a hole
- * between what was read and the old mark, and a high-water mark that skips a
- * hole loses those transactions permanently. A partial run therefore reports its
- * numbers and throws its own work away rather than corrupting the ledger.
- */
-let ledger = { newest: null, allTime: totals(), recent: [] };
-
-function totals() {
-  return { contribution: 0n, payout: 0n, transactions: 0 };
-}
-
-function addTo(target, event) {
-  target.contribution += event.contribution;
-  target.payout += event.payout;
-  target.transactions += 1;
-}
 
 const seed = (name) => Buffer.from(name);
 const pda = (name, circle) => PublicKey.findProgramAddressSync([seed(name), circle.toBuffer()], PROGRAM_ID)[0];
@@ -62,27 +41,6 @@ function stateName(state) {
 
 function decodeInstruction(data) {
   return instructionNames.get(Buffer.from(data).subarray(0, 8).toString("hex"));
-}
-
-/**
- * Signatures newer than `until`, newest first. Omitting `until` walks the whole
- * history, which is what a cold instance has to do once.
- */
-async function loadSignatures(until, deadline) {
-  const signatures = [];
-  let before;
-  while (signatures.length < MAX_SIGNATURES) {
-    if (Date.now() > deadline) return { signatures, complete: false };
-    const page = await connection.getSignaturesForAddress(PROGRAM_ID, {
-      limit: Math.min(1_000, MAX_SIGNATURES - signatures.length),
-      ...(before ? { before } : {}),
-      ...(until ? { until } : {}),
-    });
-    signatures.push(...page);
-    if (page.length < 1_000) return { signatures, complete: true };
-    before = page[page.length - 1].signature;
-  }
-  return { signatures, complete: false };
 }
 
 function transactionKeys(message) {
@@ -121,54 +79,88 @@ function volumeEvents(tx, signatureInfo, potByAddress) {
   return events;
 }
 
-async function loadVolume(potByAddress, asOf, deadline) {
-  // Only signatures the ledger has not already counted. A cold instance has no
-  // mark and walks everything once.
-  const { signatures, complete: walked } = await loadSignatures(ledger.newest, deadline);
+/**
+ * All-time volume, derived from account state rather than from history.
+ *
+ * Every completed round collects `contribution × member_count` into the pot and
+ * pays all of it to one member, so a circle that has seen `winners_so_far`
+ * rounds has moved that much in each direction, plus whatever is sitting in the
+ * pot right now on the round in progress.
+ *
+ * This replaced a walk over the program's signatures, which was correct until
+ * the program passed a few thousand transactions and the scan could no longer
+ * finish inside a serverless invocation. A partial scan reported a partial
+ * number, so the published all-time volume started going *down* as the app got
+ * busier — the worst possible failure for a figure people are asked to trust.
+ * Reading it from state is exact, always complete, and costs one RPC call
+ * regardless of how much history there is.
+ */
+function volumeFromState(circles) {
+  let contribution = 0n;
+  let payout = 0n;
+  let rounds = 0;
+  for (const entry of circles) {
+    const account = entry.account;
+    const perRound = BigInt(account.contribution.toString()) * BigInt(account.member_count);
+    const completed = BigInt(account.winners_so_far);
+    payout += perRound * completed;
+    contribution += perRound * completed + BigInt(account.pot_amount.toString());
+    rounds += account.winners_so_far;
+  }
+  return { contribution, payout, rounds };
+}
 
-  const fresh = [];
-  let scanned = true;
+/**
+ * The last day only, which does need history — but a bounded amount of it: the
+ * walk stops at the first signature older than the window.
+ */
+async function volumeLastDay(potByAddress, asOf, deadline) {
+  const cutoff = Math.floor(asOf / 1000) - DAY_SECONDS;
+  const signatures = [];
+  let before;
+  let complete = false;
+
+  // Bounded by a transaction count as well as by the window. Fetching bodies is
+  // what costs, and on a busy day a full day is more than an invocation can
+  // read — so this covers as much of the day as it can afford and reports the
+  // span it actually managed, instead of a "last 24h" figure that quietly is
+  // not.
+  outer: while (signatures.length < RECENT_SIGNATURE_LIMIT) {
+    if (Date.now() > deadline) break;
+    const page = await connection.getSignaturesForAddress(PROGRAM_ID, {
+      limit: Math.min(1000, RECENT_SIGNATURE_LIMIT - signatures.length),
+      ...(before ? { before } : {}),
+    });
+    if (!page.length) { complete = true; break; }
+    for (const entry of page) {
+      if (entry.blockTime && entry.blockTime < cutoff) { complete = true; break outer; }
+      signatures.push(entry);
+    }
+    before = page[page.length - 1].signature;
+  }
+
+  const totals = { contribution: 0n, payout: 0n, transactions: 0 };
   for (let offset = 0; offset < signatures.length; offset += 100) {
-    if (Date.now() > deadline) { scanned = false; break; }
+    if (Date.now() > deadline) { complete = false; break; }
     const batch = signatures.slice(offset, offset + 100);
     const transactions = await connection.getTransactions(
       batch.map((entry) => entry.signature),
       { commitment: "confirmed", maxSupportedTransactionVersion: 0 },
     );
-    transactions.forEach((tx, index) => fresh.push(...volumeEvents(tx, batch[index], potByAddress)));
+    transactions.forEach((tx, index) => {
+      for (const event of volumeEvents(tx, batch[index], potByAddress)) {
+        totals.contribution += event.contribution;
+        totals.payout += event.payout;
+        totals.transactions += 1;
+      }
+    });
   }
-
-  const complete = walked && scanned;
-  const cutoff = Math.floor(asOf / 1000) - DAY_SECONDS;
-
-  // A partial pass is reported but not kept, so the high-water mark never jumps
-  // over transactions that were never read.
-  const allTime = { ...ledger.allTime };
-  const recent = [...ledger.recent, ...fresh].filter((event) => event.blockTime >= cutoff);
-  for (const event of fresh) addTo(allTime, event);
-
-  if (complete) {
-    ledger = {
-      newest: signatures[0]?.signature ?? ledger.newest,
-      allTime,
-      recent,
-    };
-  }
-
-  const recentTotals = totals();
-  for (const event of recent) addTo(recentTotals, event);
-
-  const serialize = (bucket) => ({
-    contributionCook: cook(bucket.contribution),
-    payoutCook: cook(bucket.payout),
-    grossCook: cook(bucket.contribution + bucket.payout),
-    transactions: bucket.transactions,
-  });
+  const oldest = signatures.length ? signatures[signatures.length - 1].blockTime : null;
   return {
-    allTime: serialize(allTime),
-    last24h: serialize(recentTotals),
-    newSignatures: signatures.length,
+    totals,
     complete,
+    scanned: signatures.length,
+    windowSeconds: oldest ? Math.max(0, Math.floor(asOf / 1000) - oldest) : DAY_SECONDS,
   };
 }
 
@@ -217,7 +209,29 @@ async function buildMetrics() {
   // that finishes does not un-happen, and scoping this to active circles made
   // all-time volume fall as rounds completed.
   const potByAddress = new Map(circles.map((entry) => [entry.address.toBase58(), pda("pot", entry.address)]));
-  const volume = await loadVolume(potByAddress, asOf, deadline);
+  const allTime = volumeFromState(circles);
+  const day = await volumeLastDay(potByAddress, asOf, deadline);
+  const serialize = (contribution, payout, transactions) => ({
+    contributionCook: cook(contribution),
+    payoutCook: cook(payout),
+    grossCook: cook(contribution + payout),
+    ...(transactions === undefined ? {} : { transactions }),
+  });
+  const volume = {
+    allTime: {
+      ...serialize(allTime.contribution, allTime.payout),
+      roundsCompleted: allTime.rounds,
+      // Derived from account state, so it does not depend on how much history
+      // an invocation had time to read.
+      exact: true,
+    },
+    recent: {
+      ...serialize(day.totals.contribution, day.totals.payout, day.totals.transactions),
+      windowHours: Math.round((day.windowSeconds / 3600) * 10) / 10,
+      coversFullDay: day.complete,
+    },
+    scannedSignatures: day.scanned,
+  };
   return {
     ok: true,
     asOf: new Date(asOf).toISOString(),

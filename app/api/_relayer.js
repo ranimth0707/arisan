@@ -196,7 +196,10 @@ export function validate(tx, relayerPubkey) {
 // on-chain per-transaction cap: draining a 50 COOK vault takes 10,000 separate
 // transactions and costs the protocol about half a cent.
 const WINDOW_MS = 60_000;
-const MAX_PER_WINDOW = 10;
+// Overridable so a local dev server can be driven by the adversarial suite,
+// which deliberately fires more attempts in a minute than a person ever would
+// and was otherwise rate-limited out of its own assertions.
+const MAX_PER_WINDOW = Number(process.env.RELAYER_MAX_PER_WINDOW) || 10;
 const hits = new Map();
 
 export function rateLimited(key, max = MAX_PER_WINDOW, windowMs = WINDOW_MS) {

@@ -26,7 +26,7 @@ rotation before the first deposit of meaningful value.
 ## Change procedure
 
 1. Create the Squad with the selected members and threshold.
-2. Add the Cookie Jar program as a managed program.
+2. Add the Arisan program (crate `cookie_jar`, ID `Dwd7DXUQHRJaj1suYz6fTcVW7JJqBFVztg1z77t6Ysg`) as a managed program.
 3. Transfer the program upgrade authority to the Squad address.
 4. Verify on-chain that the program's upgrade authority is the Squad, not a
    deployer or laptop key.

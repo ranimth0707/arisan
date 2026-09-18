@@ -18,3 +18,8 @@ dist
 test-ledger
 .yarn
 .surfpool
+
+# Local tooling scratch. Never published: the repo is the project, not the
+# machinery that happened to build it.
+.claude/
+.superstack/

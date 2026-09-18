@@ -14,7 +14,11 @@ interface NetworkMetrics {
   tvl: { activeCook: number; protectedCook: number; bondCook: number; potCook: number };
   rooms: { active: number; forming: number; protected: number };
   members: number;
-  volume: { allTime: MetricsBucket; last24h: MetricsBucket; newSignatures: number; complete: boolean };
+  volume: {
+    allTime: MetricsBucket & { roundsCompleted: number; exact: boolean };
+    recent: MetricsBucket & { transactions: number; windowHours: number; coversFullDay: boolean };
+    scannedSignatures: number;
+  };
 }
 
 function cook(value: number) {
@@ -64,7 +68,7 @@ export function NetworkStats() {
       {!loading && !error && data && <>
         <div className="stats-grid">
           <div className="network-stat primary-stat"><span>Active TVL</span><strong>{cook(data.tvl.activeCook)} <small>COOK</small></strong><em>{cook(data.tvl.protectedCook)} COOK protected</em></div>
-          <div className="network-stat"><span>Indexed cash flow</span><strong>{cook(data.volume.allTime.grossCook)} <small>COOK</small></strong><em>{data.volume.allTime.transactions.toLocaleString("en-US")} contribution &amp; payout transactions</em></div>
+          <div className="network-stat"><span>Cash flow</span><strong>{cook(data.volume.allTime.grossCook)} <small>COOK</small></strong><em>across {data.volume.allTime.roundsCompleted.toLocaleString("en-US")} completed rounds</em></div>
           <div className="network-stat"><span>Active rooms</span><strong>{data.rooms.active.toLocaleString("en-US")}</strong><em>{data.rooms.forming} looking for members</em></div>
           {/* "Members" would read as people. Most of these seats are operator-
               seeded wallets, and letting that be misread would put every other
@@ -78,7 +82,7 @@ export function NetworkStats() {
           mechanism running, not people wanting it yet.{" "}
           <a href="https://github.com/ranimth0707/arisan#seeded-liquidity-said-out-loud" target="_blank" rel="noreferrer">How this was seeded ↗</a>
         </p>
-        <div className="network-stats-foot"><span>Updated {timeLabel(data.asOf)} · {data.volume.complete ? "complete history indexed" : "volume history is partial"}</span><a href={`https://cookiescan.io/address/${data.source.program}`} target="_blank" rel="noreferrer">Verify on CookieScan ↗</a></div>
+        <div className="network-stats-foot"><span>Updated {timeLabel(data.asOf)} · cash flow read from circle state, not sampled · {cook(data.volume.recent.grossCook)} COOK in the last {data.volume.recent.windowHours}h</span><a href={`https://cookiescan.io/address/${data.source.program}`} target="_blank" rel="noreferrer">Verify on CookieScan ↗</a></div>
       </>}
     </section>
   );

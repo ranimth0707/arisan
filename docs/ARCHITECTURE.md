@@ -1,286 +1,170 @@
-# Cookie Jar - Architecture
+# Arisan — Architecture
 
-Gasless giveaway protocol for Cookie Chain where claiming a giveaway increases
-protocol TVL instead of draining it.
+An arisan is a rotating savings circle. A group agrees an amount and a period,
+everyone pays that in each round, and one member who has not had a turn yet takes
+the whole pot. When everybody has had a turn, it is over, and each person has put
+in and taken out the same amount — having had access to a lump sum they could not
+have saved alone.
 
-## The problem this solves
+This is an Anchor program on Cookie Chain that keeps the books for one, plus a
+web app and a fee relayer.
 
-Cookie Chain has two compounding cold-start problems.
+## Who it is for
 
-**Nobody can start.** Every action needs COOK for gas. New users have none, and
-getting some means bridging from Solana, which needs SOL they may also not have.
-This is likely why MomoSwap, the chain's only launchpad, sits at $0 TVL.
+A private circle of people who already know each other and have already agreed
+to save together. Not strangers. Naming that decides every trade-off below.
 
-**Giveaways leak.** The obvious fix (airdrop COOK to new users) produces a spike
-of transactions and zero lasting TVL, because claimed funds leave the contract
-immediately. This is not a hypothesis: Base lost 30% of TVL within two weeks of
-Onchain Summer ending, and Blast's TVL and activity both collapsed after its
-airdrop claim window.
+There is no yield, no fee and no spread anywhere in the program. The purpose is
+to make saving together easier to keep up with.
 
-## Design principle
+## What the chain is actually for
 
-Claiming must be an inflow, not an outflow.
+An arisan runs fine on a spreadsheet and a group chat, right up to the moment it
+does not. The failures are always the same three, and they are the only things
+this program exists to remove:
 
-A Fortune Cookie (the giveaway envelope) is cracked directly into a Cookie Jar
-(a non-custodial deposit vault) in a single atomic instruction. The COOK moves
-from one protocol-owned PDA to another. It never leaves. The recipient now owns
-a withdrawable balance and has a standing reason to leave it there, because
-deposits earn from a sponsor-funded reward pool.
+| Offline failure | What the program does |
+| --- | --- |
+| The organiser holds the money | Nobody holds it. The pot is a PDA with no key and can only pay the drawn member. |
+| The organiser changes the terms | Contribution, deposit, seats and round length are written once at creation and never again. |
+| The draw is not trusted | It commits to the hash of a block three slots in the future, so nobody — organiser included — can know the result when they call it. |
 
-Retention is voluntary in both directions:
+Two more follow from being on chain: nobody can stall a circle, because running
+the draw and settling an absentee are permissionless; and the books are public
+and permanent.
 
-- Principal is never at risk. No lending, no trading, no loss mechanism.
-- Withdrawal is always available, in full, with no penalty.
-- Leaving only costs future rewards, never principal.
+## The deposit
 
-## Account model
-
-Cookie Chain's native gas token is COOK, so all value is native lamports. No SPL
-token accounts, no ATAs, no token program. Vaults are program-owned PDAs holding
-lamports directly.
-
-1 COOK = 1e9 lamports. Observed transaction fee = 10,000 lamports.
-
-### Config (PDA: `["config"]`)
-
-| Field | Type | Purpose |
-|---|---|---|
-| `authority` | Pubkey | Admin. Can pause and rotate the relayer. Cannot touch user funds. |
-| `relayer` | Pubkey | Hot wallet that pays transaction fees. Fee payer only, no vault authority. |
-| `paused` | bool | Emergency stop for new deposits. Withdrawals stay open when paused. |
-| `jar_count` | u64 | Counter |
-| `envelope_count` | u64 | Counter |
-
-### GasVault (PDA: `["gas_vault"]`) and GasDeposit (PDA: `["gas", depositor]`)
-
-Sponsors deposit COOK here to fund their users' transaction fees. The vault is a
-PDA, so the balance counts as protocol TVL. The relayer cannot withdraw it, it
-can only reclaim its own spent fees, capped per transaction.
-
-`GasDeposit` tracks each sponsor's unspent share so they can withdraw at any time.
-
-### Jar (PDA: `["jar", creator, jar_id]`)
-
-| Field | Type | Purpose |
-|---|---|---|
-| `creator` | Pubkey | Who opened the jar |
-| `mode` | enum | `Proportional` or `Lucky` |
-| `start_ts` / `end_ts` | i64 | Reward window |
-| `reward_rate` | u64 | Lamports per second (Proportional mode) |
-| `total_deposited` | u64 | Principal currently in the jar. This is the TVL number. |
-| `acc_reward_per_share` | u128 | Reward accumulator, scaled by 1e12 |
-| `last_update_ts` | i64 | Accumulator checkpoint |
-| `entry_count` | u64 | Eligible depositors (Lucky mode) |
-| `min_deposit` | u64 | Eligibility threshold for Lucky mode |
-| `draw_target_slot` | u64 | Randomness commitment slot |
-| `winner` | Option\<Pubkey\> | Set once drawn |
-
-### JarVault (PDA: `["jar_vault", jar]`) and RewardVault (PDA: `["reward_vault", jar]`)
-
-Principal and reward money are held in separate PDAs. This separation is the
-guarantee that rewards are never paid out of anyone's deposit. A sponsor funding
-a giveaway can only ever fund `RewardVault`, and `JarVault` can only ever be
-debited by the depositor who owns that position.
-
-### Position (PDA: `["position", jar, owner]`)
-
-| Field | Type | Purpose |
-|---|---|---|
-| `amount` | u64 | Principal deposited |
-| `reward_debt` | u128 | Accumulator checkpoint for this position |
-| `entry_index` | u64 | Ticket number for Lucky mode |
-| `eligible` | bool | False once balance drops below `min_deposit` |
-| `first_deposit_ts` | i64 | For display and future weighting |
-
-### Envelope (PDA: `["envelope", creator, envelope_id]`) and EnvelopeClaim (PDA: `["claim", envelope, claimer]`)
-
-| Field | Type | Purpose |
-|---|---|---|
-| `total_amount` | u64 | Funded amount |
-| `remaining` | u64 | Unclaimed balance |
-| `claims_total` / `claims_done` | u16 | Slot count |
-| `split` | enum | `Equal` or `Surprise` |
-| `expiry_ts` | i64 | After this, creator can sweep the remainder |
-
-`EnvelopeClaim` exists purely to make double claiming impossible. Its existence
-is the proof of a prior claim.
-
-## Instruction set
-
-**Config**
-- `initialize(relayer)`
-- `set_paused(bool)`, `set_relayer(pubkey)`, `transfer_authority(pubkey)`
-
-**Gas sponsorship**
-- `deposit_gas(amount)` - anyone funds the shared gas vault
-- `withdraw_gas(amount)` - sponsor reclaims their unspent share
-- `reimburse_relayer()` - relayer-signed, moves at most `MAX_FEE_REIMBURSEMENT`
-  (20,000 lamports) from `GasVault` to the relayer wallet
-
-**Jar**
-- `create_jar(jar_id, mode, start_ts, end_ts, min_deposit)`
-- `fund_jar(amount)` - anyone adds to the reward pool. This is the giveaway money.
-- `deposit(amount)` / `withdraw(amount)`
-- `harvest()` - claim accrued rewards (Proportional)
-- `request_draw()` - permissionless after `end_ts`, commits to a future slot
-- `finalize_draw()` - permissionless, reads the committed slot hash, picks winner
-- `claim_prize()` - winner withdraws the reward pool (Lucky)
-
-**Fortune Cookie**
-- `create_envelope(id, total, claims, split, expiry)`
-- `crack()` - claim to the claimer's own wallet
-- `crack_into_jar(jar)` - claim straight into a jar position, atomically
-- `sweep_envelope()` - creator reclaims the unclaimed remainder after expiry
-
-## Reward math
-
-### Proportional mode
-
-Standard per-share accumulator, which weights by amount multiplied by time held.
-
-```
-update(jar):
-  now = min(clock.unix_timestamp, jar.end_ts)
-  if jar.total_deposited > 0 && now > jar.last_update_ts:
-      elapsed = now - jar.last_update_ts
-      minted  = elapsed * jar.reward_rate
-      jar.acc_reward_per_share += minted * 1e12 / jar.total_deposited
-  jar.last_update_ts = now
-
-pending(position) = position.amount * jar.acc_reward_per_share / 1e12
-                  - position.reward_debt
+```text
+deposit = 2 × contribution      (the organiser sets it; this is the usual size)
 ```
 
-`update` runs before every deposit, withdraw and harvest. Depositing later or
-withdrawing earlier reduces your share, with no cliff and no lockup.
+It covers **being late**, not **leaving**. A missed round moves one contribution
+from that member's own deposit into the pot, so the round still pays in full and
+no other member covers the shortfall. It is recorded as a miss, never as a
+payment. Spend it down and you are sidelined from collecting until you top it
+back up; whatever is left is withdrawable when the circle ends.
 
-### Lucky mode
+It does not stop a member who takes the pot and disappears. Covering that needs a
+deposit larger than the pot, which would admit only members who never needed the
+circle — see [ARISAN-SAFETY.md](./ARISAN-SAFETY.md) for the arithmetic and why
+that risk stays with the group.
 
-Every depositor at or above `min_deposit` gets exactly one entry, regardless of
-size. A $1 deposit and a $1,000 deposit have identical odds.
+## Accounts
 
-This is a deliberate choice. Equal odds make the giveaway fairer, make it far
-more attractive to the small new wallets we are trying to onboard, and drive the
-user-count metric the Cookie Chain team named as an alternative to raw volume.
+Every vault is a zero-data `SystemAccount` PDA holding native COOK, seeded with
+a rent floor so it can never be closed out from under the circle.
 
-Entries are assigned sequentially, so selecting a winner is O(1):
+| Account | Seeds | Holds |
+| --- | --- | --- |
+| `Config` | `["config"]` | Protocol authority and pause flag. **Live at its original size — do not add fields.** |
+| `Circle` | `["circle", creator, circle_id]` | The frozen terms and the round counter. Also size-locked. |
+| `CircleRoom` | `["room", circle]` | Description, social link and the invite code hash. |
+| `CircleRoster` | `["roster", circle]` | Two 100-bit masks: who has won, and migration progress for older circles. |
+| `CircleSafety` | `["safety", circle]` | The reserve target and per-seat coverage. |
+| `Member` | `["member", circle, wallet]` | One per wallet per circle: seat, deposit, rounds paid, rounds missed, whether they have had a turn. |
+| `Pot` | `["pot", circle]` | Contributions for the current round. Only ever pays the drawn member. |
+| `Bond` | `["bond", circle]` | Deposits. Separate from the pot on purpose: a deposit belongs to its member until they miss a round, and must never be payable as a prize. |
+
+`CircleRoom`, `CircleRoster` and `CircleSafety` are companion PDAs rather than
+fields on `Circle`, because `Circle` was already live when each was added and
+growing an account breaks every existing one.
+
+## A round, end to end
 
 ```
-winner_index = seed % jar.entry_count
+contribute        each member pays in                      (member signs)
+slash_absent      anyone unpaid is settled from their own deposit  (permissionless)
+request_turn      commits the draw to slot + 3             (permissionless)
+finalize_turn     reads SlotHashes, picks an unwon seat    (permissionless)
+claim_turn        the drawn member takes the pot           (that member signs)
 ```
 
-Anyone can then submit the Position whose `entry_index` equals `winner_index`,
-and the program verifies it directly. If that position became ineligible by
-withdrawing, the draw re-rolls with the next slot hash.
+A draw is only allowed once every seat has settled, so the pot is whole before
+anyone can win it. `finalize_turn` draws only from seats absent from the roster's
+winner mask, so previous winners are mathematically excluded rather than rejected
+afterwards — and the final round has exactly one possible outcome.
+
+If the drawn member never collects, `redraw_turn` reopens the round: immediately
+when they are ineligible, and after a 24-hour claim window otherwise.
+
+## The seat invariant
+
+Seats are the program's only name for a member. They must be exactly
+`0 .. member_count - 1`, each held once. Joining preserves that with
+`seat = member_count`; leaving closes the gap by moving the highest-seated member
+down, which is why `leave_circle` takes that member as an extra account. A
+duplicate seat would mean one member paying into every round and never being able
+to collect; an orphaned seat would stall the draw.
 
 ## Randomness
 
-Solana forks have no native VRF and Cookie Chain has no oracle. The draw uses a
-two-phase commitment so that nobody, including the caller, knows the seed at the
-time the draw is requested.
+`request_turn` records `clock.slot + 3`. `finalize_turn` reads that slot's hash
+from the `SlotHashes` sysvar and derives the winner from
+`keccak(hash, circle, round)`.
 
-1. `request_draw()` can only run after `end_ts`. It records
-   `draw_target_slot = current_slot + 3`.
-2. `finalize_draw()` can only run at or after `draw_target_slot`. It reads that
-   slot's hash from the `SlotHashes` sysvar and derives
-   `seed = hash(slot_hash, jar_key, entry_count)`.
-
-`SlotHashes` retains 512 slots, roughly four minutes, so finalize must happen in
-that window or the request is re-made.
-
-Honest limitation: a block producer that controls the target slot can bias the
-result. For prize pools of this size that tradeoff is acceptable, and it is
-documented rather than hidden. A VRF can replace this later without touching any
-other part of the protocol.
+The seed does not exist when the draw is requested, so nobody can pick a
+favourable moment — which matters because the organiser is a participant.
+Finalizing is bounded to 300 slots past the target: without that, stalling would
+let a caller reach back to a hash they had already seen and retry until it suited
+them. Past the window the request is stale and must be made again, committing to
+a fresh unknown slot. A skipped slot is handled by taking the first block at or
+after the target, so a draw can never be permanently stranded.
 
 ## Gas sponsorship
 
-Verified on-chain before this design was written: a wallet holding exactly zero
-COOK successfully signed and landed a transaction on Cookie Chain while a
-separate wallet paid 100% of the fee. Transaction
-`dFWFof5bH4PKDhmawnNhytvztrhBHSA8C5jEfcfMCf1S2Yw2fazQA7K4uBht6kovdghnv1EaQddfMfzLZk7PUgq`,
-fee 10,000 lamports charged entirely to the payer, signer balance 0 before and 0
-after.
+A wallet holding zero COOK can join, pay a round and collect. The relayer is the
+fee payer; the transaction carries a `reimburse_relayer` instruction that pays it
+back on chain out of a sponsor vault, capped at `MAX_FEE_REIMBURSEMENT`
+(5,000,000 lamports) per transaction.
 
-Flow:
+The cap is what bounds the damage if the relayer key leaks: draining a 2,000 COOK
+vault would take 400,000 separate transactions.
 
-```
-1. Frontend builds: [reimburse_relayer, <user instruction>]
-2. feePayer = relayer wallet
-3. Nightly signs as the user (partial signature, user pays nothing)
-4. Frontend POSTs the partially signed transaction to the relayer service
-5. Relayer validates, signs as fee payer, broadcasts
-6. Signature returned, frontend subscribes for confirmation
-```
+Contributions and deposits always come from the member's own wallet. Gas can be a
+gift; the stake that makes a promise credible cannot.
 
-The relayer never holds user funds and never has authority over any vault. It
-pays fees and is reimbursed a capped amount by the program itself, which means
-its economics are enforced on-chain rather than by trust.
+### What the relayer refuses
 
-### Relayer validation rules
+Before signing, it checks that the transaction:
 
-A transaction is only signed if all of these hold:
+- carries no address lookup tables, so every account is visible;
+- names the relayer as fee payer and nowhere else;
+- holds at most four instructions, only from this program or `ComputeBudget`;
+- contains exactly one reimbursement, within the cap;
+- calls only an allow-listed instruction — `deposit_gas` and `withdraw_gas` are
+  deliberately excluded.
 
-- Every instruction targets the Cookie Jar program or `ComputeBudget`
-- Exactly one `reimburse_relayer` instruction, and it is first
-- Fee payer is the relayer and the relayer is not a signer on anything else
-- No account in the transaction is the relayer's, other than as fee payer and
-  reimbursement recipient
-- Per-wallet and per-IP rate limits are not exceeded
+`scripts/test-relayer.mjs` attacks all of it.
 
-Without these checks the relayer is a free transaction service for the whole
-chain and the gas vault drains to unrelated activity.
+## Reading the numbers
 
-## How this produces the judged metrics
+`app/api/metrics.js` computes TVL and volume from the chain with no database:
+TVL from live bond and pot balances minus rent, volume from the pot's balance
+delta across confirmed `contribute`, `slash_absent` and `claim_turn`
+transactions. `scripts/chain-share.mjs` compares this program's transaction count
+against the whole chain's, read from the RPC's own performance samples.
 
-**TVL** is the sum of live PDA balances:
+Some of the liquidity on the live app is operator-seeded rather than organic. The
+README says so plainly and ships the scripts that produced it.
 
-| Source | Behaviour |
-|---|---|
-| `JarVault` | Principal. Stays because withdrawing forfeits future rewards. |
-| `RewardVault` | Sponsor-funded giveaway budgets, locked until earned or drawn. |
-| `GasVault` | Sponsor gas. At 10,000 lamports per transaction, effectively permanent. |
-| `Envelope` | Unclaimed giveaway escrow. |
+## What else is in the program
 
-**Volume** is transaction throughput, and unlike a plain airdrop it is recurring
-rather than one-shot: create envelope, crack, deposit, harvest, withdraw, fund,
-request draw, finalize draw, claim prize.
+The crate is still named `cookie_jar`, and alongside the arisan instructions it
+carries savings jars, giveaway envelopes and fundraising campaigns from earlier
+directions the project took. They are deployed and tested but unreachable from
+the app, which ships only the arisan. They are left in place because the program
+ID is live and closing it would burn the address; they are not part of what this
+submission is.
 
-A DefiLlama adapter summing these four PDA types is straightforward, and matches
-the methodology already used for CookieSwap on this chain, which sums token
-balances held in protocol vault accounts.
+## Known limits
 
-## Security model
-
-| Risk | Mitigation |
-|---|---|
-| Rewards paid from depositors' principal | Principal and rewards live in separate PDAs. No instruction moves lamports from `JarVault` to anyone but that position's owner. |
-| Admin drains funds | `authority` can only pause and rotate the relayer. No instruction grants it vault authority. |
-| Single admin key is compromised | `transfer_authority` provides an explicit handoff to a governance PDA; production deployment should use a 2-of-3 multisig for both admin and program upgrade authority. |
-| Relayer key compromised | Worst case is fee-paying for junk transactions, capped per transaction and bounded by `GasVault`. No user funds reachable. |
-| Free-relay abuse | Instruction allowlist plus rate limits in the relayer service. |
-| Double claiming an envelope | `EnvelopeClaim` PDA per claimer. Creating it twice fails at the runtime level. |
-| Sybil farming the Lucky draw | Entry requires a real deposit at or above `min_deposit`, and the relayer rate-limits claims. Cost of a fake entry is the deposit itself. |
-| Validator biasing the draw | Documented. Two-phase slot commitment raises the cost. VRF is a drop-in replacement later. |
-| Integer overflow | All arithmetic uses checked operations. Accumulator is u128. |
-| Pause locks user funds | `paused` blocks new deposits only. Withdraw and harvest stay open. |
-
-## Scope
-
-**v1, the hackathon build**
-Config, gas vault, jars in both modes, positions, envelopes with both splits,
-atomic crack-into-jar, two-phase draw, relayer service, web app with Nightly.
-
-**Deliberately not in v1**
-VRF randomness, SPL token support (native COOK only), multi-asset jars,
-multisig deployment, a sponsor dashboard, DefiLlama adapter submission.
-
-## Verified before building
-
-| Assumption | Status |
-|---|---|
-| Fee payer can be a different wallet than the signer | Verified on-chain, tx `dFWFof5...` |
-| A zero-balance wallet can transact | Verified, balance 0 before and after |
-| Programs can be deployed post-genesis on Cookie Chain | Verified, deploys observed at slots 1,979,576 and 5,523,224 against a genesis at slot 0 |
-| Toolchain runs against a solana-core 4.1.2 fork | rustc 1.98.1, solana-cli 4.2.2, anchor-cli 1.2.0 installed |
-| Nightly can sign with an external fee payer | Not yet verified. Tested in the browser before the frontend is built. |
+- The invite code is stored as a hash in a public account and `join_circle`
+  compares against it, so anyone who can build a transaction can join any room
+  without knowing the code. The gate is in the interface, not the program. This
+  is deliberate for a demo; see the README.
+- A member who collects and then disappears is not covered.
+- The upgrade authority and protocol admin are single keys. Both need multisig
+  before a circle holds material value.
+- COOK is not listed on any market, so there is no price to convert these
+  amounts into.

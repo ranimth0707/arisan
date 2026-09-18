@@ -95,6 +95,72 @@ const ONLY = (() => {
 })();
 const inScope = (record) => ONLY === null || record.tag === ONLY;
 
+/**
+ * Seats the wallets and starts the circle. Shared by a fresh replacement and by
+ * one that was opened earlier but never started.
+ *
+ * Returns false instead of throwing when it cannot finish, so the circle is left
+ * forming and the next run resumes it.
+ */
+async function fillAndStart(circle, record, wallets, inviteHash) {
+  const p = record.params;
+  // A member slashed in the previous circle comes out short, so top every wallet
+  // back up to what a seat costs before asking any of them to take one.
+  const added = await topUp(wallets, p.collateral + p.contribution * 4 + WALLET_OVERHEAD);
+  if (added) line(`  topped up : ${cook(added)} COOK from the treasury`);
+
+  let joined = 0;
+  for (const wallet of wallets) {
+    try {
+      await program.account.member.fetch(findMember(circle, wallet.publicKey));
+      joined += 1;
+      continue; // already seated by an earlier attempt
+    } catch { /* not seated yet */ }
+    try {
+      await program.methods
+        .joinCircle(inviteHash)
+        .accountsPartial({
+          member: wallet.publicKey, payer: treasury.publicKey, circle,
+          bond: findBond(circle), membership: findMember(circle, wallet.publicKey),
+          room: findRoom(circle), systemProgram: SystemProgram.programId,
+        })
+        .signers([wallet])
+        .rpc();
+      joined += 1;
+    } catch (e) {
+      line(`  join failed for ${wallet.publicKey.toBase58().slice(0, 8)}…: ${e?.error?.errorCode?.code ?? String(e.message ?? e).slice(0, 60)}`);
+    }
+  }
+
+  // A demo room deliberately keeps a seat open, and the visitor who takes it is
+  // the one who starts the circle. Seating our side is the whole job there.
+  if (record.tag === "demo") {
+    line(`  ${joined}/${p.maxMembers} seated — waiting for a visitor to take the last seat`);
+    return joined >= 1;
+  }
+  if (joined < 2) {
+    line(`  only ${joined} seat(s) filled — left forming for the next run`);
+    return false;
+  }
+
+  try {
+    const signature = await program.methods
+      .startCircle()
+      .accountsPartial({
+        starter: treasury.publicKey, payer: treasury.publicKey, circle,
+        roster: findRoster(circle), safety: findSafety(circle),
+        bond: findBond(circle), systemProgram: SystemProgram.programId,
+      })
+      .rpc();
+    line(`  started   : ${joined}/${p.maxMembers} seats, ${cook(await conn.getBalance(findBond(circle)))} COOK locked`);
+    line(`  tx        : ${explorer(signature)}`);
+    return true;
+  } catch (e) {
+    line(`  start failed: ${e?.error?.errorCode?.code ?? String(e.message ?? e).slice(0, 70)} — left forming`);
+    return false;
+  }
+}
+
 let replaced = 0;
 let skipped = 0;
 
@@ -107,9 +173,26 @@ for (const record of state.circles) {
   try { account = await program.account.circle.fetch(circle); } catch { continue; }
 
   const stateName = Object.keys(account.state)[0];
-  if (stateName !== "finished") {
-    line(`${record.address.slice(0, 8)}…  ${stateName}, round ${account.round}/${account.memberCount} — leaving it`);
+  if (stateName === "running") {
+    line(`${record.address.slice(0, 8)}…  running, round ${account.round}/${account.memberCount} — leaving it`);
     skipped += 1;
+    continue;
+  }
+
+  // A replacement that was opened but never started. Finish that one instead of
+  // opening another.
+  //
+  // The record used to advance only once a start succeeded, so a failed start
+  // left it pointing at the old finished circle — and the next run dutifully
+  // made a fresh replacement for it, every hour. That is how dozens of empty
+  // rooms accumulated, each holding deposits nobody could reach, while the
+  // lobby count climbed.
+  if (stateName === "forming") {
+    line(`\n${record.address.slice(0, 8)}…  forming ${account.memberCount}/${account.maxMembers} — finishing the start it never completed`);
+    if (STATUS_ONLY) { replaced += 1; continue; }
+    const seated = await fillAndStart(circle, record, record.members.map(keypairOf),
+      Array.from(createHash("sha256").update(record.inviteCode).digest()));
+    if (seated) replaced += 1;
     continue;
   }
 
@@ -166,53 +249,15 @@ for (const record of state.circles) {
     })
     .rpc();
 
-  // A slashed member comes out of the old circle short, so top every wallet back
-  // up to what a seat costs before asking any of them to take one.
-  const needed = p.collateral + p.contribution * 4 + WALLET_OVERHEAD;
-  const added = await topUp(wallets, needed);
-  if (added) line(`  topped up : ${cook(added)} COOK from the treasury`);
-
-  // ------------------------------------------------- 3. back in their seats
-  let joined = 0;
-  for (const wallet of wallets) {
-    try {
-      await program.methods
-        .joinCircle(inviteHash)
-        .accountsPartial({
-          member: wallet.publicKey, payer: treasury.publicKey, circle: next,
-          bond: findBond(next), membership: findMember(next, wallet.publicKey),
-          room: findRoom(next), systemProgram: SystemProgram.programId,
-        })
-        .signers([wallet])
-        .rpc();
-      joined += 1;
-    } catch (e) {
-      line(`  join failed for ${wallet.publicKey.toBase58().slice(0, 8)}…: ${e?.error?.errorCode?.code ?? String(e.message ?? e).slice(0, 60)}`);
-    }
-  }
-
-  if (joined < 2) {
-    line(`  only ${joined} seat(s) filled — leaving the circle forming rather than starting it short`);
-    continue;
-  }
-
-  const startSignature = await program.methods
-    .startCircle()
-    .accountsPartial({
-      starter: treasury.publicKey, payer: treasury.publicKey, circle: next,
-      roster: findRoster(next), safety: findSafety(next),
-      bond: findBond(next), systemProgram: SystemProgram.programId,
-    })
-    .rpc();
-
+  // Point the record at the new circle straight away, before trying to fill it.
+  // This is the fix for the pile-up: if the start fails, the next run finds a
+  // forming circle and finishes that one rather than opening another.
   record.circleId = circleId;
   record.address = next.toBase58();
   record.inviteCode = inviteCode;
   save();
 
-  line(`  replaced  : ${joined}/${p.maxMembers} seats, ${cook(await conn.getBalance(findBond(next)))} COOK locked`);
-  line(`  tx        : ${explorer(startSignature)}`);
-  replaced += 1;
+  if (await fillAndStart(next, record, wallets, inviteHash)) replaced += 1;
 }
 
 line();

@@ -39,8 +39,10 @@ const ALREADY_FUNDED = 2 * LAMPORTS_PER_COOK;
 // limit at all. Serverless instances do not share memory, so treat these as
 // friction that thins out bursts, not as the bound. The bound is the balance of
 // a small, separate faucet wallet.
-const PER_IP = { max: 4, windowMs: 10 * 60_000 };
-const PER_WALLET = { max: 1, windowMs: 60 * 60_000 };
+// Overridable so the adversarial suite can be run more than once in ten minutes
+// without its own throttling being reported as a faucet failure.
+const PER_IP = { max: Number(process.env.FAUCET_MAX_PER_IP) || 4, windowMs: 10 * 60_000 };
+const PER_WALLET = { max: Number(process.env.FAUCET_MAX_PER_WALLET) || 1, windowMs: 60 * 60_000 };
 
 export const faucetAmount = () => {
   const configured = Number(process.env.FAUCET_AMOUNT_COOK ?? DEFAULT_AMOUNT);
@@ -64,6 +66,10 @@ export async function faucetStatus() {
     balanceLamports,
     spendableLamports: spendable(balanceLamports, sharedWithRelayer),
     sharedWithRelayer: Boolean(sharedWithRelayer),
+    // Reported so a test can assert against the limit actually in force rather
+    // than a number copied into it, which breaks the moment either one moves.
+    perIp: PER_IP.max,
+    perWallet: PER_WALLET.max,
   };
 }
 

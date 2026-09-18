@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { defaultDraft, isSocialPost, parseCookInput, restoreDraft, validateDraft } from "../src/lib/campaign-form.ts";
+import { defaultDraft, depositNote, isSocialPost, parseCookInput, restoreDraft, validateDraft } from "../src/lib/campaign-form.ts";
 
 const valid = { ...defaultDraft, name: "Arisan Studio", description: "Untuk teman-teman studio.", socialUrl: "https://x.com/arisan/status/123456" };
 
@@ -10,10 +10,30 @@ test("a draft can advance before connecting a wallet or posting", () => {
   assert.equal(validateDraft({ ...valid, socialUrl: "" }, 2)?.field, "socialUrl");
   assert.equal(validateDraft(valid, 2), null);
 });
-test("underfunded collateral is rejected by the safe circle policy", () => {
-  assert.equal(validateDraft({ ...valid, collateral: "0" }, 2)?.field, "collateral");
-  assert.equal(validateDraft({ ...valid, collateral: "0.2" }, 2)?.field, "collateral");
-  assert.equal(validateDraft({ ...valid, collateral: "0.3" }, 2), null);
+test("the deposit has no floor — the group decides it", () => {
+  // There used to be a floor of contribution x seats, the whole commitment. It
+  // meant only members who could already afford the pot were allowed into a
+  // circle whose purpose is saving up to it. How much commitment to ask of your
+  // own group is the organiser's call; the form explains rather than refuses.
+  for (const deposit of ["0", "0.01", "0.1", "0.2", "5"]) {
+    assert.equal(validateDraft({ ...valid, collateral: deposit }, 2), null, deposit);
+  }
+  assert.equal(validateDraft({ ...valid, collateral: "-1" }, 2)?.field, "collateral");
+});
+
+test("the form says what a deposit of that size actually buys", () => {
+  // valid.contribution is 0.1.
+  assert.equal(depositNote({ ...valid, collateral: "0.2" })?.tone, "ok");
+  assert.match(depositNote({ ...valid, collateral: "0.2" }).message, /2 missed rounds/);
+  assert.equal(depositNote({ ...valid, collateral: "0.1" })?.tone, "ok");
+  assert.match(depositNote({ ...valid, collateral: "0.1" }).message, /one missed round/);
+
+  // Below one contribution the pot really does shrink, and saying so is the
+  // whole reason this is advisory instead of a block.
+  const thin = depositNote({ ...valid, collateral: "0.01" });
+  assert.equal(thin?.tone, "thin");
+  assert.match(thin.message, /pot is smaller/);
+  assert.equal(depositNote({ ...valid, collateral: "0" })?.tone, "thin");
 });
 for (const [field, value] of [
   ["name", " "], ["name", "a".repeat(49)], ["name", "漢".repeat(17)],

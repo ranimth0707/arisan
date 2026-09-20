@@ -40,7 +40,7 @@ export function Guide({ navigate }: { navigate: Navigate }) {
         ] : [
           ["Add campaign details", "Name the campaign and explain who can join and what the Arisan is for."],
           ["Agree on the rules", "Set the contribution, reserve, member count, and round duration. The rules cannot change after creation."],
-          ["Post on social media", "Use the prepared draft, publish it yourself, and paste the public post URL. The link is stored, but the post is not automatically verified."],
+          ["Share the code", "Creating the campaign gives you a group code. Send it to the people you want in — WhatsApp, Telegram, in person. Nothing is published, and anyone holding the code can join, so it is only as private as you keep it."],
           ["Create the room and invite your group", "Connect a wallet, review the rules, then create the campaign. The creator automatically becomes the first member; save and share the generated code."],
         ]).map(([title, detail], i) => <li key={title}><span>{i + 1}</span><div><h3>{title}</h3><p>{detail}</p></div></li>)}
       </ol>

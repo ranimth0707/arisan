@@ -49,7 +49,11 @@ export function validateDraft(draft: CampaignDraft, step: number): { field: keyo
   // informed rather than blocked.
   if (!Object.hasOwn(durationLabels, draft.duration)) return { field: "duration", message: "Choose a round duration." };
   if (step < 2) return null;
-  if (bytes(draft.socialUrl) > 200 || !isSocialPost(draft.socialUrl.trim())) return { field: "socialUrl", message: "Paste a public post link from X, Instagram, Threads, Facebook, or Telegram—not a profile link." };
+  // No public post is required. This is built for a group who already know each
+  // other, so making them announce it before they may start was backwards. A
+  // link is still allowed, and still has to be a real post if given.
+  const link = draft.socialUrl.trim();
+  if (link && (bytes(link) > 200 || !isSocialPost(link))) return { field: "socialUrl", message: "That does not look like a public post link. Leave it empty if you are not linking one." };
   return null;
 }
 

@@ -4,11 +4,15 @@ import { defaultDraft, depositNote, isSocialPost, parseCookInput, restoreDraft, 
 
 const valid = { ...defaultDraft, name: "Arisan Studio", description: "Untuk teman-teman studio.", socialUrl: "https://x.com/arisan/status/123456" };
 
-test("a draft can advance before connecting a wallet or posting", () => {
-  assert.equal(validateDraft({ ...valid, socialUrl: "" }, 0), null);
-  assert.equal(validateDraft({ ...valid, socialUrl: "" }, 1), null);
-  assert.equal(validateDraft({ ...valid, socialUrl: "" }, 2)?.field, "socialUrl");
+test("no public post is required to open a private circle", () => {
+  // Requiring one was backwards: the premise is a group who already know each
+  // other, and making them announce it before they may start contradicts that.
+  for (const step of [0, 1, 2]) {
+    assert.equal(validateDraft({ ...valid, socialUrl: "" }, step), null, `step ${step}`);
+  }
+  // A link is still allowed, and still has to be a real post if given.
   assert.equal(validateDraft(valid, 2), null);
+  assert.equal(validateDraft({ ...valid, socialUrl: "https://x.com/someone" }, 2)?.field, "socialUrl");
 });
 test("the deposit has no floor — the group decides it", () => {
   // There used to be a floor of contribution x seats, the whole commitment. It

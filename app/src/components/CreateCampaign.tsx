@@ -7,7 +7,7 @@ import type { RentKind } from "../hooks/useCookieJar";
 import type { InstructionBuilder } from "../lib/send";
 import { Icon, type Navigate } from "./UI";
 
-const labels = ["Campaign details", "Arisan rules", "Post & review"];
+const labels = ["Campaign details", "Arisan rules", "Invite & review"];
 export function CreateCampaign({ program, owner, submit, navigate }: {
   program: CookieJarProgram; owner: PublicKey | null;
   submit: (build: InstructionBuilder, rent?: RentKind, instruction?: string) => Promise<{ signature: string; sponsored: boolean }>;
@@ -39,6 +39,16 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
     if (e) document.getElementById(e.field)?.focus();
     return !e;
   };
+  // The code shown on the invite step has to be the one the circle is actually
+  // created with, so the attempt is minted once here and reused by create().
+  // Editing any field clears it, because changed terms deserve a fresh code.
+  const [previewCode, setPreviewCode] = useState("");
+  useEffect(() => {
+    if (step !== 2) return;
+    if (!pending.current) pending.current = { id: Date.now(), code: generateInviteCode() };
+    setPreviewCode(pending.current.code);
+  }, [step, draft]);
+
   const copy = async (value: string, label: string) => { try { await navigator.clipboard.writeText(value); setCopied(label); } catch { setFailure("Clipboard unavailable. Select the text and copy it manually."); } };
   const create = async () => {
     if (!validate() || !owner || !agreed) return;
@@ -81,7 +91,7 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
     <input disabled={busy} id={key} value={draft[key]} onChange={e => change(key, e.target.value)} placeholder={placeholder} autoComplete="off" inputMode={mode} aria-invalid={error?.field === key || undefined} aria-describedby={key + "-hint"} />
     <small id={key + "-hint"} className={error?.field === key ? "field-error" : ""}>{error?.field === key ? error.message : hint}</small>
   </div>;
-  const socialText = draft.name + "\n\n" + draft.description + "\n\nContribution: " + draft.contribution + " COOK per round\nReserve: " + draft.collateral + " COOK per member\nMembers: " + draft.seats + "\nRound: " + durationLabels[draft.duration] + "\n\nThe deposit is not a fee: it covers a missed round, and whatever is left returns when all turns are complete. Contact the creator for the room code.\nhttps://arisan-cook.vercel.app";
+  const socialText = draft.name + "\n\n" + draft.description + "\n\nContribution: " + draft.contribution + " COOK per round\nReserve: " + draft.collateral + " COOK per member\nMembers: " + draft.seats + "\nRound: " + durationLabels[draft.duration] + "\n\nThe deposit is not a fee: it covers a missed round, and whatever is left comes back when all turns are complete.\n\nJoin with code: " + previewCode + "\nhttps://arisan-cook.vercel.app";
   if (result) return <section className="success-page">
     <span className="action-icon"><Icon name="check" /></span><h2>Campaign created.</h2><p>You automatically joined as the first member. Save this code and share it with your group.</p>
     <label htmlFor="new-code">Room code</label><div className="code-copy"><input id="new-code" value={result.code} readOnly /><button className="ghost" onClick={() => void copy(result.code, "code")}>{copied === "code" ? "Copied" : "Copy code"}</button></div>
@@ -93,8 +103,8 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
     <section className="wizard">
       <ol className="wizard-steps" aria-label="Campaign creation steps">{labels.map((label, i) => <li key={label} aria-current={i === step ? "step" : undefined}><span>{i < step ? <Icon name="check" /> : i + 1}</span>{label}</li>)}</ol>
       <form onSubmit={e => { e.preventDefault(); if (step < 2) { if (validate()) setStep(step + 1); } else void create(); }} noValidate>
-        <h2>{["Tell us about your group.", "Agree before you start.", "Post first, then invite."][step]}</h2>
-        <p className="form-intro">{["These details will be visible to potential members. Every field marked * is required.", "Every member follows the same rules. The rules are frozen after the campaign is created.", "A public post gives potential members the right context. Publish it yourself, then paste the link here."][step]}</p>
+        <h2>{["Tell us about your group.", "Agree before you start.", "Share the code with your group."][step]}</h2>
+        <p className="form-intro">{["These are shown to anyone you give the code to. Every field marked * is required.", "Every member follows the same rules. The rules are frozen after the campaign is created.", "Nothing here is published. Send the code to the people you want in, however you already talk to them."][step]}</p>
         {step === 0 && <>
           {field("name", "Campaign name", "Maximum 48 bytes.", "Studio friends Arisan")}
           <div className="field"><label htmlFor="description">About the campaign <span>*</span></label><textarea disabled={busy} id="description" value={draft.description} onChange={e => change("description", e.target.value)} rows={4} placeholder="For studio friends who want to save together. The group has 5 members…" aria-invalid={error?.field === "description" || undefined} aria-describedby="description-hint" /><small id="description-hint" className={error?.field === "description" ? "field-error" : ""}>{error?.field === "description" ? error.message : "Explain the purpose and who can join. Maximum 280 bytes."}</small></div>
@@ -106,10 +116,15 @@ export function CreateCampaign({ program, owner, submit, navigate }: {
           <p className="notice">The deposit covers <strong>being late</strong>, not somebody leaving. Miss a round and the program takes that round out of your own deposit, so the pot stays whole and nobody else covers you — and your books show it as a miss, not a payment. Two contributions is the usual size: you can be late twice before you are sidelined from taking a turn. Whatever is left comes back when the Arisan ends. It does not cover a member who takes the pot and disappears, which is why you invite people you know.</p>
         </>}
         {step === 2 && <>
-          <details className="post-draft" open><summary>Post draft to copy</summary><pre>{socialText}</pre><button type="button" className="ghost" onClick={() => void copy(socialText, "post")}>{copied === "post" ? "Draft copied" : "Copy post draft"}</button></details>
-          <div className="field"><label htmlFor="socialUrl">Public post link <span>*</span></label><input disabled={busy} id="socialUrl" type="url" value={draft.socialUrl} onChange={e => change("socialUrl", e.target.value)} placeholder="https://x.com/yourname/status/123…" autoComplete="url" aria-invalid={error?.field === "socialUrl" || undefined} aria-describedby="social-hint" /><small id="social-hint" className={error?.field === "socialUrl" ? "field-error" : ""}>{error?.field === "socialUrl" ? error.message : "X, Instagram, Threads, Facebook, or Telegram. The post content and ownership are not automatically verified."}</small></div>
-          <p className="notice">The code opens the room in this app, but blockchain membership authorization is not yet strong enough to guarantee that only invited people can join. Use demo amounts first.</p>
-          <label className="checkbox"><input disabled={busy} type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />I have published the post and understand that campaign rules cannot change after creation.</label>
+          <div className="invite-preview">
+            <span className="eyebrow">YOUR GROUP CODE</span>
+            <strong className="mono invite-code">{previewCode}</strong>
+            <p>This is what people need to join. Send it however your group already talks — WhatsApp, Telegram, in person. Nothing is published anywhere.</p>
+            <button type="button" className="ghost" onClick={() => void copy(previewCode, "code")}>{copied === "code" ? "Code copied" : "Copy code"}</button>
+          </div>
+          <details className="post-draft"><summary>Message to send with it</summary><pre>{socialText}</pre><button type="button" className="ghost" onClick={() => void copy(socialText, "post")}>{copied === "post" ? "Message copied" : "Copy message"}</button></details>
+          <p className="notice">Anyone holding the code can join, and the code is only as private as you keep it. The rules you set cannot change after this, so check them once more before you create.</p>
+          <label className="checkbox"><input disabled={busy} type="checkbox" checked={agreed} onChange={e => setAgreed(e.target.checked)} />I understand the rules are frozen once the campaign is created.</label>
           {!owner && <div className="wallet-prompt"><p>Your details are ready. Connect a wallet to create the campaign.</p><WalletMultiButton>Connect wallet</WalletMultiButton></div>}
         </>}
         {failure && <div className="banner warn" role="alert">{failure} <a href="#faucet">Get demo COOK</a></div>}

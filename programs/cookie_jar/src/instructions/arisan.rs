@@ -149,16 +149,19 @@ pub fn handle_create_circle(
         description.len() <= MAX_CIRCLE_DESCRIPTION_LEN,
         CookieError::StoryTooLong
     );
-    require!(
-        !social_url.trim().is_empty(),
-        CookieError::SocialPostRequired
-    );
+    // A link is optional. Demanding a public post to open a private savings
+    // circle was a contradiction: the whole premise is a group who already know
+    // each other, and asking them to announce it publicly before they may start
+    // is the opposite of that. A creator who does want to link somewhere still
+    // can, and it is still checked when present.
     require!(
         social_url.len() <= MAX_CIRCLE_SOCIAL_URL_LEN,
         CookieError::TitleTooLong
     );
     require!(
-        social_url.starts_with("https://") || social_url.starts_with("http://"),
+        social_url.is_empty()
+            || social_url.starts_with("https://")
+            || social_url.starts_with("http://"),
         CookieError::InvalidSocialPost
     );
     require!(
@@ -277,16 +280,19 @@ pub fn handle_configure_circle_room(
         description.len() <= MAX_CIRCLE_DESCRIPTION_LEN,
         CookieError::StoryTooLong
     );
-    require!(
-        !social_url.trim().is_empty(),
-        CookieError::SocialPostRequired
-    );
+    // A link is optional. Demanding a public post to open a private savings
+    // circle was a contradiction: the whole premise is a group who already know
+    // each other, and asking them to announce it publicly before they may start
+    // is the opposite of that. A creator who does want to link somewhere still
+    // can, and it is still checked when present.
     require!(
         social_url.len() <= MAX_CIRCLE_SOCIAL_URL_LEN,
         CookieError::TitleTooLong
     );
     require!(
-        social_url.starts_with("https://") || social_url.starts_with("http://"),
+        social_url.is_empty()
+            || social_url.starts_with("https://")
+            || social_url.starts_with("http://"),
         CookieError::InvalidSocialPost
     );
     require!(

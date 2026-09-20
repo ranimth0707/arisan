@@ -60,13 +60,13 @@ fn reserve_total(circle: &Circle) -> Result<u64> {
         .ok_or(CookieError::MathOverflow.into())
 }
 
-/// The floor the bond vault has to clear for a turn to be payable: one
-/// contribution, so a single missed round is still coverable.
+/// Recorded on the safety account so anyone reading it can see what one missed
+/// round costs. It is no longer a gate.
 ///
-/// It used to be `contribution × remaining × members` — the entire group's
-/// commitment. That only describes something real if the deposit is meant to
-/// insure the group against a member leaving, and it is not. It is a buffer for
-/// paying late.
+/// It was `contribution × remaining × members` once — the entire group's
+/// commitment — which only describes something real if the deposit insures the
+/// group against a member leaving. It does not; it is a buffer for paying late,
+/// and how large a buffer is the group's decision, not the program's.
 fn winner_reserve_floor(circle: &Circle) -> Result<u64> {
     Ok(circle.contribution)
 }
@@ -174,17 +174,16 @@ pub fn handle_create_circle(
         (MIN_ROUND_SECONDS..=MAX_ROUND_SECONDS).contains(&round_seconds),
         CookieError::BadRoundLength
     );
-    // `collateral` is the reserve a seat costs to enter, not the whole
-    // commitment. Requiring the latter made the circle pointless: you had to
-    // already own the pot to be allowed to receive it, which is neither saving
-    // nor credit.
+    // `collateral` is the deposit a seat costs, and it covers being late rather
+    // than somebody leaving. Requiring it to cover the whole commitment made the
+    // circle pointless: you had to already own the pot to be allowed to receive
+    // it, which is neither saving nor credit.
     //
-    // What the group is actually exposed to is a member who stops paying AFTER
-    // collecting, and that liability is `contribution × turns still to come` —
-    // largest for whoever goes first, zero for whoever goes last. So the reserve
-    // is priced per turn and enforced when a turn is claimed, not at the door.
-    // Join with nothing and you may still save, you simply cannot be drawn until
-    // late; post more and you move up the queue.
+    // How large a buffer to ask of your own group is the group's decision, so
+    // the only bound here is the obvious one — a seat cannot cost more than the
+    // commitment it backs. Below one contribution a missed round is only partly
+    // covered and that round's pot is smaller for whoever receives it, which the
+    // app says on the form rather than refusing.
     require!(
         collateral <= contribution
             .checked_mul(u64::from(max_members))
@@ -539,10 +538,11 @@ pub fn handle_start_circle(ctx: Context<StartCircle>) -> Result<()> {
         c.creator == ctx.accounts.starter.key() || c.member_count == c.max_members,
         CookieError::StartRequiresCreatorOrFull
     );
-    require!(
-        bond_balance(&ctx.accounts.bond)? >= winner_reserve_floor(c)?,
-        CookieError::CircleNotProtected
-    );
+    // No aggregate floor on the bond vault. The deposit covers a missed round
+    // and the group decides how much of one to ask for, which the app now lets
+    // them do — so a rule here demanding it cover a whole contribution simply
+    // refused circles the interface had already accepted. A pot's integrity
+    // comes from every seat settling each round, not from a vault level.
 
     let roster = &mut ctx.accounts.roster;
     roster.circle = c.key();
@@ -1070,10 +1070,6 @@ pub fn handle_request_turn(ctx: Context<RequestTurn>) -> Result<()> {
         CookieError::CircleNotProtected
     );
     let next_reserve = winner_reserve_floor(c)?;
-    require!(
-        bond_balance(&ctx.accounts.bond)? >= next_reserve,
-        CookieError::CircleNotProtected
-    );
     require!(!c.winner_drawn, CookieError::TurnAlreadyDrawn);
 
     // A request that nobody finalised in time is stale and may be replaced,
@@ -1143,10 +1139,6 @@ pub fn handle_finalize_turn(ctx: Context<FinalizeTurn>) -> Result<()> {
     require!(ctx.accounts.roster.ready, CookieError::RosterNotReady);
     require!(
         ctx.accounts.safety.protected,
-        CookieError::CircleNotProtected
-    );
-    require!(
-        bond_balance(&ctx.accounts.bond)? >= ctx.accounts.safety.required_reserve,
         CookieError::CircleNotProtected
     );
     require!(

@@ -1,11 +1,7 @@
 # 🍪 Arisan
 
-**A rotating savings circle nobody can run off with.**
-
-A group agrees an amount and a period. Every round each member pays that in, and
-one member who has not had a turn yet takes the whole pot. When everyone has had
-a turn, it is done and everyone has put in and taken out the same, having had
-access to a lump sum they could not have saved alone.
+**An on-chain ROSCA for private communities. The social side stays; the money
+stops depending on one person.**
 
 | | |
 |---|---|
@@ -14,38 +10,66 @@ access to a lump sum they could not have saved alone.
 | Network | Cookie Chain mainnet |
 | Wallet | Nightly |
 
-This repository is open source under the [MIT License](./LICENSE). The live
-application is a demo built around private groups, not an open marketplace for
-strangers. Rooms are addressed by an invite code rather than listed publicly;
-see [Campaign rooms](#campaign-rooms) for exactly how much that does and does
-not enforce.
+Open source under the [MIT License](./LICENSE).
 
 ---
 
-## The problem
+## Saving alone is where people lose
 
-An *arisan* is how tens of millions of Indonesian households actually save. It
-works offline because everybody in the group knows each other, meets in person,
-and can knock on your door.
+Get paid, set some aside, do not touch it. Simple, and it is exactly where most
+people fail — not because they cannot save, but because staying disciplined is
+hard when nothing holds you to it.
 
-Move it online and it collapses two ways, both ordinary rather than exotic:
+So communities built something that does. A **ROSCA** — rotating savings and
+credit association, *arisan* in Indonesia — is a group who agree an amount and a
+period. Everyone pays the same in each round, and one member takes the whole pot.
+Next round, someone else. When everyone has had a turn it is over, and each
+person has put in and taken out the same.
 
-**Somebody stops paying once they have already had their turn.** They collected a
-full pot and now owe eleven more rounds to people who cannot reach them. The rest
-of the group absorbs it.
+What that buys is the thing a savings account cannot give you: **social
+commitment.** You keep paying because the group is watching, and because your own
+turn is still coming.
 
-**The organiser disappears with the money.** They hold every contribution between
-rounds because somebody has to, and there is nothing but reputation stopping
-them.
+It is also two products at once, depending on where you land in the order:
 
-Both are trust problems, and a chain is the one place you can replace trust with
-a rule that executes itself.
+| Your turn | What it is |
+| --- | --- |
+| Early | **Interest-free credit** — a lump sum now, repaid over the remaining rounds |
+| Late | **Committed saving** — money you would not have set aside on your own |
 
-## What this does about it
+Tens of millions of Indonesian households run on this. It works because the group
+already knows each other.
 
-**Nobody holds the money.** The pot is a program account. The organiser has no
-key to it. Contributions can only ever leave in one direction: to the member
-whose turn was drawn.
+## What actually breaks
+
+Not the idea. The **coordination**.
+
+Somebody has to collect from everybody, chase whoever is late, keep the record of
+who paid and who missed, decide whose turn it is, and hold the pot in between.
+That person is doing unpaid admin every single round — and while they hold the
+money, the whole group is relying on one person's honesty and one person's
+spreadsheet.
+
+That is a chore and a single point of failure at the same time. Neither is a
+problem with arisan. Both are problems with doing arisan by hand.
+
+## So move the coordination, not the trust
+
+This puts that job on chain and leaves everything else alone.
+
+The organiser no longer holds the pot — a program account does, with no key. The
+rules are written once when the arisan is created and cannot be changed after
+anyone has committed money. Contributions, deposits, whose turn it is, the payout
+and the full payment history all happen in the program, in the open.
+
+The deposit is the part that covers a missed round, so one person paying late
+does not quietly become everyone else's problem to sort out.
+
+**The social trust between members stays exactly where it was.** You still join
+a circle because you know these people. What changes is that the money no longer
+depends on any one of them.
+
+## What the program guarantees
 
 **The deposit is a buffer for paying late, not insurance against leaving.** This
 is the part we got wrong twice, so it is worth being exact.
@@ -91,8 +115,9 @@ round to somebody's collateral are both permissionless. In the test suite the
 wallet that charges the defaulter is not even a member.
 
 **The rules are frozen.** Contribution, collateral, seats and round length are
-written once at creation and can never be changed. That is the reason anybody
-should be willing to join a stranger's circle.
+written once at creation and can never be changed. Nobody has to take the
+organiser's word that the terms will hold, because the organiser cannot move
+them either.
 
 **The books are public.** Who paid, who missed and how many times, who has
 already had a turn, how much collateral each person still holds. In a real arisan
@@ -107,7 +132,9 @@ guarantees nothing.
 ## See it work
 
 A full cycle on mainnet, including a member going quiet halfway through. Three
-members, 10 COOK a round, 30 COOK reserve each.
+members, 10 COOK a round. The deposits in this run were 30 COOK — sized under the
+earlier rule, before it came down to two contributions — but what it demonstrates
+is unchanged: a missed round comes out of the absentee's own deposit.
 
 | | Round 1 | Round 2 |
 |---|---|---|
@@ -392,22 +419,6 @@ on Solana and [Njangi](https://njangionchain.com/learn/blockchain-rosca) on Sui.
 What is here that is not there: it runs on Cookie Chain, and sponsored actions
 can let a member with an empty wallet join, pay and collect; the COOK being
 contributed still has to come from that member.
-
-## Jumper Coinbase RWA mission helper
-
-The read-only helper at [`scripts/jumper-rwa-cli.mjs`](scripts/jumper-rwa-cli.mjs)
-uses the installed Zerion CLI for Base transaction history and Jumper's public
-verification endpoint for the official task state. It deliberately never signs,
-broadcasts, or loops trades; actual eligible swaps must be completed through
-Jumper RWA.
-
-```bash
-npm run jumper:rwa -- assets --pretty
-npm run jumper:rwa -- status --address 0xYourBaseWallet --limit 200 --pretty
-npm run jumper:rwa -- plan --target 100000 --current 250 --pretty
-npm run jumper:rwa -- open --asset NVDA
-npm run test:jumper:rwa
-```
 
 ## Run it locally
 

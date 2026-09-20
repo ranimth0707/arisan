@@ -3,11 +3,12 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Rotating savings circles on Cookie Chain, with collateral instead of trust",
+  "description": "An on-chain ROSCA for private communities on Cookie Chain",
   "scripts": {
-    "fund": "node scripts/fund-deployer.mjs",
-    "jumper:rwa": "node scripts/jumper-rwa-cli.mjs",
-    "test:jumper:rwa": "node --test scripts/jumper-rwa-cli.test.mjs"
+    "fund": "node scripts/fund-treasury.mjs",
+    "crank": "node scripts/crank-circles.mjs",
+    "recycle": "node scripts/recycle-circles.mjs",
+    "chain-share": "node scripts/chain-share.mjs"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.32.1",
